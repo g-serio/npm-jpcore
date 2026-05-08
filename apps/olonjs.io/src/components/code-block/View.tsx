@@ -3,13 +3,6 @@
 /* OlonJS capsule: Shiki block + compound API + CodeBlockView — single file per tenant convention. */
 
 import { useControllableState } from "@radix-ui/react-use-controllable-state";
-import {
-  transformerNotationDiff,
-  transformerNotationErrorLevel,
-  transformerNotationFocus,
-  transformerNotationHighlight,
-  transformerNotationWordHighlight,
-} from "@shikijs/transformers";
 import { CheckIcon, CopyIcon } from "lucide-react";
 import type { ComponentProps, CSSProperties, HTMLAttributes, ReactElement, ReactNode } from "react";
 import { cloneElement, createContext, useContext, useEffect, useMemo, useState } from "react";
@@ -84,7 +77,7 @@ import {
   SiVuedotjs,
   SiWebassembly,
 } from "react-icons/si";
-import { type BundledLanguage, type CodeOptionsMultipleThemes, codeToHtml } from "shiki";
+import type { BundledLanguage, CodeOptionsMultipleThemes } from "shiki";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
@@ -245,31 +238,32 @@ const codeBlockClassName = cn(
   "[&_.line]:relative",
 );
 
-const highlight = (html: string, language?: BundledLanguage, themes?: CodeOptionsMultipleThemes["themes"]) =>
-  codeToHtml(html, {
+// Shiki + transformers are loaded on demand to keep the highlighter
+// (and its WASM/grammar payload) out of the initial bundle. See ADR-0007.
+const highlight = async (
+  html: string,
+  language?: BundledLanguage,
+  themes?: CodeOptionsMultipleThemes["themes"],
+): Promise<string> => {
+  const [{ codeToHtml }, transformers] = await Promise.all([
+    import("shiki"),
+    import("@shikijs/transformers"),
+  ]);
+  return codeToHtml(html, {
     lang: language ?? "typescript",
     themes: themes ?? {
       light: "github-light",
       dark: "github-dark-default",
     },
     transformers: [
-      transformerNotationDiff({
-        matchAlgorithm: "v3",
-      }),
-      transformerNotationHighlight({
-        matchAlgorithm: "v3",
-      }),
-      transformerNotationWordHighlight({
-        matchAlgorithm: "v3",
-      }),
-      transformerNotationFocus({
-        matchAlgorithm: "v3",
-      }),
-      transformerNotationErrorLevel({
-        matchAlgorithm: "v3",
-      }),
+      transformers.transformerNotationDiff({ matchAlgorithm: "v3" }),
+      transformers.transformerNotationHighlight({ matchAlgorithm: "v3" }),
+      transformers.transformerNotationWordHighlight({ matchAlgorithm: "v3" }),
+      transformers.transformerNotationFocus({ matchAlgorithm: "v3" }),
+      transformers.transformerNotationErrorLevel({ matchAlgorithm: "v3" }),
     ],
   });
+};
 
 export type CodeBlockTabData = {
   id: string;
