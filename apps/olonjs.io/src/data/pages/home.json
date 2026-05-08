@@ -275,11 +275,11 @@
             "name": "Scaffold",
             "tagline": "Scaffold locally",
             "description": "The Core package is free and open — forever. The contract, the protocols, the CLI. No lock-in on the foundation.\nnpm install @olonjs/core",
-            "stars": "Local Save",
-            "starsLabel": "Cloud Ready",
+            "stars": "npx @olonjs/cli new tenant ",
+            "starsLabel": "",
             "contributors": "",
             "contributorsLabel": "",
-            "exploreUrl": "/blocks",
+            "exploreUrl": "#",
             "image": {
               "url": "/assets/images/1778185590099-Screenshot_2026-05-07_222547.png",
               "alt": "Screenshot 2026-05-07 222547.png"
