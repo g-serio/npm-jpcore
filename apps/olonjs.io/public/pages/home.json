@@ -11,13 +11,13 @@
       "type": "premium-hero",
       "data": {
         "backgroundImage": {
-          "url": "/assets/images/1778144109633-1776332627579-plug-graded-square.jpg",
+          "url": "/assets/images/hero-plug-graded-768.jpg",
           "alt": "1776332627579-plug-graded-square.jpg"
         },
         "badgeText": "Now in Public Beta",
         "primaryTitle": "The Contract Layer",
         "secondaryTitle": "for the Agentic Web",
-        "subtitle": "OlonJS is the headless framework for AI native websites: every site typed, structured, and addressable by design. No custom glue. No fragile integrations.",
+        "subtitle": "OlonJS is the framework for AI native websites: every site typed, structured, and addressable by design. No custom glue. No fragile integrations.",
         "primaryCta": {
           "label": "",
           "href": "",
@@ -267,19 +267,19 @@
       "type": "sticky-section",
       "data": {
         "eyebrow": "Get Started",
-        "heading": "Three paths in.",
-        "description": "Start with the Core package, scaffold a full tenant with the CLI, or deploy a working example in one click.",
+        "heading": "Choose your path in",
+        "description": "Start with the Core package, scaffold a full tenant with the CLI, clone a working example in one click and test the CMS Layer, or create your own customization with AI. ",
         "projects": [
           {
             "id": "full-stack-blocks",
             "name": "Scaffold",
             "tagline": "Scaffold locally",
             "description": "The Core package is free and open — forever. The contract, the protocols, the CLI. No lock-in on the foundation.\nnpm install @olonjs/core",
-            "stars": "Local Save",
-            "starsLabel": "Cloud Ready",
+            "stars": "npx @olonjs/cli new tenant ",
+            "starsLabel": "",
             "contributors": "",
             "contributorsLabel": "",
-            "exploreUrl": "/blocks",
+            "exploreUrl": "#",
             "image": {
               "url": "/assets/images/1778185590099-Screenshot_2026-05-07_222547.png",
               "alt": "Screenshot 2026-05-07 222547.png"
@@ -329,8 +329,8 @@
             "contributorsLabel": "",
             "exploreUrl": "https://agent.olon.it",
             "image": {
-              "url": "/assets/images/1778139844993-Screenshot_2026-05-07_at_09-25-46_Aether_Eye_Institute_Precision_Ophthalmology_and_Vision_Surgery.png",
-              "alt": "1778139844993-Screenshot_2026-05-07_at_09-25-46_Aether_Eye_Institute_Precision_Ophthalmology_and_Vision_Surgery.png"
+              "url": "/assets/images/1778243465861-Screenshot_2026-05-08_at_14-30-54_OlonAgent___Tenant_generator.png",
+              "alt": "Screenshot 2026-05-08 at 14-30-54 OlonAgent — Tenant generator.png"
             },
             "iconVariant": "sparkles"
           }

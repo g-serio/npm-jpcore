@@ -55,6 +55,19 @@ export function PremiumHeroView({ data }: PremiumHeroViewProps) {
   const bgResolved = bgUrlRaw ? resolveAssetUrl(bgUrlRaw, tenantId) : '';
   const bgAlt = data.backgroundImage?.alt?.trim() ?? '';
 
+  // CSS image-set lets the browser pick AVIF/WebP/JPG by support. The hero
+  // background is decorative (mix-blend-mode + opacity 0.5), so it's never the
+  // LCP element and doesn't need preload or fetchpriority — it just needs to
+  // stop hogging bandwidth. Variant files emitted by scripts/optimize-hero.mjs.
+  // See ADR-0007.
+  const bgImageSet = bgResolved && /\.(jpe?g|png|webp|avif)$/i.test(bgResolved)
+    ? `image-set(
+        url("${bgResolved.replace(/\.(jpe?g|png|webp|avif)$/i, '.avif')}") type("image/avif"),
+        url("${bgResolved.replace(/\.(jpe?g|png|webp|avif)$/i, '.webp')}") type("image/webp"),
+        url("${bgResolved}") type("image/jpeg")
+      )`
+    : `url(${JSON.stringify(bgResolved)})`;
+
   const rootStyle = {
     '--local-bg': 'var(--background)',
     '--local-text': 'var(--foreground)',
@@ -75,9 +88,9 @@ export function PremiumHeroView({ data }: PremiumHeroViewProps) {
           aria-hidden
           className="absolute inset-0 z-0"
           style={{
-            backgroundImage: `url(${JSON.stringify(bgResolved)})`,
+            backgroundImage: bgImageSet,
             backgroundSize: 'cover',
-backgroundRepeat: 'no-repeat',
+            backgroundRepeat: 'no-repeat',
             mixBlendMode: 'soft-light',
             opacity: 0.5,
           }}
