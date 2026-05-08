@@ -1,0 +1,37 @@
+<svg version="1.2" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" width="512" height="512">
+  <defs>
+    <linearGradient id="g-main" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#84ABFF"/>
+      <stop offset="1" stop-color="#0F52E0"/>
+    </linearGradient>
+    <linearGradient id="g-accent" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#EEF3FF"/>
+      <stop offset="1" stop-color="#84ABFF"/>
+    </linearGradient>
+  </defs>
+  <!-- Registry frame -->
+  <rect fill="none" stroke="url(#g-main)" stroke-width="7" stroke-linejoin="round"
+        x="25" y="30" width="130" height="140" rx="10"/>
+  <!-- Header divider -->
+  <path fill="none" stroke="url(#g-main)" stroke-linecap="round" stroke-width="5"
+        d="M25,60 h130"/>
+  <!-- Header label: { } braces -->
+  <path fill="none" stroke="url(#g-main)" stroke-linecap="round" stroke-linejoin="round" stroke-width="4.5"
+        d="M72,42 c-5,0 -8,2 -8,6v2c0,4 -3,5 -6,5 3,0 6,1 6,5v2c0,4 3,6 8,6"/>
+  <path fill="none" stroke="url(#g-main)" stroke-linecap="round" stroke-linejoin="round" stroke-width="4.5"
+        d="M108,42 c5,0 8,2 8,6v2c0,4 3,5 6,5 -3,0 -6,1 -6,5v2c0,4 -3,6 -8,6"/>
+  <!-- Slot 1 — empty -->
+  <circle fill="url(#g-main)" opacity="0.35" cx="46" cy="90" r="4.5"/>
+  <rect fill="url(#g-main)" opacity="0.35" x="59" y="86.5" width="68" height="7" rx="3.5"/>
+  <!-- Slot 2 — INJECTED (accent) -->
+  <circle fill="url(#g-accent)" cx="46" cy="117" r="6.5"/>
+  <rect fill="url(#g-accent)" x="59" y="113" width="82" height="8" rx="4"/>
+  <!-- Slot 3 — empty -->
+  <circle fill="url(#g-main)" opacity="0.55" cx="46" cy="145" r="4.5"/>
+  <rect fill="url(#g-main)" opacity="0.55" x="59" y="141.5" width="50" height="7" rx="3.5"/>
+  <!-- Injection arrow from right (module augmentation) -->
+  <path fill="none" stroke="url(#g-accent)" stroke-linecap="round" stroke-width="5"
+        d="M192,117 h-35"/>
+  <path fill="none" stroke="url(#g-accent)" stroke-linecap="round" stroke-linejoin="round" stroke-width="5"
+        d="M170,108 l17,9 -17,9"/>
+</svg>

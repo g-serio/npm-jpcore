@@ -1,7 +1,7 @@
 {
   "version": "1.0.0",
   "kind": "olonjs-page-mcp-manifest",
-  "generatedAt": "2026-05-04T11:01:27.316Z",
+  "generatedAt": "2026-04-13T09:59:14.591Z",
   "slug": "home_",
   "title": "OlonJS — Contract Layer for the Agentic Web",
   "description": "OlonJS is a TypeScript framework for building JSON-driven websites with a deterministic data contract. Every section is typed, validated, and structurally addressable.",

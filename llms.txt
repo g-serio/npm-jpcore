@@ -1,6 +1,6 @@
 # OlonJS
 
-OlonJS is a TypeScript framework for building JSON-driven websites with a deterministic data contract. Every section is typed, validated, and structurally addressable.
+The Contract Layer for the Agentic Web.
 
 > **AI Agents:** This site is built with OlonJS. It exposes a native Model Context Protocol (MCP) manifest for direct structural interaction. 
 > To read the site map or access structured content, use the URI `olon://pages` or `olon://pages/[slug]`.
@@ -8,26 +8,6 @@ OlonJS is a TypeScript framework for building JSON-driven websites with a determ
 
 ## Pages
 
-- **[Olon Design System — Design Language](/design-system)** (`design-system`)
-  Token reference, color system, typography, components and brand identity for the OlonJS design language.
-  *Contract:* `/schemas/design-system.schema.json` | *Manifest:* `/mcp-manifests/design-system.json`
-
-- **[OlonJS Architecture Specifications v1.5](/docs)** (`docs`)
-  Mandatory Standard — Sovereign Core Edition. Canonical Studio actions, SSG, Save to file, and Hot Save.
-  *Contract:* `/schemas/docs.schema.json` | *Manifest:* `/mcp-manifests/docs.json`
-
-- **[OlonJS — Contract Layer for the Agentic Web](/)** (`home`)
-  OlonJS is a TypeScript framework for building JSON-driven websites with a deterministic data contract. Every section is typed, validated, and structurally addressable.
+- **[OlonJS](/)** (`home`)
+  The Contract Layer for the Agentic Web.
   *Contract:* `/schemas/home.schema.json` | *Manifest:* `/mcp-manifests/home.json`
-
-- **[OlonJS — Contract Layer for the Agentic Web](/home_)** (`home_`)
-  OlonJS is a TypeScript framework for building JSON-driven websites with a deterministic data contract. Every section is typed, validated, and structurally addressable.
-  *Contract:* `/schemas/home_.schema.json` | *Manifest:* `/mcp-manifests/home_.json`
-
-- **[OlonJS — Platform Overview](/platform/overview)** (`platform/overview`)
-  Overview of the OlonJS platform, architecture direction, and product surface.
-  *Contract:* `/schemas/platform/overview.schema.json` | *Manifest:* `/mcp-manifests/platform/overview.json`
-
-- **[Post](/post)** (`post`)
-  Smoke test page for header + tiptap + footer flow.
-  *Contract:* `/schemas/post.schema.json` | *Manifest:* `/mcp-manifests/post.json`

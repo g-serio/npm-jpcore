@@ -2,18 +2,18 @@
   "version": "1.0.0",
   "kind": "olonjs-page-contract",
   "slug": "home",
-  "title": "OlonJS — Contract Layer for the Agentic Web",
-  "description": "OlonJS is a TypeScript framework for building JSON-driven websites with a deterministic data contract. Every section is typed, validated, and structurally addressable.",
+  "title": "OlonJS",
+  "description": "The Contract Layer for the Agentic Web.",
   "manifestHref": "/mcp-manifests/home.json",
-  "systemPrompt": "You are operating the \"OlonJS — Contract Layer for the Agentic Web\" page in OlonJS Studio. Use only the declared tools and keep mutations valid against the section schema.",
+  "systemPrompt": "You are operating the \"OlonJS\" page in OlonJS Studio. Use only the declared tools and keep mutations valid against the section schema.",
   "sectionTypes": [
     "header",
     "footer",
-    "olon-hero",
-    "olon-why",
-    "olon-architecture",
-    "olon-example",
-    "olon-getstarted"
+    "premium-hero",
+    "content-7",
+    "scroll-accordion",
+    "code-block",
+    "sticky-section"
   ],
   "sectionInstances": [
     {
@@ -29,152 +29,38 @@
       "label": "footer"
     },
     {
-      "id": "hero-main",
-      "type": "olon-hero",
+      "id": "section-hero",
+      "type": "premium-hero",
       "scope": "local",
-      "label": "olon-hero"
+      "label": "premium-hero"
     },
     {
-      "id": "why-olon",
-      "type": "olon-why",
+      "id": "section-content-7",
+      "type": "content-7",
       "scope": "local",
-      "label": "Why OlonJS"
+      "label": "content-7"
     },
     {
-      "id": "architecture-protocols",
-      "type": "olon-architecture",
+      "id": "section-accordion",
+      "type": "scroll-accordion",
       "scope": "local",
-      "label": "Architecture"
+      "label": "scroll-accordion"
     },
     {
-      "id": "example-steps",
-      "type": "olon-example",
+      "id": "section-code-block",
+      "type": "code-block",
       "scope": "local",
-      "label": "Quick Example"
+      "label": "code-block"
     },
     {
-      "id": "getstarted-cards",
-      "type": "olon-getstarted",
+      "id": "section-sticky",
+      "type": "sticky-section",
       "scope": "local",
-      "label": "Get Started"
+      "label": "sticky-section"
     }
   ],
   "sectionSchemas": {
     "header": {
-      "type": "object",
-      "properties": {
-        "logoText": {
-          "type": "string",
-          "description": "ui:text"
-        },
-        "logoHighlight": {
-          "type": "string",
-          "description": "ui:text"
-        },
-        "logoIconText": {
-          "type": "string",
-          "description": "ui:text"
-        },
-        "badge": {
-          "type": "string",
-          "description": "ui:text"
-        },
-        "signinHref": {
-          "type": "string",
-          "description": "ui:text"
-        },
-        "ctaHref": {
-          "type": "string",
-          "description": "ui:text"
-        },
-        "ctaLabel": {
-          "type": "string",
-          "description": "ui:text"
-        },
-        "links": {
-          "type": "array",
-          "items": {
-            "type": "object",
-            "properties": {
-              "label": {
-                "type": "string",
-                "description": "ui:text"
-              },
-              "href": {
-                "type": "string",
-                "description": "ui:text"
-              },
-              "isCta": {
-                "type": "boolean",
-                "description": "ui:checkbox",
-                "default": false
-              },
-              "external": {
-                "type": "boolean",
-                "description": "ui:checkbox",
-                "default": false
-              }
-            },
-            "additionalProperties": false,
-            "required": [
-              "label",
-              "href"
-            ]
-          },
-          "description": "ui:list"
-        }
-      },
-      "additionalProperties": false,
-      "required": [
-        "logoText",
-        "links"
-      ]
-    },
-    "footer": {
-      "type": "object",
-      "properties": {
-        "brandText": {
-          "type": "string",
-          "description": "ui:text"
-        },
-        "copyright": {
-          "type": "string",
-          "description": "ui:text"
-        },
-        "links": {
-          "type": "array",
-          "items": {
-            "type": "object",
-            "properties": {
-              "label": {
-                "type": "string",
-                "description": "ui:text"
-              },
-              "href": {
-                "type": "string",
-                "description": "ui:text"
-              }
-            },
-            "additionalProperties": false,
-            "required": [
-              "label",
-              "href"
-            ]
-          },
-          "description": "ui:list"
-        },
-        "designSystemHref": {
-          "type": "string",
-          "description": "ui:text"
-        }
-      },
-      "additionalProperties": false,
-      "required": [
-        "brandText",
-        "copyright"
-      ]
-    },
-    "olon-hero": {
       "type": "object",
       "properties": {
         "id": {
@@ -184,21 +70,345 @@
           "type": "string",
           "description": "ui:text"
         },
-        "eyebrow": {
-          "type": "string",
-          "default": "CONTRACT LAYER · V1.5 · OPEN CORE"
+        "logoMark": {
+          "type": "object",
+          "properties": {
+            "url": {
+              "type": "string"
+            },
+            "alt": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "url"
+          ],
+          "description": "ui:image-picker"
         },
-        "headline": {
+        "brandText": {
           "type": "string",
-          "default": "Contract Layer"
+          "description": "ui:text"
         },
-        "subline": {
-          "type": "string",
-          "default": "for the agentic web."
+        "signIn": {
+          "type": "object",
+          "properties": {
+            "id": {
+              "type": "string"
+            },
+            "label": {
+              "type": "string",
+              "description": "ui:text"
+            },
+            "href": {
+              "type": "string",
+              "description": "ui:text"
+            },
+            "variant": {
+              "type": "string",
+              "enum": [
+                "primary",
+                "secondary",
+                "accent"
+              ],
+              "description": "ui:select",
+              "default": "primary"
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "label",
+            "href"
+          ]
         },
-        "body": {
+        "primaryCta": {
+          "type": "object",
+          "properties": {
+            "id": {
+              "type": "string"
+            },
+            "label": {
+              "type": "string",
+              "description": "ui:text"
+            },
+            "href": {
+              "type": "string",
+              "description": "ui:text"
+            },
+            "variant": {
+              "type": "string",
+              "enum": [
+                "primary",
+                "secondary",
+                "accent"
+              ],
+              "description": "ui:select",
+              "default": "primary"
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "label",
+            "href"
+          ]
+        },
+        "menu": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string"
+              },
+              "label": {
+                "type": "string",
+                "description": "ui:text"
+              },
+              "href": {
+                "type": "string",
+                "description": "ui:text"
+              },
+              "icon": {
+                "type": "string",
+                "description": "ui:text"
+              },
+              "external": {
+                "type": "boolean"
+              },
+              "isCta": {
+                "type": "boolean"
+              }
+            },
+            "additionalProperties": false,
+            "required": [
+              "label",
+              "href"
+            ]
+          },
+          "description": "ui:list"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "brandText",
+        "primaryCta"
+      ]
+    },
+    "footer": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "anchorId": {
           "type": "string",
-          "default": ""
+          "description": "ui:text"
+        },
+        "brandText": {
+          "type": "string",
+          "description": "ui:text"
+        },
+        "taglinePrimary": {
+          "type": "string",
+          "description": "ui:text"
+        },
+        "taglineSecondary": {
+          "type": "string",
+          "description": "ui:text"
+        },
+        "logoMark": {
+          "type": "object",
+          "properties": {
+            "url": {
+              "type": "string"
+            },
+            "alt": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "url"
+          ],
+          "description": "ui:image-picker"
+        },
+        "columns": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string"
+              },
+              "title": {
+                "type": "string",
+                "description": "ui:text"
+              },
+              "links": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string"
+                    },
+                    "label": {
+                      "type": "string",
+                      "description": "ui:text"
+                    },
+                    "href": {
+                      "type": "string",
+                      "description": "ui:text"
+                    }
+                  },
+                  "additionalProperties": false,
+                  "required": [
+                    "label",
+                    "href"
+                  ]
+                },
+                "description": "ui:list"
+              }
+            },
+            "additionalProperties": false,
+            "required": [
+              "title",
+              "links"
+            ]
+          },
+          "description": "ui:list"
+        },
+        "socialLinks": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string"
+              },
+              "name": {
+                "type": "string",
+                "description": "ui:text"
+              },
+              "href": {
+                "type": "string",
+                "description": "ui:text"
+              },
+              "icon": {
+                "type": "string",
+                "enum": [
+                  "github",
+                  "x",
+                  "discord"
+                ],
+                "description": "ui:select",
+                "default": "github"
+              }
+            },
+            "additionalProperties": false,
+            "required": [
+              "name",
+              "href"
+            ]
+          },
+          "description": "ui:list"
+        },
+        "legalLinks": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string"
+              },
+              "label": {
+                "type": "string",
+                "description": "ui:text"
+              },
+              "href": {
+                "type": "string",
+                "description": "ui:text"
+              },
+              "icon": {
+                "type": "string",
+                "description": "ui:text"
+              },
+              "external": {
+                "type": "boolean"
+              },
+              "isCta": {
+                "type": "boolean"
+              }
+            },
+            "additionalProperties": false,
+            "required": [
+              "label",
+              "href"
+            ]
+          },
+          "description": "ui:list"
+        },
+        "copyrightSuffix": {
+          "type": "string",
+          "description": "ui:text"
+        },
+        "copyrightYear": {
+          "type": "number",
+          "description": "ui:number"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "brandText",
+        "taglinePrimary",
+        "taglineSecondary",
+        "columns",
+        "socialLinks",
+        "legalLinks",
+        "copyrightSuffix"
+      ]
+    },
+    "premium-hero": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "anchorId": {
+          "type": "string",
+          "description": "ui:text"
+        },
+        "backgroundImage": {
+          "type": "object",
+          "properties": {
+            "url": {
+              "type": "string"
+            },
+            "alt": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "url"
+          ],
+          "description": "ui:image-picker"
+        },
+        "badgeText": {
+          "type": "string",
+          "description": "ui:text"
+        },
+        "primaryTitle": {
+          "type": "string",
+          "description": "ui:text"
+        },
+        "secondaryTitle": {
+          "type": "string",
+          "description": "ui:text"
+        },
+        "subtitle": {
+          "type": "string",
+          "description": "ui:textarea"
         },
         "primaryCta": {
           "type": "object",
@@ -262,87 +472,15 @@
             "href"
           ]
         },
-        "ghostCta": {
-          "type": "object",
-          "properties": {
-            "id": {
-              "type": "string"
-            },
-            "label": {
-              "type": "string",
-              "description": "ui:text"
-            },
-            "href": {
-              "type": "string",
-              "description": "ui:text"
-            },
-            "variant": {
-              "type": "string",
-              "enum": [
-                "primary",
-                "secondary",
-                "accent"
-              ],
-              "description": "ui:select",
-              "default": "primary"
-            }
-          },
-          "additionalProperties": false,
-          "required": [
-            "label",
-            "href"
-          ]
-        },
-        "image": {
-          "type": "object",
-          "properties": {
-            "url": {
-              "type": "string"
-            },
-            "alt": {
-              "type": "string"
-            }
-          },
-          "additionalProperties": false,
-          "required": [
-            "url"
-          ],
-          "description": "ui:image-picker",
-          "default": {
-            "url": "/assets/images/plug-graded-square.jpg",
-            "alt": "Olon interface port engraved into a dark stone surface"
-          }
-        }
-      },
-      "additionalProperties": false
-    },
-    "olon-why": {
-      "type": "object",
-      "properties": {
-        "id": {
-          "type": "string"
-        },
-        "anchorId": {
+        "socialProofPrefix": {
           "type": "string",
           "description": "ui:text"
         },
-        "label": {
+        "socialProofCount": {
           "type": "string",
-          "default": "Why OlonJS"
+          "description": "ui:text"
         },
-        "headline": {
-          "type": "string",
-          "default": "A Meaningful Web"
-        },
-        "subline": {
-          "type": "string",
-          "default": "Whole in itself, part of something greater."
-        },
-        "body": {
-          "type": "string",
-          "default": ""
-        },
-        "pillars": {
+        "avatars": {
           "type": "array",
           "items": {
             "type": "object",
@@ -350,36 +488,45 @@
               "id": {
                 "type": "string"
               },
-              "title": {
-                "type": "string"
+              "initials": {
+                "type": "string",
+                "description": "ui:text"
               },
-              "body": {
-                "type": "string"
-              },
-              "icon": {
+              "preset": {
                 "type": "string",
                 "enum": [
-                  "contract",
-                  "holon",
-                  "generated"
-                ]
+                  "amber",
+                  "emerald",
+                  "blue",
+                  "rose",
+                  "violet"
+                ],
+                "description": "ui:select",
+                "default": "amber"
               }
             },
             "additionalProperties": false,
             "required": [
-              "title",
-              "body",
-              "icon"
+              "initials"
             ]
-          }
+          },
+          "description": "ui:list"
         }
       },
       "additionalProperties": false,
       "required": [
-        "pillars"
+        "badgeText",
+        "primaryTitle",
+        "secondaryTitle",
+        "subtitle",
+        "primaryCta",
+        "secondaryCta",
+        "socialProofPrefix",
+        "socialProofCount",
+        "avatars"
       ]
     },
-    "olon-architecture": {
+    "content-7": {
       "type": "object",
       "properties": {
         "id": {
@@ -389,132 +536,21 @@
           "type": "string",
           "description": "ui:text"
         },
-        "label": {
-          "type": "string",
-          "default": "Architecture"
-        },
-        "headline": {
-          "type": "string",
-          "default": "Six governing protocols."
-        },
-        "body": {
-          "type": "string",
-          "default": ""
-        },
-        "specHref": {
-          "type": "string",
-          "default": ""
-        },
-        "protocols": {
-          "type": "array",
-          "items": {
-            "type": "object",
-            "properties": {
-              "id": {
-                "type": "string"
-              },
-              "version": {
-                "type": "string"
-              },
-              "acronym": {
-                "type": "string"
-              },
-              "name": {
-                "type": "string"
-              },
-              "desc": {
-                "type": "string"
-              },
-              "specHref": {
-                "type": "string"
-              },
-              "icon": {
-                "type": "string",
-                "enum": [
-                  "mtrp",
-                  "tbp",
-                  "jsp",
-                  "idac",
-                  "bsds",
-                  "pss"
-                ]
-              }
-            },
-            "additionalProperties": false,
-            "required": [
-              "version",
-              "acronym",
-              "name",
-              "desc",
-              "specHref",
-              "icon"
-            ]
-          }
-        }
-      },
-      "additionalProperties": false,
-      "required": [
-        "protocols"
-      ]
-    },
-    "olon-example": {
-      "type": "object",
-      "properties": {
-        "id": {
-          "type": "string"
-        },
-        "anchorId": {
+        "eyebrow": {
           "type": "string",
           "description": "ui:text"
         },
-        "label": {
-          "type": "string",
-          "default": "Quick Example"
-        },
-        "headline": {
-          "type": "string",
-          "default": "Two steps. One contract."
-        },
-        "body": {
-          "type": "string",
-          "default": ""
-        },
-        "note": {
-          "type": "string",
-          "default": ""
-        },
-        "noteHref": {
-          "type": "string",
-          "default": ""
-        },
-        "steps": {}
-      },
-      "additionalProperties": false,
-      "required": [
-        "steps"
-      ]
-    },
-    "olon-getstarted": {
-      "type": "object",
-      "properties": {
-        "id": {
-          "type": "string"
-        },
-        "anchorId": {
+        "headingLead": {
           "type": "string",
           "description": "ui:text"
         },
-        "label": {
+        "headingEmphasis": {
           "type": "string",
-          "default": "Get Started"
+          "description": "ui:text"
         },
-        "headline": {
+        "description": {
           "type": "string",
-          "default": "Three paths in."
-        },
-        "body": {
-          "type": "string",
-          "default": ""
+          "description": "ui:textarea"
         },
         "cards": {
           "type": "array",
@@ -524,54 +560,369 @@
               "id": {
                 "type": "string"
               },
-              "badge": {
-                "type": "string"
+              "image": {
+                "type": "object",
+                "properties": {
+                  "url": {
+                    "type": "string"
+                  },
+                  "alt": {
+                    "type": "string"
+                  }
+                },
+                "additionalProperties": false,
+                "required": [
+                  "url"
+                ],
+                "description": "ui:image-picker"
               },
-              "badgeStyle": {
+              "tileVariant": {
                 "type": "string",
                 "enum": [
-                  "oss",
-                  "cli",
-                  "deploy"
+                  "elevated",
+                  "surface"
+                ],
+                "description": "ui:select",
+                "default": "elevated"
+              },
+              "eyebrow": {
+                "type": "string",
+                "description": "ui:text"
+              },
+              "copyLead": {
+                "type": "string",
+                "description": "ui:text"
+              },
+              "copyEmphasis": {
+                "type": "string",
+                "description": "ui:text"
+              },
+              "copyTrail": {
+                "type": "string",
+                "description": "ui:text"
+              },
+              "readLink": {
+                "type": "object",
+                "properties": {
+                  "label": {
+                    "type": "string",
+                    "description": "ui:text"
+                  },
+                  "href": {
+                    "type": "string",
+                    "description": "ui:text"
+                  }
+                },
+                "additionalProperties": false,
+                "required": [
+                  "label",
+                  "href"
                 ]
-              },
-              "title": {
-                "type": "string"
-              },
-              "body": {
-                "type": "string"
-              },
-              "code": {
-                "type": "string"
-              },
-              "linkLabel": {
-                "type": "string"
-              },
-              "linkHref": {
-                "type": "string"
-              },
-              "deployLabel": {
-                "type": "string"
-              },
-              "deployHref": {
-                "type": "string"
               }
             },
             "additionalProperties": false,
             "required": [
-              "badge",
-              "badgeStyle",
-              "title",
-              "body",
-              "linkLabel",
-              "linkHref"
+              "image",
+              "eyebrow",
+              "copyLead",
+              "copyEmphasis",
+              "copyTrail",
+              "readLink"
             ]
-          }
+          },
+          "description": "ui:list"
         }
       },
       "additionalProperties": false,
       "required": [
+        "headingLead",
+        "headingEmphasis",
         "cards"
+      ]
+    },
+    "scroll-accordion": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "anchorId": {
+          "type": "string",
+          "description": "ui:text"
+        },
+        "eyebrow": {
+          "type": "string",
+          "description": "ui:text"
+        },
+        "heading": {
+          "type": "string",
+          "description": "ui:text"
+        },
+        "description": {
+          "type": "string",
+          "description": "ui:textarea"
+        },
+        "items": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string"
+              },
+              "number": {
+                "type": "string",
+                "description": "ui:text"
+              },
+              "title": {
+                "type": "string",
+                "description": "ui:text"
+              },
+              "icon": {
+                "type": "object",
+                "properties": {
+                  "url": {
+                    "type": "string"
+                  },
+                  "alt": {
+                    "type": "string"
+                  }
+                },
+                "additionalProperties": false,
+                "required": [
+                  "url"
+                ],
+                "description": "ui:image-picker"
+              },
+              "description": {
+                "type": "string",
+                "description": "ui:textarea"
+              },
+              "cta": {
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "type": "string"
+                  },
+                  "label": {
+                    "type": "string",
+                    "description": "ui:text"
+                  },
+                  "href": {
+                    "type": "string",
+                    "description": "ui:text"
+                  },
+                  "variant": {
+                    "type": "string",
+                    "enum": [
+                      "primary",
+                      "secondary",
+                      "accent"
+                    ],
+                    "description": "ui:select",
+                    "default": "primary"
+                  }
+                },
+                "additionalProperties": false,
+                "required": [
+                  "label",
+                  "href"
+                ]
+              }
+            },
+            "additionalProperties": false,
+            "required": [
+              "number",
+              "title",
+              "description",
+              "cta"
+            ]
+          },
+          "description": "ui:list"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "items"
+      ]
+    },
+    "code-block": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "anchorId": {
+          "type": "string",
+          "description": "ui:text"
+        },
+        "eyebrow": {
+          "type": "string",
+          "description": "ui:text"
+        },
+        "heading": {
+          "type": "string",
+          "description": "ui:text"
+        },
+        "description": {
+          "type": "string",
+          "description": "ui:textarea"
+        },
+        "columns": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string"
+              },
+              "tabs": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string"
+                    },
+                    "filename": {
+                      "type": "string",
+                      "description": "ui:text"
+                    },
+                    "language": {
+                      "type": "string",
+                      "description": "ui:text"
+                    },
+                    "code": {
+                      "type": "string",
+                      "description": "ui:textarea"
+                    }
+                  },
+                  "additionalProperties": false,
+                  "required": [
+                    "filename",
+                    "language",
+                    "code"
+                  ]
+                },
+                "description": "ui:list"
+              }
+            },
+            "additionalProperties": false,
+            "required": [
+              "tabs"
+            ]
+          },
+          "description": "ui:list"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "columns"
+      ]
+    },
+    "sticky-section": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "anchorId": {
+          "type": "string",
+          "description": "ui:text"
+        },
+        "eyebrow": {
+          "type": "string",
+          "description": "ui:text"
+        },
+        "heading": {
+          "type": "string",
+          "description": "ui:text"
+        },
+        "description": {
+          "type": "string",
+          "description": "ui:textarea"
+        },
+        "projects": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string"
+              },
+              "name": {
+                "type": "string",
+                "description": "ui:text"
+              },
+              "tagline": {
+                "type": "string",
+                "description": "ui:text"
+              },
+              "description": {
+                "type": "string",
+                "description": "ui:textarea"
+              },
+              "stars": {
+                "type": "string",
+                "description": "ui:text"
+              },
+              "starsLabel": {
+                "type": "string",
+                "description": "ui:text"
+              },
+              "contributors": {
+                "type": "string",
+                "description": "ui:text"
+              },
+              "contributorsLabel": {
+                "type": "string",
+                "description": "ui:text"
+              },
+              "exploreUrl": {
+                "type": "string",
+                "description": "ui:text"
+              },
+              "image": {
+                "type": "object",
+                "properties": {
+                  "url": {
+                    "type": "string"
+                  },
+                  "alt": {
+                    "type": "string"
+                  }
+                },
+                "additionalProperties": false,
+                "required": [
+                  "url"
+                ],
+                "description": "ui:image-picker"
+              },
+              "iconVariant": {
+                "type": "string",
+                "description": "ui:icon-picker"
+              }
+            },
+            "additionalProperties": false,
+            "required": [
+              "name",
+              "tagline",
+              "description",
+              "stars",
+              "starsLabel",
+              "contributors",
+              "contributorsLabel",
+              "exploreUrl",
+              "image",
+              "iconVariant"
+            ]
+          },
+          "description": "ui:list"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "projects"
       ]
     }
   },

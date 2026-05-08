@@ -1,0 +1,47 @@
+<svg version="1.2" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" width="512" height="512">
+  <defs>
+    <linearGradient id="g-main" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#84ABFF"/>
+      <stop offset="1" stop-color="#0F52E0"/>
+    </linearGradient>
+    <linearGradient id="g-body" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#84ABFF"/>
+      <stop offset="1" stop-color="#0F52E0"/>
+    </linearGradient>
+    <linearGradient id="g-accent" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#EEF3FF"/>
+      <stop offset="1" stop-color="#84ABFF"/>
+    </linearGradient>
+  </defs>
+  <!-- Left panel — DOM Canvas -->
+  <rect fill="none" stroke="url(#g-body)" stroke-width="6.5" stroke-linejoin="round"
+        x="8" y="36" width="72" height="128" rx="9"/>
+  <!-- Left panel content lines -->
+  <rect fill="url(#g-body)" opacity="0.5" x="20" y="56" width="48" height="5.5" rx="2.75"/>
+  <rect fill="url(#g-body)" opacity="0.35" x="20" y="70" width="36" height="5.5" rx="2.75"/>
+  <rect fill="url(#g-body)" opacity="0.35" x="20" y="84" width="42" height="5.5" rx="2.75"/>
+  <!-- Left panel data-jp-* attribute dots -->
+  <circle fill="url(#g-accent)" cx="24" cy="118" r="4.5"/>
+  <rect fill="url(#g-accent)" x="33" y="114" width="36" height="8" rx="4"/>
+  <circle fill="url(#g-accent)" opacity="0.6" cx="24" cy="138" r="4.5"/>
+  <rect fill="url(#g-accent)" opacity="0.6" x="33" y="134" width="28" height="8" rx="4"/>
+  <!-- Bridge connectors — 3 lines -->
+  <path fill="none" stroke="url(#g-body)" stroke-linecap="round" stroke-width="4"
+        opacity="0.4" d="M80,68 h40"/>
+  <!-- Middle bridge — accent, the binding -->
+  <path fill="none" stroke="url(#g-accent)" stroke-linecap="round" stroke-width="5.5"
+        d="M80,100 h40"/>
+  <circle fill="url(#g-accent)" cx="100" cy="100" r="5.5"/>
+  <path fill="none" stroke="url(#g-body)" stroke-linecap="round" stroke-width="4"
+        opacity="0.4" d="M80,132 h40"/>
+  <!-- Right panel — Inspector -->
+  <rect fill="none" stroke="url(#g-body)" stroke-width="6.5" stroke-linejoin="round"
+        x="120" y="36" width="72" height="128" rx="9"/>
+  <!-- Right panel field rows -->
+  <rect fill="url(#g-body)" opacity="0.5" x="132" y="56" width="48" height="5.5" rx="2.75"/>
+  <rect fill="url(#g-accent)" x="132" y="75" width="48" height="8" rx="4"/>
+  <rect fill="url(#g-body)" opacity="0.4" x="132" y="98" width="48" height="5.5" rx="2.75"/>
+  <rect fill="url(#g-body)" opacity="0.3" x="132" y="112" width="36" height="5.5" rx="2.75"/>
+  <rect fill="url(#g-body)" opacity="0.4" x="132" y="131" width="48" height="5.5" rx="2.75"/>
+  <rect fill="url(#g-body)" opacity="0.3" x="132" y="145" width="28" height="5.5" rx="2.75"/>
+</svg>

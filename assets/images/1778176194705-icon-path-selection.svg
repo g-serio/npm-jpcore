@@ -1,0 +1,42 @@
+<svg version="1.2" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" width="512" height="512">
+  <defs>
+    <linearGradient id="g-main" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#84ABFF"/>
+      <stop offset="1" stop-color="#0F52E0"/>
+    </linearGradient>
+    <linearGradient id="g-accent" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#EEF3FF"/>
+      <stop offset="1" stop-color="#84ABFF"/>
+    </linearGradient>
+  </defs>
+  <!-- Root → left branch (selected path) -->
+  <path fill="none" stroke="url(#g-accent)" stroke-linecap="round" stroke-width="5.5"
+        d="M100,32 L52,90"/>
+  <!-- Root → right branch (dim) -->
+  <path fill="none" stroke="url(#g-main)" stroke-linecap="round" stroke-width="5"
+        opacity="0.3" d="M100,32 L148,90"/>
+  <!-- Left → left-left leaf (dim) -->
+  <path fill="none" stroke="url(#g-main)" stroke-linecap="round" stroke-width="4.5"
+        opacity="0.3" d="M52,90 L22,158"/>
+  <!-- Left → left-right leaf (SELECTED — accent) -->
+  <path fill="none" stroke="url(#g-accent)" stroke-linecap="round" stroke-width="5.5"
+        d="M52,90 L90,158"/>
+  <!-- Right → right-right leaf (dim) -->
+  <path fill="none" stroke="url(#g-main)" stroke-linecap="round" stroke-width="4"
+        opacity="0.25" d="M148,90 L170,158"/>
+  <!-- Root node -->
+  <circle fill="url(#g-accent)" cx="100" cy="22" r="11"/>
+  <!-- Left node (on selected path) -->
+  <circle fill="url(#g-accent)" cx="52" cy="90" r="10"/>
+  <!-- Right node (dim) -->
+  <circle fill="url(#g-main)" opacity="0.3" cx="148" cy="90" r="8"/>
+  <!-- Left-left leaf (dim) -->
+  <circle fill="url(#g-main)" opacity="0.3" cx="22" cy="165" r="7"/>
+  <!-- Left-right leaf — SELECTED -->
+  <circle fill="url(#g-accent)" cx="90" cy="165" r="11"/>
+  <!-- Selection box around selected leaf -->
+  <rect fill="none" stroke="url(#g-accent)" stroke-width="4" stroke-linejoin="round"
+        opacity="0.5" x="76" y="151" width="28" height="28" rx="5"/>
+  <!-- Right-right leaf (dim) -->
+  <circle fill="url(#g-main)" opacity="0.25" cx="170" cy="165" r="6"/>
+</svg>
