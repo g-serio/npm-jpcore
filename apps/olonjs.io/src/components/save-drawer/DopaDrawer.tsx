@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
-import type { StepId, StepState } from '@/types/deploy';
-import { DEPLOY_STEPS } from '@/lib/deploySteps';
+import type { StepId, StepState } from '@olonjs/core';
+import { DEPLOY_STEPS } from '@olonjs/core';
 import fontsCss from '@/fonts.css?inline';
 import saverStyleCss from './saverStyle.css?inline';
 import { DeployNode } from './DeployNode';

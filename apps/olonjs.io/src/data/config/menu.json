@@ -1,24 +1,42 @@
 {
   "main": [
     {
+      "id": "nav-features",
       "label": "Why",
-      "href": "#Why"
+      "href": "#why"
     },
     {
+      "id": "nav-pricing",
       "label": "Architecture",
-      "href": "#Architecture"
+      "href": "#architecture"
     },
     {
+      "id": "nav-about",
       "label": "Example",
-      "href": "#Example"
+      "href": "#example"
     },
     {
-      "label": "Get started",
-      "href": "#Getstarted"
+      "id": "nav-blog",
+      "label": "Get Started",
+      "href": "#templates",
+      "isCta": "true"
+    }
+  ],
+  "footerLegal": [
+    {
+      "id": "legal-privacy",
+      "label": "Privacy Policy",
+      "href": "#"
     },
     {
-      "label": "GitHub",
-      "href": "https://github.com/olonjs/core"
+      "id": "legal-terms",
+      "label": "Terms of Service",
+      "href": "#"
+    },
+    {
+      "id": "legal-cookies",
+      "label": "Cookie Policy",
+      "href": "#"
     }
   ]
 }

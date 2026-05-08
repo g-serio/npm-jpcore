@@ -1,4 +1,4 @@
-import { cn } from '@/lib/utils';
+import { cn } from '@olonjs/core';
 import type { HTMLAttributes } from 'react';
 
 function Skeleton({

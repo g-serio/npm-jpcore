@@ -1,10 +1,10 @@
 {
   "version": "1.0.0",
   "kind": "olonjs-page-mcp-manifest",
-  "generatedAt": "2026-04-13T09:59:14.589Z",
+  "generatedAt": "2026-05-08T07:46:33.851Z",
   "slug": "home",
-  "title": "OlonJS — Contract Layer for the Agentic Web",
-  "description": "OlonJS is a TypeScript framework for building JSON-driven websites with a deterministic data contract. Every section is typed, validated, and structurally addressable.",
+  "title": "OlonJS",
+  "description": "The Contract Layer for the Agentic Web.",
   "contractHref": "/schemas/home.schema.json",
   "transport": {
     "kind": "window-message",
@@ -16,7 +16,7 @@
     "resources": [
       {
         "uri": "olon://pages/home",
-        "name": "OlonJS — Contract Layer for the Agentic Web Data",
+        "name": "OlonJS Data",
         "mimeType": "application/json",
         "description": "Structured content for the home page."
       },
@@ -31,11 +31,11 @@
   "sectionTypes": [
     "header",
     "footer",
-    "olon-hero",
-    "olon-why",
-    "olon-architecture",
-    "olon-example",
-    "olon-getstarted"
+    "premium-hero",
+    "content-7",
+    "scroll-accordion",
+    "code-block",
+    "sticky-section"
   ],
   "sectionInstances": [
     {
@@ -51,34 +51,34 @@
       "label": "footer"
     },
     {
-      "id": "hero-main",
-      "type": "olon-hero",
+      "id": "section-hero",
+      "type": "premium-hero",
       "scope": "local",
-      "label": "olon-hero"
+      "label": "premium-hero"
     },
     {
-      "id": "why-olon",
-      "type": "olon-why",
+      "id": "section-content-7",
+      "type": "content-7",
       "scope": "local",
-      "label": "Why OlonJS"
+      "label": "content-7"
     },
     {
-      "id": "architecture-protocols",
-      "type": "olon-architecture",
+      "id": "section-accordion",
+      "type": "scroll-accordion",
       "scope": "local",
-      "label": "Architecture"
+      "label": "scroll-accordion"
     },
     {
-      "id": "example-steps",
-      "type": "olon-example",
+      "id": "section-code-block",
+      "type": "code-block",
       "scope": "local",
-      "label": "Quick Example"
+      "label": "code-block"
     },
     {
-      "id": "getstarted-cards",
-      "type": "olon-getstarted",
+      "id": "section-sticky",
+      "type": "sticky-section",
       "scope": "local",
-      "label": "Get Started"
+      "label": "sticky-section"
     }
   ],
   "tools": [

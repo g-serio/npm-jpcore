@@ -3,47 +3,31 @@
     "title": "OlonJS",
     "logoUrl": "/brand/mark/olon-mark-dark.svg"
   },
-  "pages": [
-    {
-      "slug": "home",
-      "label": "Home"
-    },
-    {
-      "slug": "design-system",
-      "label": "Design System"
-    }
-  ],
   "header": {
     "id": "global-header",
     "type": "header",
     "data": {
-      "logoText": "Olon",
-      "badge": "JS",
-      "links": [
-        {
-          "label": "Why",
-          "href": "#Why"
-        },
-        {
-          "label": "Architecture",
-          "href": "#Architecture"
-        },
-        {
-          "label": "Example",
-          "href": "#Example"
-        },
-        {
-          "label": "Get started",
-          "href": "#Getstarted"
-        },
-        {
-          "label": "GitHub",
-          "href": "https://github.com/olonjs/core"
-        }
-      ],
-      "ctaLabel": "",
-      "ctaHref": "",
-      "signinHref": ""
+      "menu": {
+        "$ref": "menu.json#/main"
+      },
+      "brandText": "OlonJS",
+      "signIn": {
+        "label": "Design Schema V1",
+        "href": "/schemas/v1/design.schema.json",
+        "variant": "primary"
+      },
+      "primaryCta": {
+        "label": "GitHub",
+        "href": "https://github.com/olonjs/core",
+        "variant": "primary"
+      },
+      "logoMark": {
+        "url": "/assets/images/1778098423562-olon-mark-dark-256.png",
+        "alt": "1778098423562-olon-mark-dark-256.png"
+      }
+    },
+    "settings": {
+      "sticky": false
     }
   },
   "footer": {
@@ -51,17 +35,24 @@
     "type": "footer",
     "data": {
       "brandText": "OlonJS",
-      "copyright": "© 2026 OlonJS · v1.5 · Guido Serio",
-      "links": [
+      "taglinePrimary": "The modern framework for AI Native Websites.",
+      "taglineSecondary": "Build products agents love.",
+      "columns": [],
+      "socialLinks": [
         {
-          "label": "GitHub",
-          "href": "https://github.com/olonjs/core"
+          "id": "soc-gh",
+          "name": "GitHub",
+          "href": "https://github.com/olonjs",
+          "icon": "github"
         }
       ],
-      "designSystemHref": ""
+      "legalLinks": [],
+      "copyrightSuffix": "OlonJS · v1.6 · Guido Serio",
+      "logoMark": {
+        "url": "/assets/images/1778097668305-olon-mark-mono-dark-128.png",
+        "alt": "1778097668305-olon-mark-mono-dark-128.png"
+      }
     },
-    "settings": {
-      "showLogo": true
-    }
+    "settings": {}
   }
 }

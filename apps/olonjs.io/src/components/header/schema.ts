@@ -1,29 +1,20 @@
 import { z } from 'zod';
+import { BaseSectionData, CtaSchema, ImageSelectionSchema } from '@olonjs/core';
+import { MenuItemSchema } from '@/lib/menu-item-schema';
 
 /**
- * 📝 HEADER SCHEMA (Contract)
- * Definisce la struttura dati che l'Admin userà per generare la form.
- */
-export const HeaderSchema = z.object({
-  logoText: z.string().describe('ui:text'),
-  logoHighlight: z.string().optional().describe('ui:text'),
-  logoIconText: z.string().optional().describe('ui:text'),
-  badge: z.string().optional().describe('ui:text'),
-  signinHref: z.string().optional().describe('ui:text'),
-  ctaHref: z.string().optional().describe('ui:text'),
-  ctaLabel: z.string().optional().describe('ui:text'),
-  links: z.array(z.object({
-    label: z.string().describe('ui:text'),
-    href: z.string().describe('ui:text'),
-    isCta: z.boolean().default(false).describe('ui:checkbox'),
-    external: z.boolean().default(false).optional().describe('ui:checkbox'),
-  })).describe('ui:list'),
-});
-
-/**
- * ⚙️ HEADER SETTINGS
- * Definisce i parametri tecnici (non di contenuto).
+ * OlonJS v1.6 — JSP §2.5 Resolved Editing Surface Rule:
+ * this schema describes the **resolved** Inspector/runtime surface. Authored `site.json` keeps
+ * `data.menu.$ref` → `menu.json`; the engine resolves for the Form Factory and persists edits to `menu.json`.
  */
 export const HeaderSettingsSchema = z.object({
-  sticky: z.boolean().default(true).describe('ui:checkbox'),
+  sticky: z.boolean().default(false),
+});
+
+export const HeaderSchema = BaseSectionData.extend({
+  logoMark: ImageSelectionSchema.optional(),
+  brandText: z.string().describe('ui:text'),
+  signIn: CtaSchema.optional(),
+  primaryCta: CtaSchema,
+  menu: z.array(MenuItemSchema).describe('ui:list').optional(),
 });

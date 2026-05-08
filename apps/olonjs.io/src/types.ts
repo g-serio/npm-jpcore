@@ -1,71 +1,52 @@
+import type { EmptyTenantData, EmptyTenantSettings } from '@/components/empty-tenant';
+import type { FooterData, FooterSettings } from '@/components/footer';
+import type { FormDemoData, FormDemoSettings } from '@/components/form-demo';
+import type { HeaderData, HeaderSettings } from '@/components/header';
+import type { PremiumCtaData, PremiumCtaSettings } from '@/components/premium-cta';
+import type { PremiumHeroData, PremiumHeroSettings } from '@/components/premium-hero';
+import type { ScrollAccordionData, ScrollAccordionSettings } from '@/components/scroll-accordion';
+import type { StickySectionData, StickySectionSettings } from '@/components/sticky-section';
+import type { Content7Data, Content7Settings } from '@/components/content-7';
+import type { CodeBlockData, CodeBlockSettings } from '@/components/code-block';
 import type { MenuItem } from '@olonjs/core';
-import type { HeaderData,        HeaderSettings        } from '@/components/header';
-import type { FooterData,        FooterSettings        } from '@/components/footer';
-import type { HeroData,          HeroSettings          } from '@/components/hero';
-import type { FeatureGridData,   FeatureGridSettings   } from '@/components/feature-grid';
-import type { ContactData,       ContactSettings       } from '@/components/contact';
-import type { LoginData,         LoginSettings         } from '@/components/login';
-import type { DesignSystemData,        DesignSystemSettings        } from '@/components/design-system';
-import type { CloudAiNativeGridData,   CloudAiNativeGridSettings   } from '@/components/cloud-ai-native-grid';
-import type { PageHeroData,            PageHeroSettings            } from '@/components/page-hero';
-import type { TiptapData,              TiptapSettings              } from '@/components/tiptap';
-
-
-import type { OlonHeroData }         from '@/components/olon-hero';
-import type { OlonWhyData }          from '@/components/olon-why';
-import type { OlonArchitectureData } from '@/components/olon-architecture';
-import type { OlonExampleData }      from '@/components/olon-example';
-import type { OlonGetStartedData }   from '@/components/olon-getstarted';
 
 export type SectionComponentPropsMap = {
-  'header':                { data: HeaderData;              settings?: HeaderSettings;              menu: MenuItem[] };
-  'footer':                { data: FooterData;              settings?: FooterSettings               };
-  'hero':                  { data: HeroData;                settings?: HeroSettings                 };
-  'feature-grid':          { data: FeatureGridData;         settings?: FeatureGridSettings          };
-  'contact':               { data: ContactData;             settings?: ContactSettings              };
-  'login':                 { data: LoginData;               settings?: LoginSettings                };
-  'design-system':         { data: DesignSystemData;        settings?: DesignSystemSettings         };
-  'cloud-ai-native-grid':  { data: CloudAiNativeGridData;   settings?: CloudAiNativeGridSettings    };
-  'page-hero':             { data: PageHeroData;            settings?: PageHeroSettings             };
-  'tiptap':                { data: TiptapData;               settings?: TiptapSettings                };
-  
-  
-  'olon-hero':         { data: OlonHeroData };
-  'olon-why':          { data: OlonWhyData };
-  'olon-architecture': { data: OlonArchitectureData };
-  'olon-example':      { data: OlonExampleData };
-  'olon-getstarted':   { data: OlonGetStartedData };
+  'empty-tenant': { data: EmptyTenantData; settings?: EmptyTenantSettings };
+  'form-demo': { data: FormDemoData; settings?: FormDemoSettings };
+  header: { data: HeaderData; settings?: HeaderSettings; menu?: MenuItem[] };
+  footer: { data: FooterData; settings?: FooterSettings };
+  'premium-hero': { data: PremiumHeroData; settings?: PremiumHeroSettings };
+  'premium-cta': { data: PremiumCtaData; settings?: PremiumCtaSettings };
+  'sticky-section': { data: StickySectionData; settings?: StickySectionSettings };
+  'scroll-accordion': { data: ScrollAccordionData; settings?: ScrollAccordionSettings };
+  'content-7': { data: Content7Data; settings?: Content7Settings };
+  'code-block': { data: CodeBlockData; settings?: CodeBlockSettings };
 };
 
 declare module '@olonjs/core' {
   export interface SectionDataRegistry {
-    'header':                HeaderData;
-    'footer':                FooterData;
-    'hero':                  HeroData;
-    'feature-grid':          FeatureGridData;
-    'contact':               ContactData;
-    'login':                 LoginData;
-    'design-system':         DesignSystemData;
-    'cloud-ai-native-grid':  CloudAiNativeGridData;
-    'page-hero':             PageHeroData;
-    'tiptap':                TiptapData;
-	 'olon-hero':         OlonHeroData;
-    'olon-why':          OlonWhyData;
-    'olon-architecture': OlonArchitectureData;
-    'olon-example':      OlonExampleData;
-    'olon-getstarted':   OlonGetStartedData;
+    'empty-tenant': EmptyTenantData;
+    'form-demo': FormDemoData;
+    header: HeaderData;
+    footer: FooterData;
+    'premium-hero': PremiumHeroData;
+    'premium-cta': PremiumCtaData;
+    'sticky-section': StickySectionData;
+    'scroll-accordion': ScrollAccordionData;
+    'content-7': Content7Data;
+    'code-block': CodeBlockData;
   }
   export interface SectionSettingsRegistry {
-    'header':                HeaderSettings;
-    'footer':                FooterSettings;
-    'hero':                  HeroSettings;
-    'feature-grid':          FeatureGridSettings;
-    'contact':               ContactSettings;
-    'login':                 LoginSettings;
-    'design-system':         DesignSystemSettings;
-    'cloud-ai-native-grid':  CloudAiNativeGridSettings;
-    'page-hero':             PageHeroSettings;
-    'tiptap':                TiptapSettings;
+    'empty-tenant': EmptyTenantSettings;
+    'form-demo': FormDemoSettings;
+    header: HeaderSettings;
+    footer: FooterSettings;
+    'premium-hero': PremiumHeroSettings;
+    'premium-cta': PremiumCtaSettings;
+    'sticky-section': StickySectionSettings;
+    'scroll-accordion': ScrollAccordionSettings;
+    'content-7': Content7Settings;
+    'code-block': CodeBlockSettings;
   }
 }
 

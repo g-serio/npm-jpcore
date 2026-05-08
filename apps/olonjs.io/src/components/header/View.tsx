@@ -1,333 +1,382 @@
-import { useState, useRef, useEffect } from 'react';
-import { Menu, X, ChevronDown, Zap } from 'lucide-react';
-import { OlonMark } from '@/components/OlonWordmark';
-import { Button } from '@/components/ui/button';
-import { ThemeToggle } from '@/components/ThemeToggle';
+'use client';
+
+import { Menu, X } from 'lucide-react';
+import {
+  AnimatePresence,
+  motion,
+  useMotionValueEvent,
+  useReducedMotion,
+  useScroll,
+  type Variants,
+} from 'motion/react';
+import type { MenuItem } from '@olonjs/core';
+import { resolveAssetUrl, useConfig } from '@olonjs/core';
+import { scroller } from 'react-scroll';
+import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
+import useMeasure from 'react-use-measure';
 import { cn } from '@/lib/utils';
 import type { HeaderData, HeaderSettings } from './types';
-import type { MenuItem } from '@olonjs/core';
 
-interface NavChild {
-  label: string;
-  href: string;
-}
+const APPLE_EASE = [0.22, 1, 0.36, 1] as const;
 
-interface NavItem {
-  label: string;
-  href: string;
-  variant?: string;
-  children?: NavChild[];
-}
+const logoVariants: Variants = {
+  hidden: { opacity: 0, x: -8, filter: 'blur(6px)' },
+  visible: {
+    opacity: 1,
+    x: 0,
+    filter: 'blur(0px)',
+    transition: { duration: 0.5, ease: APPLE_EASE },
+  },
+};
 
-interface HeaderViewProps {
+const linkContainerVariants: Variants = {
+  hidden: { opacity: 0 },
+  visible: {
+    opacity: 1,
+    transition: { staggerChildren: 0.06, delayChildren: 0.15 },
+  },
+};
+
+const linkItemVariants: Variants = {
+  hidden: { opacity: 0, y: 10, filter: 'blur(6px)' },
+  visible: {
+    opacity: 1,
+    y: 0,
+    filter: 'blur(0px)',
+    transition: { duration: 0.45, ease: APPLE_EASE },
+  },
+};
+
+const actionsVariants: Variants = {
+  hidden: { opacity: 0, x: 8, filter: 'blur(6px)' },
+  visible: {
+    opacity: 1,
+    x: 0,
+    filter: 'blur(0px)',
+    transition: { duration: 0.5, delay: 0.4, ease: APPLE_EASE },
+  },
+};
+
+const mobileMenuVariants: Variants = {
+  hidden: { opacity: 0 },
+  visible: {
+    opacity: 1,
+    transition: { staggerChildren: 0.05, delayChildren: 0.05 },
+  },
+  exit: { opacity: 0, transition: { duration: 0.15 } },
+};
+
+const mobileLinkVariants: Variants = {
+  hidden: { opacity: 0, y: 16 },
+  visible: {
+    opacity: 1,
+    y: 0,
+    transition: { duration: 0.35, ease: APPLE_EASE },
+  },
+  exit: {
+    opacity: 0,
+    y: -8,
+    transition: { duration: 0.2 },
+  },
+};
+
+type HeaderViewProps = {
   data: HeaderData;
   settings?: HeaderSettings;
-  menu: MenuItem[];
-}
+  menu?: MenuItem[];
+};
 
-function isMenuRef(value: unknown): value is { $ref: string } {
-  if (!value || typeof value !== 'object') return false;
-  const rec = value as Record<string, unknown>;
-  return typeof rec.$ref === 'string' && rec.$ref.trim().length > 0;
-}
-
-function toNavItem(raw: unknown): NavItem | null {
-  if (!raw || typeof raw !== 'object') return null;
-  const rec = raw as Record<string, unknown>;
-  if (typeof rec.label !== 'string' || typeof rec.href !== 'string') return null;
-  const children = Array.isArray(rec.children)
-    ? (rec.children as unknown[])
-        .map((c) => toNavItem(c))
-        .filter((c): c is NavChild => c !== null)
-    : undefined;
-  const variant = typeof rec.variant === 'string' ? rec.variant : undefined;
-  return { label: rec.label, href: rec.href, ...(variant ? { variant } : {}), ...(children && children.length > 0 ? { children } : {}) };
-}
-
-export function Header({ data, settings, menu }: HeaderViewProps) {
+export function HeaderView({ data, menu }: HeaderViewProps) {
+  const { tenantId = 'alpha' } = useConfig();
+  const [scrolled, setScrolled] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
-  const [openDropdown, setOpenDropdown] = useState<string | null>(null);
-  const [mobileExpanded, setMobileExpanded] = useState<string | null>(null);
-  const isSticky = settings?.sticky ?? true;
+  /** v1.6: resolved list may arrive on `data.menu` (Inspector path) and/or `menu` prop — Appendix A.2.1. */
+  const safeMenu = menu ?? data.menu ?? [];
+  const [activeLink, setActiveLink] = useState<string>(
+    safeMenu[0]?.href ?? '#'
+  );
+  const prefersReduced = useReducedMotion();
+  const { scrollY } = useScroll();
   const navRef = useRef<HTMLElement>(null);
+  const [mobileContentRef, { height: mobileHeight }] = useMeasure();
 
-  const linksField = data.links as unknown;
-  const rawLinks = Array.isArray(linksField) ? linksField : [];
-  const menuItems = Array.isArray(menu) ? (menu as unknown[]) : [];
-  // If tenant explicitly uses a JSON ref for links, resolve from menu config.
-  const source =
-    isMenuRef(linksField)
-      ? menuItems
-      : (rawLinks.length > 0 ? rawLinks : menuItems);
-  const navItems: NavItem[] = source.map(toNavItem).filter((i): i is NavItem => i !== null);
+  const logoUrl = data.logoMark?.url?.trim();
+  const resolvedLogo = logoUrl ? resolveAssetUrl(logoUrl, tenantId) : '';
+  const monogram = (data.brandText?.trim()?.[0] ?? 'A').toUpperCase();
+
+  useMotionValueEvent(scrollY, 'change', (latest) => {
+    setScrolled(latest > 20);
+  });
+
+  const closeMobile = useCallback(() => setMobileOpen(false), []);
+
+  const handleNavClick = useCallback(
+    (href: string) => {
+      if (href.startsWith('#') && href.length > 1) {
+        scroller.scrollTo(href.slice(1), {
+          smooth: 'easeInOutQuart',
+          duration: 600,
+          offset: -90,
+        });
+      }
+      setActiveLink(href);
+    },
+    []
+  );
 
   useEffect(() => {
-    if (!openDropdown) return;
-    function handleClick(e: MouseEvent) {
+    const hashes = safeMenu.map((m) => m.href).filter((h) => h.startsWith('#') && h.length > 1);
+    const targets = hashes
+      .map((h) => ({ href: h, el: document.getElementById(h.slice(1)) }))
+      .filter((t): t is { href: string; el: HTMLElement } => Boolean(t.el));
+    if (targets.length === 0) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        const visible = entries
+          .filter((e) => e.isIntersecting)
+          .sort((a, b) => b.intersectionRatio - a.intersectionRatio);
+        if (visible[0]) {
+          const match = targets.find((t) => t.el === visible[0].target);
+          if (match) setActiveLink(match.href);
+        }
+      },
+      { rootMargin: '-30% 0px -60% 0px', threshold: [0, 0.1, 0.5, 1] }
+    );
+    targets.forEach((t) => observer.observe(t.el));
+    return () => observer.disconnect();
+  }, [safeMenu]);
+
+  useEffect(() => {
+    if (!mobileOpen) return;
+    const handleKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') closeMobile();
+    };
+    document.addEventListener('keydown', handleKey);
+    return () => document.removeEventListener('keydown', handleKey);
+  }, [mobileOpen, closeMobile]);
+
+  useEffect(() => {
+    if (!mobileOpen) return;
+    const handleClick = (e: MouseEvent) => {
       if (navRef.current && !navRef.current.contains(e.target as Node)) {
-        setOpenDropdown(null);
+        closeMobile();
       }
-    }
+    };
     document.addEventListener('mousedown', handleClick);
     return () => document.removeEventListener('mousedown', handleClick);
-  }, [openDropdown]);
+  }, [mobileOpen, closeMobile]);
+
+  const navStyle = useMemo(
+    () =>
+      ({
+        '--local-bg': 'var(--background)',
+        '--local-text': 'var(--foreground)',
+        '--local-muted': 'var(--muted-foreground)',
+        '--local-radius': 'var(--theme-border-radius-md, 0.5rem)',
+      }) as CSSProperties,
+    []
+  );
 
   return (
-    <header
-      className={cn(
-        'top-0 left-0 right-0 z-50 border-b border-border bg-background/90 backdrop-blur-md',
-        isSticky ? 'fixed' : 'relative'
-      )}
+    <motion.nav
+      ref={navRef}
+      className="fixed top-0 right-0 left-0 z-50 bg-[var(--local-bg)] text-[var(--local-text)]"
+      initial={prefersReduced ? false : 'hidden'}
+      animate="visible"
+      style={navStyle}
     >
-      <div className="max-w-6xl mx-auto px-6 h-18 flex items-center gap-8">
-
-        {/* Logo da homepage  */}
-        <a href="/" className="flex items-center gap-2 shrink-0" aria-label="OlonJS home">
-          <OlonMark size={26} className="mb-0.5" />
-          <div className="flex items-center gap-1"><span
-            className="text-2xl text-foreground leading-none"
-            style={{
-              fontFamily:           'var(--wordmark-font)',
-              letterSpacing:        'var(--wordmark-tracking)',
-              fontWeight:           'var(--wordmark-weight)',
-              fontVariationSettings: '"wdth" var(--wordmark-width)',
-            }}
-          >
-            {data.logoText}
-            </span> 
-            <span className="text-primary-light font-mono">{data.badge}</span>
-            </div>
-        </a>
-
-        {/* Desktop nav */}
-        <nav ref={navRef} className="hidden md:flex items-center gap-0.5 flex-1">
-          {navItems.map((item) => {
-            const hasChildren = item.children && item.children.length > 0;
-            const isOpen = openDropdown === item.label;
-            const isSecondary = item.variant === 'secondary';
-
-            if (isSecondary) {
-              return (
-                <a
-                  key={item.label}
-                  href={item.href}
-                  className="flex items-center gap-1 px-3 py-1.5 text-[13px] text-muted-foreground hover:text-foreground rounded-md border border-border bg-elevated hover:bg-elevated/70 transition-colors duration-150"
-                >
-                  {item.label}
-                </a>
-              );
-            }
-
-            if (!hasChildren) {
-              return (
-                <a
-                  key={item.label}
-                  href={item.href}
-                  className="flex items-center gap-1 px-3 py-1.5 text-[13px] text-muted-foreground hover:text-foreground rounded-md transition-colors duration-150 hover:bg-elevated"
-                >
-                  {item.label}
-                </a>
-              );
-            }
-
-            return (
-              <div key={item.label} className="relative">
-                <button
-                  type="button"
-                  onClick={() => setOpenDropdown(isOpen ? null : item.label)}
-                  className={cn(
-                    'flex items-center gap-1 px-3 py-1.5 text-[13px] rounded-md transition-colors duration-150',
-                    isOpen ? 'text-foreground bg-elevated' : 'text-muted-foreground hover:text-foreground hover:bg-elevated'
-                  )}
-                  aria-expanded={hasChildren ? isOpen : undefined}
-                >
-                  {item.label}
-                  {hasChildren && (
-                    <ChevronDown
-                      size={11}
-                      className={cn('opacity-40 mt-px transition-transform duration-150', isOpen && 'rotate-180 opacity-70')}
-                    />
-                  )}
-                </button>
-
-                {hasChildren && (
-                  <div
-                    className={cn(
-                      'absolute left-0 top-[calc(100%+8px)] min-w-[220px] rounded-lg border border-border bg-card shadow-lg shadow-black/20 overflow-hidden',
-                      'transition-all duration-150 origin-top-left',
-                      isOpen ? 'opacity-100 scale-100 pointer-events-auto' : 'opacity-0 scale-95 pointer-events-none'
-                    )}
-                  >
-                    <div className="p-1.5">
-                      {item.children!.map((child, i) => (
-                        <a
-                          key={child.label}
-                          href={child.href}
-                          onClick={() => setOpenDropdown(null)}
-                          className={cn(
-                            'flex items-center gap-3 px-3 py-2.5 rounded-md text-[13px] text-muted-foreground hover:text-foreground hover:bg-elevated transition-colors duration-100 group',
-                            i < item.children!.length - 1 && ''
-                          )}
-                        >
-                          <span className="w-6 h-6 rounded-md bg-primary-900 border border-primary-800 flex items-center justify-center shrink-0 text-[10px] font-medium font-mono-olon text-primary-light group-hover:border-primary transition-colors">
-                            {child.label.slice(0, 2).toUpperCase()}
-                          </span>
-                          <span className="font-medium">{child.label}</span>
-                        </a>
-                      ))}
-                    </div>
-                    <div className="px-3 py-2 border-t border-border bg-elevated/50">
-                      <a
-                        href={item.href}
-                        onClick={() => setOpenDropdown(null)}
-                        className="text-[11px] text-muted-foreground hover:text-foreground transition-colors flex items-center gap-1"
-                      >
-                        View all {item.label.toLowerCase()} →
-                      </a>
-                    </div>
-                  </div>
-                )}
-              </div>
-            );
-          })}
-        </nav>
-       
-        {/* Actions */}
-        <div className="hidden md:flex items-center gap-1 ml-auto shrink-0">
-          <ThemeToggle />
-          {data.signinHref && (
-            <a
-              href={data.signinHref}
-              className="text-[13px] text-muted-foreground hover:text-foreground transition-colors duration-150 px-3 py-1.5 rounded-md hover:bg-elevated"
-            >
-              Sign in
-            </a>
+      <div className="mx-auto max-w-5xl px-4 pt-3 sm:px-6">
+        <motion.div
+          animate={{
+            backgroundColor: scrolled
+              ? 'hsl(var(--background) / 0.8)'
+              : 'hsl(var(--background) / 0)',
+          }}
+          className={cn(
+            'rounded-full px-4 transition-[backdrop-filter,box-shadow] duration-300 sm:px-5',
+            scrolled && [
+              'backdrop-blur-xl',
+              'shadow-[0px_0px_0px_1px_rgba(0,0,0,0.06),0px_1px_2px_-1px_rgba(0,0,0,0.06),0px_2px_4px_0px_rgba(0,0,0,0.04)]',
+              'dark:shadow-[0px_0px_0px_1px_rgba(255,255,255,0.08),0px_1px_2px_-1px_rgba(255,255,255,0.04),0px_2px_4px_0px_rgba(0,0,0,0.2)]',
+            ]
           )}
-          {data.ctaHref && (
-            <Button variant="accent" size="sm" className="h-8 px-4 text-[13px] font-medium" asChild>
-              <a href={data.ctaHref}>{data.ctaLabel ?? 'Get started →'}</a>
-            </Button>
-          )}
-        </div>
-
-        {/* Mobile toggle */}
-        <button
-          className="md:hidden ml-auto p-1.5 text-muted-foreground hover:text-foreground transition-colors"
-          onClick={() => setMobileOpen(!mobileOpen)}
-          aria-label="Toggle menu"
+          transition={{ duration: 0.4, ease: APPLE_EASE }}
         >
-          {mobileOpen ? <X size={16} /> : <Menu size={16} />}
-        </button>
-      </div>
+          <div className="flex h-14 items-center justify-between">
+            <motion.a
+              className="flex shrink-0 items-center gap-2"
+              href="/"
+              variants={logoVariants}
+            >
+              {resolvedLogo ? (
+                <img
+                  alt={data.logoMark?.alt ?? ''}
+                  className="size-7 rounded-lg object-cover"
+                  data-jp-field="logoMark.url"
+                  src={resolvedLogo}
+                />
+              ) : (
+                <div className="flex size-7 items-center justify-center rounded-lg bg-foreground">
+                  <span className="font-bold text-background text-xs">{monogram}</span>
+                </div>
+              )}
+              <span
+                className="font-semibold text-foreground tracking-tight"
+                data-jp-field="brandText"
+              >
+                {data.brandText}
+              </span>
+            </motion.a>
 
-        {/* Banner Sotto il Menu */}
-        <div className="border-t border-border/60 py-1 px-4 text-center text-[10px] uppercase font-semibold tracking-wider text-muted-foreground flex justify-center items-center gap-1.5 bg-background/50">
-          <Zap className="w-2.5 h-2.5 text-primary-light" />
-          <span>Built with</span>
-          <a href="https://github.com/olonjs/npm-jpcore" target="_blank" rel="noopener noreferrer" className="text-foreground hover:text-primary-light transition-colors font-bold">
-            OlonJS
-          </a>
-        </div>
-
-      {/* Mobile drawer */}
-      <div className={cn(
-        'md:hidden border-t border-border bg-card overflow-hidden transition-all duration-200',
-        mobileOpen ? 'max-h-[32rem]' : 'max-h-0'
-      )}>
-        <nav className="px-4 py-3 flex flex-col gap-0.5">
-          {navItems.map((item) => {
-            const hasChildren = item.children && item.children.length > 0;
-            const isExpanded = mobileExpanded === item.label;
-            const isSecondary = item.variant === 'secondary';
-
-            if (isSecondary) {
-              return (
-                <a
-                  key={item.label}
-                  href={item.href}
-                  onClick={() => setMobileOpen(false)}
-                  className="mt-1 flex items-center px-3 py-2.5 text-[13px] text-muted-foreground hover:text-foreground border border-border bg-elevated hover:bg-elevated/70 rounded-md transition-colors"
-                >
-                  {item.label}
-                </a>
-              );
-            }
-
-            if (!hasChildren) {
-              return (
-                <a
-                  key={item.label}
-                  href={item.href}
-                  onClick={() => setMobileOpen(false)}
-                  className="flex items-center px-3 py-2.5 text-[13px] text-muted-foreground hover:text-foreground hover:bg-elevated rounded-md transition-colors"
-                >
-                  {item.label}
-                </a>
-              );
-            }
-
-            return (
-              <div key={item.label}>
-                <button
-                  type="button"
-                  onClick={() => {
-                    if (hasChildren) {
-                      setMobileExpanded(isExpanded ? null : item.label);
-                    }
+            <motion.div
+              className="hidden items-center gap-1 md:flex"
+              variants={linkContainerVariants}
+            >
+              {safeMenu.map((link) => (
+                <motion.a
+                  className="relative rounded-full px-3.5 py-1.5 text-[14px] text-muted-foreground transition-colors duration-200 hover:text-foreground"
+                  data-jp-field="href"
+                  data-jp-item-field="menu"
+                  data-jp-item-id={link.href}
+                  href={link.href}
+                  key={link.href}
+                  onClick={(e) => {
+                    if (link.href.startsWith('#')) e.preventDefault();
+                    handleNavClick(link.href);
                   }}
-                  className="w-full flex items-center justify-between px-3 py-2.5 text-[13px] text-muted-foreground hover:text-foreground hover:bg-elevated rounded-md transition-colors text-left"
+                  variants={linkItemVariants}
                 >
-                  <span>{item.label}</span>
-                  {hasChildren && (
-                    <ChevronDown
-                      size={13}
-                      className={cn('opacity-40 transition-transform duration-150', isExpanded && 'rotate-180 opacity-70')}
+                  {activeLink === link.href && (
+                    <motion.span
+                      className="absolute inset-0 rounded-full bg-muted/60"
+                      layoutId="header-nav-active"
+                      transition={{ type: 'spring', bounce: 0.15, duration: 0.5 }}
                     />
                   )}
-                </button>
+                  <span className="relative z-10" data-jp-field="label">
+                    {link.label}
+                  </span>
+                </motion.a>
+              ))}
+            </motion.div>
 
-                {hasChildren && isExpanded && (
-                  <div className="ml-3 pl-3 border-l border-border mt-0.5 mb-1 flex flex-col gap-0.5">
-                    {item.children!.map((child) => (
-                      <a
-                        key={child.label}
-                        href={child.href}
-                        onClick={() => { setMobileOpen(false); setMobileExpanded(null); }}
-                        className="flex items-center gap-2.5 px-3 py-2 text-[12px] text-muted-foreground hover:text-foreground hover:bg-elevated rounded-md transition-colors"
-                      >
-                        <span className="w-5 h-5 rounded bg-primary-900 border border-primary-800 flex items-center justify-center shrink-0 text-[9px] font-medium font-mono-olon text-primary-light">
-                          {child.label.slice(0, 2).toUpperCase()}
-                        </span>
-                        {child.label}
-                      </a>
-                    ))}
-                    <a
-                      href={item.href}
-                      onClick={() => { setMobileOpen(false); setMobileExpanded(null); }}
-                      className="px-3 py-1.5 text-[11px] text-muted-foreground hover:text-foreground transition-colors"
-                    >
-                      View all →
-                    </a>
-                  </div>
-                )}
-              </div>
-            );
-          })}
+            <motion.div
+              className="hidden items-center gap-2 md:flex"
+              variants={actionsVariants}
+            >
+              {data.signIn ? (
+                <a
+                  className="rounded-full px-3.5 py-1.5 text-[14px] text-muted-foreground transition-colors duration-200 hover:text-foreground"
+                  data-jp-field="signIn.href"
+                  href={data.signIn.href}
+                >
+                  <span data-jp-field="signIn.label">{data.signIn.label}</span>
+                </a>
+              ) : null}
+              <motion.a
+                className="inline-flex items-center rounded-full bg-foreground px-4 py-1.5 text-[14px] font-medium text-background transition-shadow duration-300 hover:shadow-[0_8px_30px_rgb(0,0,0,0.12)] dark:hover:shadow-[0_8px_30px_rgb(255,255,255,0.08)]"
+                data-jp-field="primaryCta.href"
+                href={data.primaryCta.href}
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
+              >
+                <span data-jp-field="primaryCta.label">{data.primaryCta.label}</span>
+              </motion.a>
+            </motion.div>
 
-          <div className="flex gap-2 pt-3 mt-2 border-t border-border">
-            {data.signinHref && (
-              <Button variant="outline" size="sm" className="flex-1 text-[13px]" asChild>
-                <a href={data.signinHref}>Sign in</a>
-              </Button>
-            )}
-            {data.ctaHref && (
-              <Button variant="accent" size="sm" className="flex-1 text-[13px]" asChild>
-                <a href={data.ctaHref}>{data.ctaLabel ?? 'Get started'}</a>
-              </Button>
-            )}
+            <motion.button
+              aria-label={mobileOpen ? 'Close menu' : 'Open menu'}
+              className="flex size-9 cursor-pointer items-center justify-center rounded-lg text-foreground md:hidden"
+              onClick={() => setMobileOpen((prev) => !prev)}
+              type="button"
+              variants={actionsVariants}
+              whileTap={{ scale: 0.95 }}
+            >
+              <AnimatePresence mode="popLayout" initial={false}>
+                <motion.div
+                  animate={{ opacity: 1, rotate: 0 }}
+                  exit={{ opacity: 0, rotate: 90 }}
+                  initial={{ opacity: 0, rotate: -90 }}
+                  key={mobileOpen ? 'close' : 'open'}
+                  transition={{ duration: 0.2 }}
+                >
+                  {mobileOpen ? <X className="size-5" /> : <Menu className="size-5" />}
+                </motion.div>
+              </AnimatePresence>
+            </motion.button>
           </div>
-        </nav>
+        </motion.div>
+
+        <AnimatePresence>
+          {mobileOpen && (
+            <motion.div
+              animate={{ height: mobileHeight, opacity: 1 }}
+              className="overflow-hidden md:hidden"
+              exit={{ height: 0, opacity: 0 }}
+              initial={{ height: 0, opacity: 0 }}
+              transition={{ duration: 0.35, ease: APPLE_EASE }}
+            >
+              <div ref={mobileContentRef}>
+                <motion.div
+                  animate="visible"
+                  className={cn(
+                    'mt-2 flex flex-col gap-1 rounded-2xl p-3',
+                    'bg-background/90 backdrop-blur-xl',
+                    'shadow-[0px_0px_0px_1px_rgba(0,0,0,0.06),0px_2px_4px_-1px_rgba(0,0,0,0.08),0px_4px_16px_0px_rgba(0,0,0,0.06)]',
+                    'dark:shadow-[0px_0px_0px_1px_rgba(255,255,255,0.08),0px_2px_4px_-1px_rgba(255,255,255,0.04),0px_4px_16px_0px_rgba(0,0,0,0.25)]'
+                  )}
+                  exit="exit"
+                  initial="hidden"
+                  variants={mobileMenuVariants}
+                >
+                  {safeMenu.map((link) => (
+                    <motion.a
+                      className="rounded-xl px-4 py-2.5 text-[15px] text-foreground transition-colors hover:bg-muted/50"
+                      data-jp-field="href"
+                      data-jp-item-field="menu"
+                      data-jp-item-id={link.href}
+                      href={link.href}
+                      key={`m-${link.href}`}
+                      onClick={(e) => {
+                        if (link.href.startsWith('#')) e.preventDefault();
+                        handleNavClick(link.href);
+                        closeMobile();
+                      }}
+                      variants={mobileLinkVariants}
+                    >
+                      <span data-jp-field="label">{link.label}</span>
+                    </motion.a>
+                  ))}
+                  <motion.div
+                    className="mt-1 border-border/40 border-t pt-3"
+                    variants={mobileLinkVariants}
+                  >
+                    {data.signIn ? (
+                      <a
+                        className="block rounded-xl px-4 py-2.5 text-[15px] text-muted-foreground transition-colors hover:text-foreground"
+                        data-jp-field="signIn.href"
+                        href={data.signIn.href}
+                        onClick={closeMobile}
+                      >
+                        <span data-jp-field="signIn.label">{data.signIn.label}</span>
+                      </a>
+                    ) : null}
+                    <a
+                      className="mt-1 block rounded-xl bg-foreground px-4 py-2.5 text-center text-[15px] font-medium text-background"
+                      data-jp-field="primaryCta.href"
+                      href={data.primaryCta.href}
+                      onClick={closeMobile}
+                    >
+                      <span data-jp-field="primaryCta.label">{data.primaryCta.label}</span>
+                    </a>
+                  </motion.div>
+                </motion.div>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
-    </header>
+    </motion.nav>
   );
 }

@@ -34,11 +34,125 @@ Add to the tenant's `package.json` and run `npm install`:
 
 ---
 
-## 3. CSS in `src/index.css`
+## 3. Add CSS to `src/index.css`
 
-**tenant-alpha:** typography for visitor markdown (`.jp-tiptap-content`) and Studio (`.jp-simple-editor .ProseMirror`) lives in **`src/index.css`**, section **`4b. TIPTAP`** — only `:root` bridge variables (`--theme-text-*`, `--theme-font-*`, `--theme-leading-*`, `--theme-tracking-*`, `--theme-radius-*`, `--foreground`, `--primary`, `--border`, …) so prose tracks **`theme.json`** via the engine.
+Two blocks are required — one for the public (visitor) view, one for the editor (studio) view.
 
-When copying this capsule into another tenant, copy that block from **tenant-alpha** `index.css` (or ensure your tenant’s global CSS exposes the same semantic vars).
+```css
+/* ==========================================================================
+   TIPTAP — Public content typography (visitor view)
+   ========================================================================== */
+.jp-tiptap-content > * + * { margin-top: 0.75em; }
+
+.jp-tiptap-content h1 { font-size: 2em;    font-weight: 700; line-height: 1.2; margin-top: 1.25em; margin-bottom: 0.25em; }
+.jp-tiptap-content h2 { font-size: 1.5em;  font-weight: 700; line-height: 1.3; margin-top: 1.25em; margin-bottom: 0.25em; }
+.jp-tiptap-content h3 { font-size: 1.25em; font-weight: 600; line-height: 1.4; margin-top: 1.25em; margin-bottom: 0.25em; }
+.jp-tiptap-content h4 { font-size: 1em;    font-weight: 600; line-height: 1.5; margin-top: 1em;    margin-bottom: 0.25em; }
+
+.jp-tiptap-content p  { line-height: 1.7; }
+.jp-tiptap-content strong { font-weight: 700; }
+.jp-tiptap-content em     { font-style: italic; }
+.jp-tiptap-content s      { text-decoration: line-through; }
+
+.jp-tiptap-content a { color: var(--primary); text-decoration: underline; text-underline-offset: 2px; }
+.jp-tiptap-content a:hover { opacity: 0.8; }
+
+.jp-tiptap-content code {
+  font-family: var(--font-mono, ui-monospace, monospace);
+  font-size: 0.875em;
+  background: color-mix(in oklch, var(--foreground) 8%, transparent);
+  border-radius: 0.25em;
+  padding: 0.1em 0.35em;
+}
+.jp-tiptap-content pre {
+  background: color-mix(in oklch, var(--background) 60%, black);
+  border-radius: 0.5em;
+  padding: 1em 1.25em;
+  overflow-x: auto;
+}
+.jp-tiptap-content pre code { background: none; padding: 0; }
+
+.jp-tiptap-content ul { list-style-type: disc;    padding-left: 1.625em; }
+.jp-tiptap-content ol { list-style-type: decimal; padding-left: 1.625em; }
+.jp-tiptap-content li { line-height: 1.7; margin-top: 0.25em; }
+.jp-tiptap-content li + li { margin-top: 0.25em; }
+
+.jp-tiptap-content blockquote {
+  border-left: 3px solid var(--border);
+  padding-left: 1em;
+  color: var(--muted-foreground);
+  font-style: italic;
+}
+.jp-tiptap-content hr { border: none; border-top: 1px solid var(--border); margin: 1.5em 0; }
+.jp-tiptap-content img { max-width: 100%; height: auto; border-radius: 0.5rem; }
+
+/* ==========================================================================
+   TIPTAP / PROSEMIRROR — Editor typography (studio view)
+   ========================================================================== */
+.jp-simple-editor .ProseMirror { outline: none; word-break: break-word; }
+.jp-simple-editor .ProseMirror > * + * { margin-top: 0.75em; }
+
+.jp-simple-editor .ProseMirror h1 { font-size: 2em;    font-weight: 700; line-height: 1.2; margin-top: 1.25em; margin-bottom: 0.25em; }
+.jp-simple-editor .ProseMirror h2 { font-size: 1.5em;  font-weight: 700; line-height: 1.3; margin-top: 1.25em; margin-bottom: 0.25em; }
+.jp-simple-editor .ProseMirror h3 { font-size: 1.25em; font-weight: 600; line-height: 1.4; margin-top: 1.25em; margin-bottom: 0.25em; }
+.jp-simple-editor .ProseMirror h4 { font-size: 1em;    font-weight: 600; line-height: 1.5; margin-top: 1em;    margin-bottom: 0.25em; }
+
+.jp-simple-editor .ProseMirror p  { line-height: 1.7; }
+.jp-simple-editor .ProseMirror strong { font-weight: 700; }
+.jp-simple-editor .ProseMirror em     { font-style: italic; }
+.jp-simple-editor .ProseMirror s      { text-decoration: line-through; }
+
+.jp-simple-editor .ProseMirror a { color: var(--primary); text-decoration: underline; text-underline-offset: 2px; }
+.jp-simple-editor .ProseMirror a:hover { opacity: 0.8; }
+
+.jp-simple-editor .ProseMirror code {
+  font-family: var(--font-mono, ui-monospace, monospace);
+  font-size: 0.875em;
+  background: color-mix(in oklch, var(--foreground) 8%, transparent);
+  border-radius: 0.25em;
+  padding: 0.1em 0.35em;
+}
+.jp-simple-editor .ProseMirror pre {
+  background: color-mix(in oklch, var(--background) 60%, black);
+  border-radius: 0.5em;
+  padding: 1em 1.25em;
+  overflow-x: auto;
+}
+.jp-simple-editor .ProseMirror pre code { background: none; padding: 0; }
+
+.jp-simple-editor .ProseMirror ul { list-style-type: disc;    padding-left: 1.625em; }
+.jp-simple-editor .ProseMirror ol { list-style-type: decimal; padding-left: 1.625em; }
+.jp-simple-editor .ProseMirror li { line-height: 1.7; margin-top: 0.25em; }
+.jp-simple-editor .ProseMirror li + li { margin-top: 0.25em; }
+
+.jp-simple-editor .ProseMirror blockquote {
+  border-left: 3px solid var(--border);
+  padding-left: 1em;
+  color: var(--muted-foreground);
+  font-style: italic;
+}
+.jp-simple-editor .ProseMirror hr { border: none; border-top: 1px solid var(--border); margin: 1.5em 0; }
+
+.jp-simple-editor .ProseMirror img { max-width: 100%; height: auto; border-radius: 0.5rem; }
+.jp-simple-editor .ProseMirror img[data-uploading="true"] {
+  opacity: 0.6;
+  filter: grayscale(0.25);
+  outline: 2px dashed rgb(59 130 246 / 0.7);
+  outline-offset: 2px;
+}
+.jp-simple-editor .ProseMirror img[data-upload-error="true"] {
+  outline: 2px solid rgb(239 68 68 / 0.8);
+  outline-offset: 2px;
+}
+.jp-simple-editor .ProseMirror p.is-editor-empty:first-child::before {
+  content: attr(data-placeholder);
+  color: var(--muted-foreground);
+  opacity: 0.5;
+  pointer-events: none;
+  float: left;
+  height: 0;
+}
+```
 
 ---
 

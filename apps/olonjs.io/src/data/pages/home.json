@@ -2,206 +2,340 @@
   "id": "home-page",
   "slug": "home",
   "meta": {
-    "title": "OlonJS — Contract Layer for the Agentic Web",
-    "description": "OlonJS is a TypeScript framework for building JSON-driven websites with a deterministic data contract. Every section is typed, validated, and structurally addressable."
+    "title": "OlonJS",
+    "description": "The Contract Layer for the Agentic Web."
   },
   "sections": [
     {
-      "id": "hero-main",
-      "type": "olon-hero",
+      "id": "section-hero",
+      "type": "premium-hero",
       "data": {
-        "id": "hero-main",
-        "eyebrow": "CONTRACT LAYER · V1.5 · OPEN SOURCE",
-        "headline": "Contract Layer",
-        "subline": "for the agentic web.",
-        "body": "AI agents are becoming operational actors in commerce, marketing, and support. They need more than content — they need a contract. OlonJS is the deterministic machine contract for websites: every site typed, structured, and addressable by design. No custom glue. No fragile integrations. Just a contract any agent can read and operate.",
+        "backgroundImage": {
+          "url": "/assets/images/1778144109633-1776332627579-plug-graded-square.jpg",
+          "alt": "1776332627579-plug-graded-square.jpg"
+        },
+        "badgeText": "Now in Public Beta",
+        "primaryTitle": "The Contract Layer",
+        "secondaryTitle": "for the Agentic Web",
+        "subtitle": "OlonJS is the headless framework for AI native websites: every site typed, structured, and addressable by design. No custom glue. No fragile integrations.",
         "primaryCta": {
-          "label": "Get started",
-          "href": "#getstarted"
+          "label": "",
+          "href": "",
+          "variant": "primary"
         },
         "secondaryCta": {
-          "label": "GitHub",
-          "href": "https://github.com/olonjs/core"
+          "label": "",
+          "href": "",
+          "variant": "accent"
         },
-        "ghostCta": {
-          "label": "Explore platform",
-          "href": "#architecture"
-        },
-        "image": {
-          "url": "/assets/images/1776332627579-plug-graded-square.jpg",
-          "alt": "plug-graded-square.jpg"
-        }
-      }
-    },
-    {
-      "id": "why-olon",
-      "type": "olon-why",
-      "data": {
-        "id": "why-olon",
-        "label": "Why OlonJS",
-        "headline": "A Meaningful Web",
-        "subline": "Whole in itself, part of something greater.",
-        "body": "Most web frameworks separate concerns across layers — data, UI, validation, metadata — with no shared contract between them. OlonJS inverts this: the JSON data structure is the contract. Every layer — rendering, editing, validation, machine access — is a deterministic projection of the same typed source. The result is a site that is structurally coherent by construction, not by convention. Every site built with OlonJS is a holon: complete in itself, intelligible to the network around it. The meaningful web doesn't happen all at once. It grows one site at a time.",
-        "pillars": [
+        "socialProofPrefix": "",
+        "socialProofCount": "",
+        "avatars": [
           {
-            "id": "pillar-contract",
-            "icon": "contract",
-            "title": "The data is the contract",
-            "body": "One typed JSON source. Every layer — UI, editor, agent, SEO — is a projection. No translation, no drift."
+            "id": "av-1",
+            "initials": "JD",
+            "preset": "amber"
           },
           {
-            "id": "pillar-holon",
-            "icon": "holon",
-            "title": "Every site is a holon",
-            "body": "Autonomous, complete, structurally intelligible. Each site is whole in itself and part of a network that understands it."
+            "id": "av-2",
+            "initials": "SK",
+            "preset": "emerald"
           },
           {
-            "id": "pillar-generated",
-            "icon": "generated",
-            "title": "Built to be generated",
-            "body": "Every constraint is also an instruction. The spec is precise enough for AI agents to scaffold a fully compliant tenant from scratch."
+            "id": "av-3",
+            "initials": "AL",
+            "preset": "blue"
+          },
+          {
+            "id": "av-4",
+            "initials": "MR",
+            "preset": "rose"
+          },
+          {
+            "id": "av-5",
+            "initials": "TC",
+            "preset": "violet"
           }
-        ],
-        "anchorId": "Why"
+        ]
       }
     },
     {
-      "id": "architecture-protocols",
-      "type": "olon-architecture",
+      "id": "section-content-7",
+      "type": "content-7",
       "data": {
-        "id": "architecture-protocols",
-        "label": "Architecture",
-        "headline": "Six governing protocols.",
-        "body": "OlonJS is specified as a versioned set of architectural protocols. Each protocol is independently versioned and mandatory for compliant tenants.",
-        "specHref": "https://github.com/olonjs/core/blob/main/specs/olonjsSpecs_V_1_5.md",
-        "protocols": [
-          {
-            "id": "proto-mtrp",
-            "icon": "mtrp",
-            "acronym": "MTRP",
-            "version": "v1.2",
-            "name": "Modular Type Registry",
-            "desc": "Core exports an empty SectionDataRegistry. Tenants extend it via module augmentation. Full TypeScript inference across all section types at compile-time, zero Core changes.",
-            "specHref": "https://github.com/olonjs/core/blob/main/specs/olonjsSpecs_V_1_5.md#1--modular-type-registry-pattern-mtrp-v12"
-          },
-          {
-            "id": "proto-tbp",
-            "icon": "tbp",
-            "acronym": "TBP",
-            "version": "v1.0",
-            "name": "Tenant Block Protocol",
-            "desc": "Each section type is a self-contained capsule: View.tsx, schema.ts, types.ts, index.ts. Renderable, validatable, and ingestible by the engine without additional configuration.",
-            "specHref": "https://github.com/olonjs/core/blob/main/specs/olonjsSpecs_V_1_5.md#3--tenant-block-protocol-tbp-v10"
-          },
-          {
-            "id": "proto-jsp",
-            "icon": "jsp",
-            "acronym": "JSP",
-            "version": "v1.8",
-            "name": "JsonPages Site Protocol",
-            "desc": "Deterministic file system ontology and CLI projection engine. config/ separates global governance from per-page content. Reproducible across every environment.",
-            "specHref": "https://github.com/olonjs/core/blob/main/specs/olonjsSpecs_V_1_5.md#2--jsonpages-site-protocol-jsp-v18"
-          },
-          {
-            "id": "proto-idac",
-            "icon": "idac",
-            "acronym": "IDAC",
-            "version": "v1.0",
-            "name": "ICE Data Contract",
-            "desc": "Mandatory data-jp-* DOM attributes bind every section to its data. Any consumer that can traverse the DOM can identify and operate any content node — human or agent.",
-            "specHref": "https://github.com/olonjs/core/blob/main/specs/olonjsSpecs_V_1_5.md"
-          },
-          {
-            "id": "proto-bsds",
-            "icon": "bsds",
-            "acronym": "BSDS",
-            "version": "v1.0",
-            "name": "Base Schema Fragments",
-            "desc": "BaseSectionData and BaseArrayItem enforce anchor IDs and stable React keys across all capsules. The foundation that doesn't move so your content never drifts.",
-            "specHref": "https://github.com/olonjs/core/blob/main/specs/olonjsSpecs_V_1_5.md"
-          },
-          {
-            "id": "proto-pss",
-            "icon": "pss",
-            "acronym": "PSS",
-            "version": "v1.4",
-            "name": "Path-Based Selection",
-            "desc": "Every node has an address. Content selection uses strict root-to-leaf path semantics — unambiguous, stable, operable by any consumer that knows the contract.",
-            "specHref": "https://github.com/olonjs/core/blob/main/specs/olonjsSpecs_V_1_5.md"
-          }
-        ],
-        "anchorId": "Architecture"
-      }
-    },
-    {
-      "id": "example-steps",
-      "type": "olon-example",
-      "data": {
-        "id": "example-steps",
-        "label": "Quick Example",
-        "headline": "Two steps. One contract.",
-        "body": "Scaffold a fully compliant tenant in under three minutes. Then read any page via the OlonJS protocol — from a browser, a script, or an AI agent.",
-        "note": "Every OlonJS tenant exposes a machine-readable manifest at",
-        "noteHref": "http://localhost:5173/mcp-manifest.json",
-        "steps": [
-          {
-            "number": 1,
-            "title": "Scaffold a tenant",
-            "meta": "~3 min",
-            "code": "# Install the CLI\nnpm install -g @olonjs/cli\n\n# Scaffold a new tenant\nnpx @olonjs/cli new tenant\n\n✓ Projecting infrastructure...\n✓ Projecting source (src_tenant_alpha.sh)\n✓ Resolving dependencies\n✓ Tenant scaffolded\n\nsrc/\n  components/hero/\n    View.tsx\n    schema.ts\n    types.ts\n    index.ts\n  data/config/\n    site.json\n    theme.json\n    menu.json\n  lib/\n    schemas.ts\n    base-schemas.ts"
-          },
-          {
-            "number": 2,
-            "title": "Read via OlonJS protocol",
-            "meta": "Any consumer",
-            "code": "// Read any page via the contract\n// Works from browser, script, or AI agent\n\nconst page = await\n  navigator.modelContextProtocol\n    .readResource(\n      'olon://pages/home'\n    );\n\n// Returns the full typed contract\n// { slug, meta, sections: Section[] }\n// No DOM scraping. No layout knowledge.\n// Just the contract.\n\n// {\n//   \"slug\": \"home\",\n//   \"sections\": [\n//     { \"type\": \"hero\", \"data\": {...} },\n//     { \"type\": \"features\", \"data\": {...} }\n//   ]\n// }"
-          }
-        ],
-        "anchorId": "Example"
-      }
-    },
-    {
-      "id": "getstarted-cards",
-      "type": "olon-getstarted",
-      "data": {
-        "id": "getstarted-cards",
-        "label": "Get Started",
-        "headline": "Three paths in.",
-        "body": "Start with the Core package, scaffold a full tenant with the CLI, or deploy a working example in one click.",
+        "eyebrow": "why",
+        "headingLead": "A Meaningful Web.",
+        "headingEmphasis": "Whole in itself, part of something greater.",
+        "description": "Most web frameworks separate concerns across layers — data, UI, validation, metadata — with no shared contract between them. OlonJS inverts this: the JSON data structure is the contract. Every layer — rendering, editing, validation, machine access — is a deterministic projection of the same typed source. The result is a site that is structurally coherent by construction, not by convention. Every site built with OlonJS is a holon: complete in itself, intelligible to the network around it. The meaningful web doesn't happen all at once. It grows one site at a time.",
         "cards": [
           {
-            "id": "card-core",
-            "badge": "Open Core",
-            "badgeStyle": "oss",
-            "title": "Install Core",
-            "body": "The Core package is free and open — forever. The contract, the protocols, the CLI. No lock-in on the foundation.",
-            "code": "npm install @olonjs/core",
-            "linkLabel": "View on GitHub",
-            "linkHref": "https://github.com/olonjs/core"
+            "id": "content7-card-1",
+            "tileVariant": "elevated",
+            "image": {
+              "url": "/assets/images/1778141326605-DATACONTRACT.png",
+              "alt": "DATACONTRACT.png"
+            },
+            "eyebrow": "Data is the Contract",
+            "copyLead": "One typed JSON source. Every layer — UI, editor, agent, SEO —  ",
+            "copyEmphasis": "is a projection.",
+            "copyTrail": "No translation, no drift.",
+            "readLink": {
+              "label": "",
+              "href": ""
+            }
           },
           {
-            "id": "card-cli",
-            "badge": "CLI",
-            "badgeStyle": "cli",
-            "title": "Scaffold a tenant",
-            "body": "The CLI scaffolds a fully compliant tenant from a canonical script. Same result on every machine, every run.",
-            "code": "npx @olonjs/cli new tenant",
-            "linkLabel": "View on npm",
-            "linkHref": "https://www.npmjs.com/package/@olonjs/cli"
+            "id": "content7-card-2",
+            "tileVariant": "elevated",
+            "image": {
+              "url": "/assets/images/1778141660323-site_as_holon.png",
+              "alt": "site as holon.png"
+            },
+            "eyebrow": "Every site is a holon",
+            "copyLead": "Autonomous, complete, structurally intelligible. Each site is whole in itself and ",
+            "copyEmphasis": "part of a network that understands it.",
+            "copyTrail": "",
+            "readLink": {
+              "label": "",
+              "href": ""
+            }
           },
           {
-            "id": "card-deploy",
-            "badge": "Deploy",
-            "badgeStyle": "deploy",
-            "title": "Deploy a template",
-            "body": "Clone a working OlonJS tenant and deploy it with one click. Explore the full capsule structure in a real project.",
-            "deployLabel": "Deploy template →",
-            "deployHref": "https://github.com/new?owner=olonjs&template_name=template-cadence&template_owner=olonjs",
-            "linkLabel": "View on npm",
-            "linkHref": "https://github.com/olonjs/template-cadence"
+            "id": "content7-card-3",
+            "tileVariant": "surface",
+            "image": {
+              "url": "/assets/images/1778141730071-2bgen_1_.png",
+              "alt": "2bgen(1).png"
+            },
+            "eyebrow": "Built to be Generated",
+            "copyLead": "Every constraint is also an instruction. The spec is precise enough for",
+            "copyEmphasis": " AI agents to scaffold a fully compliant tenant from scratch.",
+            "copyTrail": "",
+            "readLink": {
+              "label": "",
+              "href": ""
+            }
           }
         ],
-        "anchorId": "Getstarted"
+        "anchorId": "why"
+      }
+    },
+    {
+      "id": "section-accordion",
+      "type": "scroll-accordion",
+      "data": {
+        "eyebrow": "Architecture",
+        "heading": "Six governing protocols.",
+        "description": "OlonJS is specified as a versioned set of architectural protocols. Each protocol is independently versioned and mandatory for compliant tenants.",
+        "items": [
+          {
+            "id": "acc-1",
+            "number": "S/001",
+            "title": "MTRP",
+            "description": "With the \"Modular Type Registry\" Core exports an empty SectionDataRegistry. Tenants extend it via module augmentation. Full TypeScript inference across all section types at compile-time, zero Core changes. ",
+            "cta": {
+              "label": "",
+              "href": "",
+              "variant": "primary"
+            },
+            "icon": {
+              "url": "/assets/images/1778176097446-icon-type-registry.svg",
+              "alt": "icon-type-registry.svg"
+            }
+          },
+          {
+            "id": "acc-2",
+            "number": "S/002",
+            "title": "Tenant Block Protocol",
+            "description": "Each section type is a self-contained capsule: View.tsx, schema.ts, types.ts, index.ts. Renderable, validatable, and ingestible by the engine without additional configuration.",
+            "cta": {
+              "label": "",
+              "href": "",
+              "variant": "primary"
+            },
+            "icon": {
+              "url": "/assets/images/1778176132422-icon-tenant-block.svg",
+              "alt": "icon-tenant-block.svg"
+            }
+          },
+          {
+            "id": "acc-3",
+            "number": "S/003",
+            "title": "JsonPages Site Protocol",
+            "description": "Deterministic file system ontology and CLI projection engine. config/ separates global governance from per-page content. Reproducible across every environment.",
+            "cta": {
+              "label": "",
+              "href": "",
+              "variant": "primary"
+            },
+            "icon": {
+              "url": "/assets/images/1778176156536-icon-json-files.svg",
+              "alt": "icon-json-files.svg"
+            }
+          },
+          {
+            "id": "acc-4",
+            "number": "S/004",
+            "title": "ICE Data Contract",
+            "description": "Mandatory data-jp-* DOM attributes bind every section to its data. Any consumer that can traverse the DOM can identify and operate any content node — human or agent.",
+            "cta": {
+              "label": "",
+              "href": "",
+              "variant": "primary"
+            },
+            "icon": {
+              "url": "/assets/images/1778176170192-icon-ice-contract.svg",
+              "alt": "icon-ice-contract.svg"
+            }
+          },
+          {
+            "id": "3df61f99-4fe0-4c6e-9bfd-71fb51e3c2bf",
+            "number": "S/005",
+            "title": "Base Schema Fragments",
+            "description": "BaseSectionData and BaseArrayItem enforce anchor IDs and stable React keys across all capsules. The foundation that doesn't move so your content never drifts.",
+            "cta": {
+              "id": "",
+              "label": "",
+              "href": "",
+              "variant": "primary"
+            },
+            "icon": {
+              "url": "/assets/images/1778176183974-icon-base-schema.svg",
+              "alt": "icon-base-schema.svg"
+            }
+          },
+          {
+            "id": "5b32d2f6-4274-4603-959d-b850422ccf65",
+            "number": "S/006",
+            "title": "Path-Based Selection",
+            "description": "Every node has an address. Content selection uses strict root-to-leaf path semantics — unambiguous, stable, operable by any consumer that knows the contract.",
+            "cta": {
+              "id": "1d0ecfcd-6e0c-458d-a5e7-e7dcf6091a72",
+              "label": "OlonJS Specifications",
+              "href": "https://github.com/olonjs/core/blob/main/specs/olonjsSpecs_V_1_6.md",
+              "variant": "primary"
+            },
+            "icon": {
+              "url": "/assets/images/1778176194705-icon-path-selection.svg",
+              "alt": "icon-path-selection.svg"
+            }
+          }
+        ],
+        "anchorId": "architecture"
+      }
+    },
+    {
+      "id": "section-code-block",
+      "type": "code-block",
+      "data": {
+        "eyebrow": "Quick Example",
+        "heading": "Two steps. One contract.",
+        "description": "Scaffold a fully compliant tenant in under three minutes. Then read any page via the OlonJS protocol — from a browser, a script, or an AI agent.",
+        "columns": [
+          {
+            "id": "col-1",
+            "tabs": [
+              {
+                "id": "tab-app",
+                "filename": "Scaffold a tenant",
+                "language": "tsx",
+                "code": "# Install the CLI\nnpm install -g @olonjs/cli\n\n# Scaffold a new tenant\nnpx @olonjs/cli new tenant\n\n✓ Projecting infrastructure...\n✓ Projecting source (src_tenant_alpha.sh)\n✓ Resolving dependencies\n✓ Tenant scaffolded\n\nsrc/\n  components/hero/\n    View.tsx\n    schema.ts\n    types.ts\n    index.ts\n  data/config/\n    site.json\n    theme.json\n    menu.json\n  lib/\n    schemas.ts\n    base-schemas.ts"
+              }
+            ]
+          },
+          {
+            "id": "col-2",
+            "tabs": [
+              {
+                "id": "tab-config",
+                "filename": "Read via OlonJS protocol",
+                "language": "typescript",
+                "code": "// Read any page via the contract\n// Works from browser, script, or AI agent\n\nconst page = await\n  navigator.modelContextProtocol\n    .readResource(\n      'olon://pages/home'\n    );\n\n// Returns the full typed contract\n// { slug, meta, sections: Section[] }\n// No DOM scraping. No layout knowledge.\n// Just the contract.\n\n// {\n//   \"slug\": \"home\",\n//   \"sections\": [\n//     { \"type\": \"hero\", \"data\": {...} },\n//     { \"type\": \"features\", \"data\": {...} }\n//   ]\n// }"
+              }
+            ]
+          }
+        ],
+        "anchorId": "example"
+      },
+      "settings": {
+        "lineNumbers": true,
+        "syntaxHighlighting": true
+      }
+    },
+    {
+      "id": "section-sticky",
+      "type": "sticky-section",
+      "data": {
+        "eyebrow": "Get Started",
+        "heading": "Three paths in.",
+        "description": "Start with the Core package, scaffold a full tenant with the CLI, or deploy a working example in one click.",
+        "projects": [
+          {
+            "id": "full-stack-blocks",
+            "name": "Scaffold",
+            "tagline": "Scaffold locally",
+            "description": "The Core package is free and open — forever. The contract, the protocols, the CLI. No lock-in on the foundation.\nnpm install @olonjs/core",
+            "stars": "Local Save",
+            "starsLabel": "Cloud Ready",
+            "contributors": "",
+            "contributorsLabel": "",
+            "exploreUrl": "/blocks",
+            "image": {
+              "url": "/assets/images/1778185590099-Screenshot_2026-05-07_222547.png",
+              "alt": "Screenshot 2026-05-07 222547.png"
+            },
+            "iconVariant": "terminal"
+          },
+          {
+            "id": "components",
+            "name": "Template",
+            "tagline": "Alpine Template",
+            "description": "Clone a working OlonJS tenant and deploy it with one click. Explore the full capsule structure in a real project.",
+            "stars": "GitHub Template",
+            "starsLabel": "",
+            "contributors": "OlonJS ",
+            "contributorsLabel": "Alpine",
+            "exploreUrl": "https://github.com/new?template_name=LightAlpine&template_owner=olonjs",
+            "image": {
+              "url": "/assets/images/1778140078545-Screenshot_2026-05-07_at_09-46-42_Lumina_Alpine_Retreat_-_Luxury_Eco-Resort_in_the_Dolomites.png",
+              "alt": "1778140078545-Screenshot_2026-05-07_at_09-46-42_Lumina_Alpine_Retreat_-_Luxury_Eco-Resort_in_the_Dolomites.png"
+            },
+            "iconVariant": "github"
+          },
+          {
+            "id": "templates",
+            "name": "ICE Level 1 CMS",
+            "tagline": "You won't need another CMS Layer",
+            "description": "Not a CMS. A contract.\n\nThe CMS is just a projection of the contract",
+            "stars": "Composable UI",
+            "starsLabel": "",
+            "contributors": "/admin",
+            "contributorsLabel": "",
+            "exploreUrl": "https://alpine.olon.it/admin",
+            "image": {
+              "url": "/assets/images/1778140189498-Screenshot_2026-05-07_at_09-49-29_Olon.png",
+              "alt": "1778140189498-Screenshot_2026-05-07_at_09-49-29_Olon.png"
+            },
+            "iconVariant": "blocks"
+          },
+          {
+            "id": "b90c2973-7798-4b10-bbcc-74028dbfc428",
+            "name": "Olon Agent",
+            "tagline": "Turbo charge your Workflow",
+            "description": "Generate Custom tenants in minute from a Design Schema and a detailed Brief, then use SKILL.MD to refine with your favorite Agent.",
+            "stars": "",
+            "starsLabel": "",
+            "contributors": "",
+            "contributorsLabel": "",
+            "exploreUrl": "https://agent.olon.it",
+            "image": {
+              "url": "/assets/images/1778139844993-Screenshot_2026-05-07_at_09-25-46_Aether_Eye_Institute_Precision_Ophthalmology_and_Vision_Surgery.png",
+              "alt": "1778139844993-Screenshot_2026-05-07_at_09-25-46_Aether_Eye_Institute_Precision_Ophthalmology_and_Vision_Surgery.png"
+            },
+            "iconVariant": "sparkles"
+          }
+        ],
+        "anchorId": "templates"
       }
     }
   ]

@@ -1,37 +1,29 @@
-import { HeaderSchema }        from '@/components/header';
-import { FooterSchema }        from '@/components/footer';
-import { HeroSchema }          from '@/components/hero';
-import { FeatureGridSchema }   from '@/components/feature-grid';
-import { ContactSchema }       from '@/components/contact';
-import { LoginSchema }         from '@/components/login';
-import { DesignSystemSchema }         from '@/components/design-system';
-import { CloudAiNativeGridSchema }    from '@/components/cloud-ai-native-grid';
-import { PageHeroSchema }             from '@/components/page-hero';
-import { TiptapSchema }           from '@/components/tiptap';
-
-import { OlonHeroSchema }         from '@/components/olon-hero';
-import { OlonWhySchema }          from '@/components/olon-why';
-import { OlonArchitectureSchema } from '@/components/olon-architecture';
-import { OlonExampleSchema }      from '@/components/olon-example';
-import { OlonGetStartedSchema }   from '@/components/olon-getstarted';
+import { EmptyTenantSchema } from '@/components/empty-tenant';
+import { FooterSchema } from '@/components/footer';
+import { FormDemoSchema, FormDemoSubmissionSchema } from '@/components/form-demo';
+import { HeaderSchema } from '@/components/header';
+import { PremiumCtaSchema } from '@/components/premium-cta';
+import { PremiumHeroSchema } from '@/components/premium-hero';
+import { ScrollAccordionSchema } from '@/components/scroll-accordion';
+import { StickySectionSchema } from '@/components/sticky-section';
+import { Content7Schema } from '@/components/content-7';
+import { CodeBlockSchema } from '@/components/code-block';
 
 export const SECTION_SCHEMAS = {
-  'header':                HeaderSchema,
-  'footer':                FooterSchema,
-  'hero':                  HeroSchema,
-  'feature-grid':          FeatureGridSchema,
-  'contact':               ContactSchema,
-  'login':                 LoginSchema,
-  'design-system':         DesignSystemSchema,
-  'cloud-ai-native-grid':  CloudAiNativeGridSchema,
-  'page-hero':             PageHeroSchema,
-  'tiptap':           	   TiptapSchema,
-  
-  'olon-hero':         OlonHeroSchema,
-  'olon-why':          OlonWhySchema,
-  'olon-architecture': OlonArchitectureSchema,
-  'olon-example':      OlonExampleSchema,
-  'olon-getstarted':   OlonGetStartedSchema,
+  'empty-tenant': EmptyTenantSchema,
+  'form-demo': FormDemoSchema,
+  header: HeaderSchema,
+  footer: FooterSchema,
+  'premium-hero': PremiumHeroSchema,
+  'premium-cta': PremiumCtaSchema,
+  'sticky-section': StickySectionSchema,
+  'scroll-accordion': ScrollAccordionSchema,
+  'content-7': Content7Schema,
+  'code-block': CodeBlockSchema,
+} as const;
+
+export const SECTION_SUBMISSION_SCHEMAS = {
+  'form-demo': FormDemoSubmissionSchema,
 } as const;
 
 export type SectionType = keyof typeof SECTION_SCHEMAS;
@@ -42,4 +34,4 @@ export {
   BaseSectionSettingsSchema,
   CtaSchema,
   ImageSelectionSchema,
-} from '@/lib/base-schemas';
+} from '@olonjs/core';

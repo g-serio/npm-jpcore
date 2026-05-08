@@ -6,7 +6,7 @@ import react from '@vitejs/plugin-react';
 import tailwindcss from '@tailwindcss/vite';
 import path from 'path';
 import fs from 'fs';
-import { fileURLToPath, pathToFileURL } from 'url';
+import { fileURLToPath } from 'url';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -63,12 +63,10 @@ function normalizeManifestSlug(raw) {
 }
 
 async function loadWebMcpBuilders() {
-  const corePkgPath = path.dirname(fileURLToPath(import.meta.resolve('@olonjs/core/package.json')));
-  const moduleUrl = pathToFileURL(path.resolve(corePkgPath, 'src', 'lib', 'webmcp-contracts.mjs')).href;
+  const moduleUrl = import.meta.resolve('@olonjs/core');
   return import(moduleUrl);
 }
 export default defineConfig({
- //base: '/core/',
   plugins: [
     react(),
     tailwindcss(),
@@ -80,14 +78,26 @@ export default defineConfig({
           const isPageJsonRequest = isTenantPageJsonRequest(req, pathname);
 
           const handleManifestRequest = async () => {
-            const { buildPageContract, buildPageManifest, buildSiteManifest } = await loadWebMcpBuilders();
-            const ssrEntry = await server.ssrLoadModule('/src/entry-ssg.tsx');
-            const buildState = ssrEntry.getWebMcpBuildState();
+            const core = await loadWebMcpBuilders();
+            const { buildPageContract, buildPageManifest, buildSiteManifest, buildLlmsTxt } = core.webmcp;
+            const runtime = await server.ssrLoadModule('/src/runtime.ts');
+            const buildState = runtime.getWebMcpBuildState();
+
+            if (req.method === 'GET' && pathname === '/llms.txt') {
+              res.writeHead(200, { 'Content-Type': 'text/plain; charset=utf-8' });
+              res.end(buildLlmsTxt({
+                pages: buildState.pages,
+                schemas: buildState.schemas,
+                siteConfig: buildState.siteConfig,
+              }));
+              return true;
+            }
 
             if (req.method === 'GET' && pathname === '/mcp-manifest.json') {
               sendJson(res, 200, buildSiteManifest({
                 pages: buildState.pages,
                 schemas: buildState.schemas,
+                submissionSchemas: buildState.submissionSchemas,
                 siteConfig: buildState.siteConfig,
               }));
               return true;
@@ -106,6 +116,7 @@ export default defineConfig({
                 slug,
                 pageConfig,
                 schemas: buildState.schemas,
+                submissionSchemas: buildState.submissionSchemas,
                 siteConfig: buildState.siteConfig,
               }));
               return true;
@@ -124,6 +135,7 @@ export default defineConfig({
                 slug,
                 pageConfig,
                 schemas: buildState.schemas,
+                submissionSchemas: buildState.submissionSchemas,
                 siteConfig: buildState.siteConfig,
               }));
               return true;
@@ -135,13 +147,21 @@ export default defineConfig({
             req.method === 'GET' &&
             (
               pathname === '/mcp-manifest.json'
+              || pathname === '/llms.txt'
               || /^\/mcp-manifests\/.+\.json$/i.test(pathname)
               || /^\/schemas\/.+\.schema\.json$/i.test(pathname)
             )
           ) {
+            const publicCandidate = path.resolve(__dirname, 'public', pathname.replace(/^\/+/, ''));
+            const isInsidePublic = publicCandidate.startsWith(path.resolve(__dirname, 'public') + path.sep);
+            if (isInsidePublic && fs.existsSync(publicCandidate) && fs.statSync(publicCandidate).isFile()) {
+              return next();
+            }
             void handleManifestRequest()
               .then((handled) => {
                 if (!handled) {
+                  // Se handleManifestRequest fallisce a trovare qualcosa ma l'URL era giusto, 
+                  // forziamo un 404 JSON per evitare che Vite serva l'index.html
                   sendJson(res, 404, { error: 'Manifest or schema not found' });
                 }
               })
@@ -153,7 +173,12 @@ export default defineConfig({
 
           if (isPageJsonRequest) {
             const normalizedPath = decodeURIComponent(pathname).replace(/\\/g, '/');
-            const slug = normalizedPath.replace(/^\/+/, '').replace(/\.json$/i, '').replace(/^\/+|\/+$/g, '');
+            // Rimuoviamo la root folder opzionale "/pages/" introdotta per matchare la prod e il file extension
+            const slug = normalizedPath
+              .replace(/^\/+/, '')
+              .replace(/^pages\//i, '')
+              .replace(/\.json$/i, '')
+              .replace(/^\/+|\/+$/g, '');
             const candidate = path.resolve(DATA_PAGES_DIR, `${slug}.json`);
             const isInsidePagesDir = candidate.startsWith(`${DATA_PAGES_DIR}${path.sep}`) || candidate === DATA_PAGES_DIR;
             if (!slug || !isInsidePagesDir || !fs.existsSync(candidate) || !fs.statSync(candidate).isFile()) {
@@ -180,6 +205,7 @@ export default defineConfig({
                 if (!fs.existsSync(DATA_CONFIG_DIR)) fs.mkdirSync(DATA_CONFIG_DIR, { recursive: true });
                 if (!fs.existsSync(DATA_PAGES_DIR)) fs.mkdirSync(DATA_PAGES_DIR, { recursive: true });
                 if (projectState.site != null) fs.writeFileSync(path.join(DATA_CONFIG_DIR, 'site.json'), JSON.stringify(projectState.site, null, 2), 'utf8');
+                if (projectState.menu != null) fs.writeFileSync(path.join(DATA_CONFIG_DIR, 'menu.json'), JSON.stringify(projectState.menu, null, 2), 'utf8');
                 if (projectState.theme != null) fs.writeFileSync(path.join(DATA_CONFIG_DIR, 'theme.json'), JSON.stringify(projectState.theme, null, 2), 'utf8');
                 if (projectState.page != null) {
                   const safeSlug = (slug.replace(/[^a-zA-Z0-9-_]/g, '_') || 'page');
@@ -231,7 +257,4 @@ export default defineConfig({
     },
   },
 });
-
-
-
 

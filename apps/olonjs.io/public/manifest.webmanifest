@@ -1,0 +1,17 @@
+{
+  "name": "OlonJS",
+  "short_name": "OlonJS",
+  "description": "Olon — Agentic Content Infrastructure",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#000000",
+  "theme_color": "#000000",
+  "icons": [
+    {
+      "src": "/olon-app-icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}

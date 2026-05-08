@@ -1,6 +1,9 @@
 import React from 'react';
 import {
   Layers,
+  Blocks,
+  Component,
+  LayoutTemplate,
   Github,
   ArrowRight,
   Box,
@@ -10,11 +13,15 @@ import {
   X,
   Sparkles,
   Zap,
+  Mail,
   type LucideIcon
 } from 'lucide-react';
 
-const iconMap = {
+export const iconMap = {
   'layers': Layers,
+  'blocks': Blocks,
+  'component': Component,
+  'layoutTemplate': LayoutTemplate,
   'github': Github,
   'arrow-right': ArrowRight,
   'box': Box,
@@ -24,6 +31,7 @@ const iconMap = {
   'x': X,
   'sparkles': Sparkles,
   'zap': Zap,
+  'mail': Mail,
 } as const satisfies Record<string, LucideIcon>;
 
 export type IconName = keyof typeof iconMap;

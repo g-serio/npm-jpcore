@@ -1,5 +1,3 @@
-"use client"
-
 import { AspectRatio as AspectRatioPrimitive } from "radix-ui"
 
 function AspectRatio({
@@ -9,4 +7,3 @@ function AspectRatio({
 }
 
 export { AspectRatio }
-

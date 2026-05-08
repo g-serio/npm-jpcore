@@ -1,0 +1,33 @@
+<svg version="1.2" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" width="512" height="512">
+  <defs>
+    <linearGradient id="g-main" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#84ABFF"/>
+      <stop offset="1" stop-color="#0F52E0"/>
+    </linearGradient>
+    <linearGradient id="g-accent" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#EEF3FF"/>
+      <stop offset="1" stop-color="#84ABFF"/>
+    </linearGradient>
+  </defs>
+  <!-- Layer 3 — types.ts (back, most dim) -->
+  <rect fill="none" stroke="url(#g-main)" stroke-width="5.5" stroke-linejoin="round"
+        opacity="0.3" x="65" y="22" width="108" height="74" rx="9"/>
+  <!-- Layer 2 — schema.ts (mid) -->
+  <rect fill="none" stroke="url(#g-main)" stroke-width="5.5" stroke-linejoin="round"
+        opacity="0.6" x="46" y="50" width="108" height="74" rx="9"/>
+  <!-- Layer 1 — View.tsx (front, full) -->
+  <rect fill="none" stroke="url(#g-main)" stroke-width="6.5" stroke-linejoin="round"
+        x="27" y="78" width="108" height="74" rx="9"/>
+  <!-- Content on front: two lines + accent dot (index.ts indicator) -->
+  <rect fill="url(#g-main)" opacity="0.6" x="42" y="101" width="52" height="6" rx="3"/>
+  <rect fill="url(#g-accent)" x="42" y="116" width="36" height="6" rx="3"/>
+  <!-- Corner indicators on back layers -->
+  <circle fill="url(#g-main)" opacity="0.3" cx="162" cy="33" r="4"/>
+  <circle fill="url(#g-main)" opacity="0.6" cx="143" cy="61" r="4"/>
+  <circle fill="url(#g-accent)" cx="124" cy="89" r="5"/>
+  <!-- index.ts export arrow -->
+  <path fill="none" stroke="url(#g-accent)" stroke-linecap="round" stroke-linejoin="round" stroke-width="5"
+        d="M135,130 h30 v28"/>
+  <path fill="none" stroke="url(#g-accent)" stroke-linecap="round" stroke-linejoin="round" stroke-width="5"
+        d="M156,149 l9,9 9,-9"/>
+</svg>

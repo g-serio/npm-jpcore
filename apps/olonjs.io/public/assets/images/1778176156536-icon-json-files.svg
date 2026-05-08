@@ -1,0 +1,29 @@
+<svg version="1.2" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" width="512" height="512">
+  <defs>
+    <linearGradient id="g-fold" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#84ABFF"/>
+      <stop offset="1" stop-color="#0F52E0"/>
+    </linearGradient>
+    <linearGradient id="g-doc" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#84ABFF"/>
+      <stop offset="1" stop-color="#1763FF"/>
+    </linearGradient>
+    <linearGradient id="g-bracket" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#EEF3FF"/>
+      <stop offset="1" stop-color="#84ABFF"/>
+    </linearGradient>
+  </defs>
+  <!-- Fold corner -->
+  <path fill="none" stroke="url(#g-fold)" stroke-linecap="round" stroke-linejoin="round" stroke-width="8"
+    d="m115.66 6.04v46.98h46.98"/>
+  <!-- Document outline -->
+  <path fill="none" stroke="url(#g-doc)" stroke-linecap="round" stroke-linejoin="round" stroke-width="8"
+    d="m37.36 6.04v187.92h125.28v-140.94l-46.98-46.98z"/>
+  <!-- JSON bracket -->
+  <path fill="none" stroke="url(#g-bracket)" stroke-linecap="round" stroke-linejoin="round" stroke-width="6"
+    d="m76.51 76.51c-7.83 0-15.66 4.7-15.66 12.53v21.92c0 4.7-4.7 7.83-7.83 7.83 3.13 0 7.83 3.13 7.83 7.83v21.93c0 7.83 7.83 12.52 15.66 12.52"/>
+  <!-- Content lines -->
+  <rect fill="url(#g-doc)" opacity="0.55" x="92.17" y="87.47" width="39.15" height="6.27" rx="3.13"/>
+  <rect fill="url(#g-doc)"              x="92.17" y="110.96" width="54.82" height="6.27" rx="3.13"/>
+  <rect fill="url(#g-doc)" opacity="0.75" x="92.17" y="134.45" width="46.99" height="6.27" rx="3.13"/>
+</svg>

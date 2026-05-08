@@ -8,20 +8,24 @@ import { JsonPagesEngine } from '@olonjs/core';
 import type { JsonPagesConfig, LibraryImageEntry, ProjectState } from '@olonjs/core';
 import { normalizeBasePath, withBasePath } from '@olonjs/core';
 import { ComponentRegistry } from '@/lib/ComponentRegistry';
-import { SECTION_SCHEMAS } from '@/lib/schemas';
+import { SECTION_SCHEMAS, SECTION_SUBMISSION_SCHEMAS } from '@/lib/schemas';
 import { addSectionConfig } from '@/lib/addSectionConfig';
 import { getHydratedData } from '@/lib/draftStorage';
 import type { SiteConfig, ThemeConfig, MenuConfig, PageConfig } from '@/types';
-import type { DeployPhase, StepId } from '@/types/deploy';
-import { DEPLOY_STEPS } from '@/lib/deploySteps';
-import { startCloudSaveStream } from '@/lib/cloudSaveStream';
+import type { DeployPhase, StepId } from '@olonjs/core';
+import { DEPLOY_STEPS } from '@olonjs/core';
+import { startCloudSaveStream } from '@olonjs/core';
 import siteData from '@/data/config/site.json';
 import themeData from '@/data/config/theme.json';
 import menuData from '@/data/config/menu.json';
 import { getFilePages } from '@/lib/getFilePages';
 import { DopaDrawer } from '@/components/save-drawer/DopaDrawer';
+import { EmptyTenantView } from '@/components/empty-tenant';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ThemeProvider } from '@/components/ThemeProvider';
+import { useOlonForms } from '@/lib/useOlonForms';
+import { OlonFormsContext } from '@olonjs/core';
+import { iconMap } from '@/lib/IconResolver';
 
 import tenantCss from './index.css?inline';
 
@@ -48,7 +52,7 @@ const fileSiteConfig = siteData as unknown as SiteConfig;
 const MAX_UPLOAD_SIZE_BYTES = 5 * 1024 * 1024;
 const ASSET_UPLOAD_MAX_RETRIES = 2;
 const ASSET_UPLOAD_TIMEOUT_MS = 20_000;
-const ALLOWED_IMAGE_MIME_TYPES = new Set(['image/jpeg', 'image/png', 'image/webp', 'image/gif', 'image/avif']);
+const ALLOWED_IMAGE_MIME_TYPES = new Set(['image/jpeg', 'image/png', 'image/webp', 'image/gif', 'image/avif', 'image/svg+xml']);
 
 interface CloudSaveUiState {
   isOpen: boolean;
@@ -168,7 +172,6 @@ function coerceSiteConfig(value: unknown): SiteConfig | null {
   }
   if (!isObjectRecord(input)) return null;
   if (!isObjectRecord(input.identity)) return null;
-  if (!Array.isArray(input.pages)) return null;
 
   return input as unknown as SiteConfig;
 }
@@ -370,6 +373,42 @@ function buildThemeFontVarsCss(input: unknown): string {
   return `:root{--theme-font-primary:${primary};--theme-font-serif:${serif};--theme-font-mono:${mono};}`;
 }
 
+const REMOTE_CSS_LINK_ATTR = 'data-jp-tenant-remote-css';
+
+function isRemoteStylesheetHref(value: string): boolean {
+  return /^https?:\/\//i.test(value.trim());
+}
+
+function extractLeadingRemoteCssImports(cssText: string): { hrefs: string[]; rest: string } {
+  const hrefs = new Set<string>();
+  const leadingTriviaPattern = /^(?:\s+|\/\*[\s\S]*?\*\/)*/;
+  const importPattern =
+    /^@import\s+url\(\s*(?:'([^']+)'|"([^"]+)"|([^'")\s][^)]*))\s*\)\s*([^;]*);/i;
+  let rest = cssText;
+
+  for (;;) {
+    const trivia = rest.match(leadingTriviaPattern);
+    if (trivia && trivia[0]) {
+      rest = rest.slice(trivia[0].length);
+    }
+
+    const match = rest.match(importPattern);
+    if (!match) break;
+
+    const href = (match[1] ?? match[2] ?? match[3] ?? '').trim();
+    const trailingDirectives = (match[4] ?? '').trim();
+
+    if (!isRemoteStylesheetHref(href) || trailingDirectives.length > 0) {
+      break;
+    }
+
+    hrefs.add(href);
+    rest = rest.slice(match[0].length);
+  }
+
+  return { hrefs: Array.from(hrefs), rest };
+}
+
 function setTenantPreviewReady(ready: boolean): void {
   if (typeof window !== 'undefined') {
     (window as Window & { __TENANT_PREVIEW_READY__?: boolean }).__TENANT_PREVIEW_READY__ = ready;
@@ -380,6 +419,7 @@ function setTenantPreviewReady(ready: boolean): void {
 }
 
 function App() {
+  const { states: formStates } = useOlonForms();
   const isCloudMode = Boolean(CLOUD_API_URL && CLOUD_API_KEY);
   const isSave2RepoMode = isCloudMode && SAVE2REPO_ENABLED;
   const isHotSaveMode = isCloudMode && !isSave2RepoMode;
@@ -784,17 +824,52 @@ function App() {
     void runCloudSave(pendingCloudSave.current, false);
   }, [runCloudSave]);
 
+  const tenantCssParts = useMemo(() => extractLeadingRemoteCssImports(tenantCss), [tenantCss]);
+  const resolvedTenantCss = useMemo(
+    () => [buildThemeFontVarsCss(themeConfig), tenantCssParts.rest].filter(Boolean).join('\n'),
+    [tenantCssParts],
+  );
+
+  useEffect(() => {
+    if (typeof document === 'undefined') return undefined;
+
+    const createdLinks: HTMLLinkElement[] = [];
+
+    tenantCssParts.hrefs.forEach((href) => {
+      const existing = Array.from(document.querySelectorAll('link[rel="stylesheet"]')).find(
+        (link) => (link as HTMLLinkElement).href === href,
+      ) as HTMLLinkElement | undefined;
+      if (existing) return;
+
+      const link = document.createElement('link');
+      link.rel = 'stylesheet';
+      link.href = href;
+      link.setAttribute(REMOTE_CSS_LINK_ATTR, href);
+      document.head.appendChild(link);
+      createdLinks.push(link);
+    });
+
+    return () => {
+      createdLinks.forEach((link) => {
+        if (link.getAttribute(REMOTE_CSS_LINK_ATTR) !== link.href) return;
+        if (link.parentNode) link.parentNode.removeChild(link);
+      });
+    };
+  }, [tenantCssParts]);
+
   const config: JsonPagesConfig = {
     tenantId: TENANT_ID,
     basePath: APP_BASE_PATH,
     registry: ComponentRegistry as JsonPagesConfig['registry'],
     schemas: SECTION_SCHEMAS as unknown as JsonPagesConfig['schemas'],
+    submissionSchemas: SECTION_SUBMISSION_SCHEMAS as unknown as JsonPagesConfig['submissionSchemas'],
     pages,
     siteConfig,
     themeConfig,
     menuConfig,
     refDocuments,
-    themeCss: { tenant: `${buildThemeFontVarsCss(themeConfig)}\n${tenantCss}` },
+    iconRegistry: iconMap,
+    themeCss: { tenant: resolvedTenantCss },
     addSection: addSectionConfig,
     webmcp: {
       enabled: true,
@@ -931,6 +1006,7 @@ function App() {
   };
 
   const shouldRenderEngine = !isCloudMode || hasInitialCloudResolved;
+  const isTenantEmpty = Object.keys(pages).length === 0;
 
   useEffect(() => {
     if (!shouldRenderEngine) {
@@ -955,6 +1031,7 @@ function App() {
 
   return (
     <ThemeProvider>
+      <OlonFormsContext.Provider value={formStates}>
       <>
       {isCloudMode && showTopProgress ? (
         <>
@@ -1008,7 +1085,7 @@ function App() {
           </div>
         </div>
       ) : null}
-      {shouldRenderEngine ? <JsonPagesEngine config={config} /> : null}
+     {shouldRenderEngine ? (isTenantEmpty ? <EmptyTenantView /> : <JsonPagesEngine config={config} />) : null}
       {isCloudMode && (contentMode === 'error' || contentFallback?.reasonCode === 'CLOUD_REFRESH_FAILED') ? (
         <div
           role="status"
@@ -1076,6 +1153,7 @@ function App() {
         onRetry={retryCloudSave}
       />
       </>
+      </OlonFormsContext.Provider>
     </ThemeProvider>
   );
 }
