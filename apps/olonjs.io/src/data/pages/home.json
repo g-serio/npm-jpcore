@@ -267,8 +267,8 @@
       "type": "sticky-section",
       "data": {
         "eyebrow": "Get Started",
-        "heading": "Three paths in.",
-        "description": "Start with the Core package, scaffold a full tenant with the CLI, or deploy a working example in one click.",
+        "heading": "Choose your path in",
+        "description": "Start with the Core package, scaffold a full tenant with the CLI, clone a working example in one click and test the CMS Layer, or create your own customization with AI. ",
         "projects": [
           {
             "id": "full-stack-blocks",
