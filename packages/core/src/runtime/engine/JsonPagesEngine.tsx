@@ -3,7 +3,14 @@
  * Enterprise: this file stays as the composition root that wires runtime concerns together.
  */
 import React, { useEffect, useMemo, useState } from 'react';
-import { BrowserRouter, Route, Routes } from 'react-router-dom';
+import {
+  createBrowserRouter,
+  createRoutesFromElements,
+  Outlet,
+  Route,
+  RouterProvider,
+  ScrollRestoration,
+} from 'react-router-dom';
 import { resolveRuntimeConfig } from '../../contract/config-resolver';
 import type { JsonPagesConfig } from '../../contract/types-engine';
 import { ensureWebMcpRuntime } from '../../webmcp';
@@ -27,6 +34,19 @@ const FALLBACK_ADMIN_CSS = `
 :root { --background: #0f172a; --foreground: #f1f5f9; }
 body { background-color: var(--background); color: var(--foreground); }
 `;
+
+/**
+ * Data-router layout: ScrollRestoration only works under RouterProvider (not BrowserRouter).
+ * Renders the matched route via <Outlet />.
+ */
+function JsonPagesRouterShell() {
+  return (
+    <>
+      <ScrollRestoration />
+      <Outlet />
+    </>
+  );
+}
 
 export function JsonPagesEngine({ config }: JsonPagesEngineProps) {
   const {
@@ -95,6 +115,121 @@ export function JsonPagesEngine({ config }: JsonPagesEngineProps) {
     setIsReady(true);
   }, [baseResolvedRuntime.themeConfig, config.webmcp?.enabled]);
 
+  const router = useMemo(() => {
+    const routes = createRoutesFromElements(
+      <Route element={<JsonPagesRouterShell />}>
+        <Route
+          path="/"
+          element={
+            <VisitorRoute
+              pageRegistry={pageRegistry}
+              siteConfig={siteConfig}
+              menuConfig={menuConfig}
+              themeConfig={baseResolvedRuntime.themeConfig}
+              refDocuments={refDocuments}
+              tenantCss={tenantCss}
+              adminCss={adminCss}
+              NotFoundComponent={NotFoundComponent}
+            />
+          }
+        />
+        <Route
+          path="/*"
+          element={
+            <VisitorRoute
+              pageRegistry={pageRegistry}
+              siteConfig={siteConfig}
+              menuConfig={menuConfig}
+              themeConfig={baseResolvedRuntime.themeConfig}
+              refDocuments={refDocuments}
+              tenantCss={tenantCss}
+              adminCss={adminCss}
+              NotFoundComponent={NotFoundComponent}
+            />
+          }
+        />
+        <Route
+          path="/admin"
+          element={
+            <StudioRoute
+              pageRegistry={pageRegistry}
+              schemas={schemas}
+              siteConfig={siteConfig}
+              menuConfig={menuConfig}
+              themeConfig={baseResolvedRuntime.themeConfig}
+              refDocuments={refDocuments}
+              tenantCss={tenantCss}
+              adminCss={adminCss}
+              addSectionConfig={addSectionConfig}
+              addableSectionTypes={addableSectionTypes}
+              webMcp={config.webmcp}
+              saveToFile={persistence.saveToFile}
+              hotSave={persistence.hotSave}
+              coldSave={persistence.coldSave}
+              showLocalSave={persistence.showLocalSave}
+              showHotSave={persistence.showHotSave}
+              showColdSave={persistence.showColdSave}
+            />
+          }
+        />
+        <Route
+          path="/admin/*"
+          element={
+            <StudioRoute
+              pageRegistry={pageRegistry}
+              schemas={schemas}
+              siteConfig={siteConfig}
+              menuConfig={menuConfig}
+              themeConfig={baseResolvedRuntime.themeConfig}
+              refDocuments={refDocuments}
+              tenantCss={tenantCss}
+              adminCss={adminCss}
+              addSectionConfig={addSectionConfig}
+              addableSectionTypes={addableSectionTypes}
+              webMcp={config.webmcp}
+              saveToFile={persistence.saveToFile}
+              hotSave={persistence.hotSave}
+              coldSave={persistence.coldSave}
+              showLocalSave={persistence.showLocalSave}
+              showHotSave={persistence.showHotSave}
+              showColdSave={persistence.showColdSave}
+            />
+          }
+        />
+        <Route
+          path="/admin/preview"
+          element={<PreviewRoute tenantCss={tenantCss} adminCss={adminCss} />}
+        />
+        <Route
+          path="/admin/preview/*"
+          element={<PreviewRoute tenantCss={tenantCss} adminCss={adminCss} />}
+        />
+        <Route path="*" element={<NotFoundComponent />} />
+      </Route>
+    );
+    return createBrowserRouter(routes, { basename: routerBasePath });
+  }, [
+    NotFoundComponent,
+    addSectionConfig,
+    addableSectionTypes,
+    adminCss,
+    baseResolvedRuntime.themeConfig,
+    menuConfig,
+    pageRegistry,
+    persistence.coldSave,
+    persistence.hotSave,
+    persistence.saveToFile,
+    persistence.showColdSave,
+    persistence.showHotSave,
+    persistence.showLocalSave,
+    refDocuments,
+    routerBasePath,
+    schemas,
+    siteConfig,
+    tenantCss,
+    config.webmcp,
+  ]);
+
   if (!isReady) {
     return (
       <div
@@ -127,97 +262,7 @@ export function JsonPagesEngine({ config }: JsonPagesEngineProps) {
           overlayDisabledSectionTypes: config.overlayDisabledSectionTypes,
         }}
       >
-        <BrowserRouter basename={routerBasePath}>
-          <Routes>
-            <Route
-              path="/"
-              element={
-                <VisitorRoute
-                  pageRegistry={pageRegistry}
-                  siteConfig={siteConfig}
-                  menuConfig={menuConfig}
-                  themeConfig={baseResolvedRuntime.themeConfig}
-                  refDocuments={refDocuments}
-                  tenantCss={tenantCss}
-                  adminCss={adminCss}
-                  NotFoundComponent={NotFoundComponent}
-                />
-              }
-            />
-            <Route
-              path="/*"
-              element={
-                <VisitorRoute
-                  pageRegistry={pageRegistry}
-                  siteConfig={siteConfig}
-                  menuConfig={menuConfig}
-                  themeConfig={baseResolvedRuntime.themeConfig}
-                  refDocuments={refDocuments}
-                  tenantCss={tenantCss}
-                  adminCss={adminCss}
-                  NotFoundComponent={NotFoundComponent}
-                />
-              }
-            />
-            <Route
-              path="/admin"
-              element={
-                <StudioRoute
-                  pageRegistry={pageRegistry}
-                  schemas={schemas}
-                  siteConfig={siteConfig}
-                  menuConfig={menuConfig}
-                  themeConfig={baseResolvedRuntime.themeConfig}
-                  refDocuments={refDocuments}
-                  tenantCss={tenantCss}
-                  adminCss={adminCss}
-                  addSectionConfig={addSectionConfig}
-                  addableSectionTypes={addableSectionTypes}
-                  webMcp={config.webmcp}
-                  saveToFile={persistence.saveToFile}
-                  hotSave={persistence.hotSave}
-                  coldSave={persistence.coldSave}
-                  showLocalSave={persistence.showLocalSave}
-                  showHotSave={persistence.showHotSave}
-                  showColdSave={persistence.showColdSave}
-                />
-              }
-            />
-            <Route
-              path="/admin/*"
-              element={
-                <StudioRoute
-                  pageRegistry={pageRegistry}
-                  schemas={schemas}
-                  siteConfig={siteConfig}
-                  menuConfig={menuConfig}
-                  themeConfig={baseResolvedRuntime.themeConfig}
-                  refDocuments={refDocuments}
-                  tenantCss={tenantCss}
-                  adminCss={adminCss}
-                  addSectionConfig={addSectionConfig}
-                  addableSectionTypes={addableSectionTypes}
-                  webMcp={config.webmcp}
-                  saveToFile={persistence.saveToFile}
-                  hotSave={persistence.hotSave}
-                  coldSave={persistence.coldSave}
-                  showLocalSave={persistence.showLocalSave}
-                  showHotSave={persistence.showHotSave}
-                  showColdSave={persistence.showColdSave}
-                />
-              }
-            />
-            <Route
-              path="/admin/preview"
-              element={<PreviewRoute tenantCss={tenantCss} adminCss={adminCss} />}
-            />
-            <Route
-              path="/admin/preview/*"
-              element={<PreviewRoute tenantCss={tenantCss} adminCss={adminCss} />}
-            />
-            <Route path="*" element={<NotFoundComponent />} />
-          </Routes>
-        </BrowserRouter>
+        <RouterProvider router={router} />
       </ConfigProvider>
       </IconRegistryContext.Provider>
     </EngineErrorBoundary>

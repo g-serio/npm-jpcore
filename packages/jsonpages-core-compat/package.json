@@ -1,6 +1,6 @@
 {
   "name": "@jsonpages/core",
-  "version": "1.0.125",
+  "version": "1.0.126",
   "private": false,
   "type": "module",
   "description": "Compatibility bridge package. Use @olonjs/core instead.",
@@ -20,7 +20,7 @@
     "index.d.ts"
   ],
   "dependencies": {
-    "@olonjs/core": "^1.0.125"
+    "@olonjs/core": "^1.0.126"
   },
   "publishConfig": {
     "access": "public"

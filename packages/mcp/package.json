@@ -1,6 +1,6 @@
 {
   "name": "@olonjs/mcp",
-  "version": "1.0.120",
+  "version": "1.0.121",
   "description": "Local MCP server bridge for OlonJS Tenant Zero-UI automation via Playwright",
   "private": false,
   "type": "module",
