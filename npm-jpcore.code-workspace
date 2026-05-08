@@ -35,6 +35,9 @@
 		},
 		{
 			"path": "../temp/procult"
+		},
+		{
+			"path": "../temp/design-md-radice"
 		}
 	]
 }
