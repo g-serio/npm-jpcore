@@ -47,6 +47,7 @@ Optional: `Follow-ups`, `Open Points`, `Compliance mapping`, `Risk mitigation`, 
 | 0004 | [Scroll restoration in `JsonPagesEngine`](./ADR-0004-scroll-restoration-in-json-pages-engine.md) | Deprecated — reverted | 2026-05-04 |
 | 0005 | [Optional inside-router slot for tenant scroll UX](./ADR-0005-optional-inside-router-slot-for-tenant-scroll-ux.md) | Accepted — pending implementation and verification | 2026-05-04 |
 | 0006 | [Data router and `ScrollRestoration` in `JsonPagesEngine`](./ADR-0006-data-router-and-scroll-restoration-in-jsonpagesengine.md) | Proposed — pending implementation, QA, and acceptance | 2026-05-04 |
+| 0007 | [Section capsule lazy-loading and heavy-dep budget for tenant apps](./ADR-0007-section-lazy-load-and-heavy-dep-budget.md) | Proposed — pending implementation and verification | 2026-05-08 |
 
 ## For agents
 
