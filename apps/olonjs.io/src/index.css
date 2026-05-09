@@ -903,3 +903,16 @@
   --info-foreground:            var(--theme-modes-light-colors-info-foreground);
   --info-border:                var(--theme-modes-light-colors-info-border);
 }
+
+/* ─────────────────────────────────────────────────────────────
+   Radix portal z-index fix
+   Migrated from @olonjs/core admin-skin.css per ADR-0009 D6 / Task 1.2
+   so that visitor builds (which will use OlonJSEngine without
+   admin-skin injection) keep popover/select/tooltip layered above
+   sticky headers and modals. Studio mode also benefits — admin-skin
+   has the same rule, but a duplicate is harmless and keeps the
+   visitor self-sufficient.
+───────────────────────────────────────────────────────────── */
+[data-radix-portal] {
+  z-index: 9999 !important;
+}
