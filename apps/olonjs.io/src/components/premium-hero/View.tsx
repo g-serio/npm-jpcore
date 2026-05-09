@@ -131,10 +131,24 @@ export function PremiumHeroView({ data }: PremiumHeroViewProps) {
           variants={fadeUpVariants}
         >
           <a href="https://www.npmjs.com/package/@olonjs/core">
-            <img alt="npm version" src="https://img.shields.io/npm/v/@olonjs/core?color=blue&style=flat" />
+            <img
+              alt="npm version"
+              src="https://img.shields.io/npm/v/@olonjs/core?color=blue&style=flat"
+              width="94"
+              height="20"
+              loading="lazy"
+              decoding="async"
+            />
           </a>
           <a href="https://github.com/olonjs/npm-jpcore/blob/main/LICENSE">
-            <img alt="license" src="https://img.shields.io/badge/license-MIT-green?style=flat" />
+            <img
+              alt="license"
+              src="https://img.shields.io/badge/license-MIT-green?style=flat"
+              width="78"
+              height="20"
+              loading="lazy"
+              decoding="async"
+            />
           </a>
         </motion.div>
 

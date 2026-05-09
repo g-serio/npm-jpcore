@@ -7,28 +7,52 @@
 	<link rel="icon" type="image/svg+xml" href="/favicon.svg">
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link href="https://fonts.googleapis.com/css2?family=Instrument+Sans:ital,wght@0,400;0,500;0,600;0,700;1,400&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+    <!-- Non-blocking Google Fonts: preload as style, then swap to stylesheet on load.
+         Saves ~1.4s on mobile LCP per Lighthouse audit (render-blocking-insight). -->
+    <link
+      rel="preload"
+      as="style"
+      href="https://fonts.googleapis.com/css2?family=Instrument+Sans:ital,wght@0,400;0,500;0,600;0,700;1,400&family=JetBrains+Mono:wght@400;500&display=swap"
+      onload="this.onload=null;this.rel='stylesheet'"
+    />
+    <noscript>
+      <link
+        rel="stylesheet"
+        href="https://fonts.googleapis.com/css2?family=Instrument+Sans:ital,wght@0,400;0,500;0,600;0,700;1,400&family=JetBrains+Mono:wght@400;500&display=swap"
+      />
+    </noscript>
     <title>Olon</title>
     <script>
-      // Google Analytics — deferred to keep GTM (~463KB raw / ~157KB gzipped)
-      // off the critical render path. See ADR-0007.
+      // Google Analytics — heavily deferred. GTM (~473 KB raw / ~161 KB gz)
+      // contributes ~178ms script-eval to TBT on mobile per Lighthouse audit.
+      // Strategy: load on first user interaction (scroll/click/touch/keydown)
+      // OR after 10s timeout, whichever comes first. Keeps GTM out of FCP/LCP/TBT
+      // window entirely for visitors who bounce or just read above-the-fold.
+      // See ADR-0007 + ADR-0008 (Phase A4).
       window.dataLayer = window.dataLayer || [];
       function gtag(){dataLayer.push(arguments);}
       gtag('js', new Date());
       gtag('config', 'G-HZ9XVH9GK1');
+      var gtagLoaded = false;
       function loadGtag() {
+        if (gtagLoaded) return;
+        gtagLoaded = true;
         var s = document.createElement('script');
         s.async = true;
         s.src = 'https://www.googletagmanager.com/gtag/js?id=G-HZ9XVH9GK1';
         document.head.appendChild(s);
+        cleanup();
       }
-      if ('requestIdleCallback' in window) {
-        window.addEventListener('load', function () {
-          requestIdleCallback(loadGtag, { timeout: 4000 });
+      var triggers = ['scroll', 'click', 'touchstart', 'keydown', 'mousemove'];
+      function cleanup() {
+        triggers.forEach(function (e) {
+          window.removeEventListener(e, loadGtag, { passive: true });
         });
-      } else {
-        window.addEventListener('load', function () { setTimeout(loadGtag, 2000); });
       }
+      triggers.forEach(function (e) {
+        window.addEventListener(e, loadGtag, { passive: true, once: true });
+      });
+      setTimeout(loadGtag, 10000);
     </script>
   </head>
   <body>

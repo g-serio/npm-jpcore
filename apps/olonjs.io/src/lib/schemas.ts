@@ -1,13 +1,21 @@
-import { EmptyTenantSchema } from '@/components/empty-tenant';
-import { FooterSchema } from '@/components/footer';
-import { FormDemoSchema, FormDemoSubmissionSchema } from '@/components/form-demo';
-import { HeaderSchema } from '@/components/header';
-import { PremiumCtaSchema } from '@/components/premium-cta';
-import { PremiumHeroSchema } from '@/components/premium-hero';
-import { ScrollAccordionSchema } from '@/components/scroll-accordion';
-import { StickySectionSchema } from '@/components/sticky-section';
-import { Content7Schema } from '@/components/content-7';
-import { CodeBlockSchema } from '@/components/code-block';
+// IMPORTANT: import schemas directly from ./schema sub-path, NOT from the
+// component barrel (./<name>). The barrel re-exports './View' which would
+// drag heavy View dependencies (Shiki, Tiptap, motion, react-scroll, etc.)
+// into the main bundle that ships to every visitor — even though the Views
+// themselves are lazy-loaded via ComponentRegistry.
+//
+// Saves ~150-200 KB raw on the main chunk per Lighthouse audit
+// (unused-javascript, ~442 KB unused on 1040 KB main chunk pre-fix).
+import { EmptyTenantSchema } from '@/components/empty-tenant/schema';
+import { FooterSchema } from '@/components/footer/schema';
+import { FormDemoSchema, FormDemoSubmissionSchema } from '@/components/form-demo/schema';
+import { HeaderSchema } from '@/components/header/schema';
+import { PremiumCtaSchema } from '@/components/premium-cta/schema';
+import { PremiumHeroSchema } from '@/components/premium-hero/schema';
+import { ScrollAccordionSchema } from '@/components/scroll-accordion/schema';
+import { StickySectionSchema } from '@/components/sticky-section/schema';
+import { Content7Schema } from '@/components/content-7/schema';
+import { CodeBlockSchema } from '@/components/code-block/schema';
 
 export const SECTION_SCHEMAS = {
   'empty-tenant': EmptyTenantSchema,

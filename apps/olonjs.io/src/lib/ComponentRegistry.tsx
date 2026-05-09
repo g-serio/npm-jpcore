@@ -1,10 +1,16 @@
 import { type ComponentType, type FC, lazy, Suspense } from 'react';
 import type { SectionType } from '@/types';
 import type { SectionComponentPropsMap } from '@/types';
-import { EmptyTenantView } from '@/components/empty-tenant';
-import { FooterView } from '@/components/footer';
-import { HeaderView } from '@/components/header';
-import { PremiumHeroView } from '@/components/premium-hero';
+// IMPORTANT: import View components directly from ./View sub-paths, NOT from
+// the component barrels (./<name>). The barrels re-export './schema' and
+// './types', which is fine for tree-shaking in theory, but in practice Vite
+// is more reliable when the import target is a leaf module. This helps the
+// section's own schema (Zod) NOT get pulled twice (once via barrel, once via
+// the explicit schema imports in lib/schemas.ts).
+import { EmptyTenantView } from '@/components/empty-tenant/View';
+import { FooterView } from '@/components/footer/View';
+import { HeaderView } from '@/components/header/View';
+import { PremiumHeroView } from '@/components/premium-hero/View';
 
 // Lazy wrapper for named-export Section Views. See ADR-0007: sections that are
 // not guaranteed above the fold are split into their own chunks and resolved on
