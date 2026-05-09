@@ -18,7 +18,7 @@ import { DefaultNotFound } from '../../lib/DefaultNotFound';
 import { ConfigProvider } from '../config/ConfigContext';
 import { themeManager } from '../theme/theme-manager';
 import { normalizeBasePath } from '../url';
-import { IconRegistryContext } from '../../studio/admin/IconRegistryContext';
+import { IconRegistryContext } from '../icons/IconRegistryContext';
 import { EngineErrorBoundary } from './EngineErrorBoundary';
 import { PreviewRoute } from './PreviewRoute';
 import { StudioRoute } from './StudioRoute';
