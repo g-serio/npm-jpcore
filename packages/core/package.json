@@ -35,7 +35,9 @@
   "scripts": {
     "build": "vite build",
     "prepack": "node scripts/sync-peers-from-stack.js",
-    "test": "vitest run"
+    "test": "vitest run",
+    "test:boundary": "node scripts/check-runtime-decoupling.mjs",
+    "test:all": "npm run test:boundary && npm test"
   },
   "peerDependencies": {
     "react": "^19.0.0",
