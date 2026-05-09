@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { BaseArrayItem, BaseSectionData, ImageSelectionSchema } from '@olonjs/core';
+import { BaseArrayItem, BaseSectionData, ImageSelectionSchema } from '@olonjs/core/runtime';
 
 export const StickySectionProjectSchema = BaseArrayItem.extend({
   name: z.string().describe('ui:text'),

@@ -1,7 +1,7 @@
 import * as React from "react"
 import { Switch as SwitchPrimitive } from "radix-ui"
 
-import { cn } from "@olonjs/core"
+import { cn } from "@olonjs/core/runtime"
 
 function Switch({
   className,

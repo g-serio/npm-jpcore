@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { BaseSectionData, CtaSchema, ImageSelectionSchema } from '@olonjs/core';
+import { BaseSectionData, CtaSchema, ImageSelectionSchema } from '@olonjs/core/runtime';
 import { MenuItemSchema } from '@/lib/menu-item-schema';
 
 /**

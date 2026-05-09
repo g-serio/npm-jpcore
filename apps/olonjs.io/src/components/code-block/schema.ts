@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { BaseArrayItem, BaseSectionData } from '@olonjs/core';
+import { BaseArrayItem, BaseSectionData } from '@olonjs/core/runtime';
 
 export const CodeBlockTabSchema = BaseArrayItem.extend({
   filename: z.string().describe('ui:text'),

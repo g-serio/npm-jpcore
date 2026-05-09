@@ -3,7 +3,7 @@
 import * as React from "react"
 import { HoverCard as HoverCardPrimitive } from "radix-ui"
 
-import { cn } from "@olonjs/core"
+import { cn } from "@olonjs/core/runtime"
 
 function HoverCard({
   ...props

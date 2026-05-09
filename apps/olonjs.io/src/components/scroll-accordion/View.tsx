@@ -2,7 +2,7 @@
 
 import { ArrowRight } from 'lucide-react';
 import { useCallback, useEffect, useRef, useState, type CSSProperties } from 'react';
-import { resolveAssetUrl, useConfig } from '@olonjs/core';
+import { resolveAssetUrl, useConfig } from '@olonjs/core/runtime';
 import { Button } from '@/components/ui/button';
 import type { ScrollAccordionData, ScrollAccordionSettings } from './types';
 

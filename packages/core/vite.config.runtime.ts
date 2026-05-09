@@ -31,32 +31,15 @@ export default defineConfig({
     react(),
     tailwindcss(),
     dts({
-      // Emit a separate types entry for the runtime subpath. The full
-      // build still emits dist/index.d.ts; we add dist/runtime.d.ts here.
-      // The runtime entry never references JsonPagesEngine /
-      // StudioRoute / PreviewRoute, so excluding them from the include
-      // pattern keeps the dts pass clean (those files reference
-      // `?inline` CSS modules that have no .d.ts and are admin-only).
+      // The dts plugin walks the imports starting from the entry. We
+      // pass the full src/ as include so every transitively-reachable
+      // module gets typed; api-extractor then rolls them up into a
+      // single runtime.d.ts. The wide include matters here because the
+      // entry file pulls types from contract/, dna/, runtime/, lib/,
+      // and a slice of studio/ — narrowing the include caused
+      // api-extractor to crash on missing module references.
       insertTypesEntry: false,
-      include: [
-        'src/runtime-entry.ts',
-        'src/runtime/engine/JsonPagesEngineCore.tsx',
-        'src/runtime/engine/OlonJSEngine.tsx',
-        'src/runtime/engine/EngineErrorBoundary.tsx',
-        'src/runtime/engine/VisitorRoute.tsx',
-        'src/runtime/engine/head-sync.ts',
-        'src/runtime/engine/route-utils.ts',
-        'src/runtime/config/**',
-        'src/runtime/rendering/**',
-        'src/runtime/theme/**',
-        'src/runtime/url/**',
-        'src/runtime/assets/**',
-        'src/runtime/icons/**',
-        'src/contract/**',
-        'src/lib/**',
-        'src/studio/StudioContext.tsx',
-        'src/studio/events.ts',
-      ],
+      include: ['src'],
       exclude: ['src/**/*.test.ts', 'src/**/*.test.tsx', 'src/**/vitest-setup.ts'],
       rollupTypes: true,
       entryRoot: 'src',

@@ -23,7 +23,38 @@
 export { OlonJSEngine, type OlonJSEngineProps } from './runtime/engine/OlonJSEngine';
 
 // ── Configuration types ───────────────────────────────────────────
-export type { JsonPagesConfig } from './contract/types-engine';
+export type {
+  JsonPagesConfig,
+  LibraryImageEntry,
+  AddSectionConfig,
+} from './contract/types-engine';
+
+// ── Config resolution (used by SSG entry) ────────────────────────
+export { resolveRuntimeConfig } from './contract/config-resolver';
+
+// ── Utility ──────────────────────────────────────────────────────
+// cn() is the className merge helper used by every tenant ui/* component.
+// Re-exported here so tenant code can import it from /runtime without
+// bringing in the full Studio bundle.
+export { cn } from './lib/utils';
+
+// ── Kernel types & registries (augmentable via MTRP) ──────────────
+// The tenant's MTRP module augmentation (`declare module
+// '@olonjs/core/runtime'`) needs these interfaces to attach to.
+// Without this re-export the augmentation has no anchor and
+// JsonPagesConfig.PageConfig.sections falls back to FallbackSection.
+export type {
+  SectionDataRegistry,
+  SectionSettingsRegistry,
+  BaseSection,
+  SectionType,
+  MenuItem,
+  PageConfig,
+  SiteConfig,
+  ThemeConfig,
+  MenuConfig,
+  ProjectState,
+} from './contract/kernel';
 
 // ── Config context (runtime-side state container) ─────────────────
 export {
@@ -63,3 +94,13 @@ export {
   useIconRegistry,
   type IconRegistry,
 } from './runtime/icons/IconRegistryContext';
+
+// ── DNA surface ───────────────────────────────────────────────────
+// Tenant-owned framework primitives: deploy steps + types, cloud save
+// stream, OlonForms context, base section schemas. Verified not to
+// transitively import from studio/admin (only `react` and `zod`).
+// These need to be reachable from tenants that adopt @olonjs/core/runtime
+// because the tenant App.tsx uses them in both visitor and admin paths
+// (forms render in visitor; deploy/save flows are admin-only but their
+// constants are statically imported).
+export * from './dna';

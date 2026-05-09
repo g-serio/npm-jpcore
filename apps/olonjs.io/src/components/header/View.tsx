@@ -9,8 +9,8 @@ import {
   useScroll,
   type Variants,
 } from 'motion/react';
-import type { MenuItem } from '@olonjs/core';
-import { resolveAssetUrl, useConfig } from '@olonjs/core';
+import type { MenuItem } from '@olonjs/core/runtime';
+import { resolveAssetUrl, useConfig } from '@olonjs/core/runtime';
 import { scroller } from 'react-scroll';
 import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
 import useMeasure from 'react-use-measure';

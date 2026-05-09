@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { BaseArrayItem, BaseSectionData, CtaSchema, ImageSelectionSchema } from '@olonjs/core';
+import { BaseArrayItem, BaseSectionData, CtaSchema, ImageSelectionSchema } from '@olonjs/core/runtime';
 
 export const ScrollAccordionItemSchema = BaseArrayItem.extend({
   number: z.string().describe('ui:text'),

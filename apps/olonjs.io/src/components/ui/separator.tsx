@@ -1,5 +1,5 @@
 import * as React from 'react'
-import { cn } from '@olonjs/core'
+import { cn } from '@olonjs/core/runtime'
 
 const Separator = React.forwardRef<
   HTMLDivElement,

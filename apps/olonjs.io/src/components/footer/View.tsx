@@ -2,7 +2,7 @@
 
 import { motion, useReducedMotion, type Variants } from 'motion/react';
 import type { CSSProperties, SVGProps } from 'react';
-import { resolveAssetUrl, useConfig } from '@olonjs/core';
+import { resolveAssetUrl, useConfig } from '@olonjs/core/runtime';
 import { TwoToneHeading } from '@/components/ui/two-tone-heading';
 import type { FooterData, FooterSettings } from './types';
 

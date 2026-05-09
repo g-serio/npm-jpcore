@@ -1,7 +1,7 @@
 'use client';
 
 import { ChevronRight } from 'lucide-react';
-import { resolveAssetUrl, useConfig } from '@olonjs/core';
+import { resolveAssetUrl, useConfig } from '@olonjs/core/runtime';
 import type { CSSProperties } from 'react';
 import { cn } from '@/lib/utils';
 import type { Content7Data, Content7Settings } from './types';

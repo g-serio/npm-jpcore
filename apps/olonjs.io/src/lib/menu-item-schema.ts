@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { BaseArrayItem } from '@olonjs/core';
+import { BaseArrayItem } from '@olonjs/core/runtime';
 
 /**
  * Menu item shape for `menu.json` / shell lists (ECIP §5.3 stable `id`).
