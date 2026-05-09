@@ -1,0 +1,115 @@
+# Core/Studio Split — Baseline metrics (pre-Phase-1)
+
+Captured 2026-05-10 on branch `claude/busy-knuth-3be562`, immediately
+before Phase 1 (source decoupling) of the implementation plan in
+`docs/plans/core-studio-split.md`.
+
+These numbers are the reference we measure against as Phase 1, 2, 3, 4
+ship. Any regression vs. this baseline is a hard stop until investigated.
+
+==============================================================================
+1. @olonjs/core — build outputs
+==============================================================================
+
+After `cd packages/core && npm run build` (Vite 6 library mode):
+
+  dist/olonjs-core.js          534.91 kB raw │ 127.57 kB gzipped   (ESM)
+  dist/olonjs-core.umd.cjs     353.95 kB raw │ 104.55 kB gzipped   (UMD/CJS)
+  dist/index.d.ts               35.92 kB raw                       (types)
+
+The ESM bundle is ~535 KB raw / 128 KB gzipped. This is the bundle that
+gets pulled into every consuming tenant today. After Phase 2 of the split,
+two bundles ship: this one (kept) plus a new `olonjs-core-runtime.js`
+(target ≤ 60% of full).
+
+==============================================================================
+2. @olonjs/core — test results
+==============================================================================
+
+After `cd packages/core && npm test`:
+
+  Test Files:  6 passed │ 3 failed   (9 total)
+  Tests:      28 passed │ 2 failed  (30 total)
+
+Failing test files (pre-existing, NOT caused by this work):
+  - src/runtime/theme/theme-manager.test.ts        (env / loading issue)
+  - src/studio/admin/selection-path.test.ts        (env / loading issue)
+  - src/webmcp/webmcp-contracts.test.ts            (2 logic assertions)
+
+These failures predate the ADR-0009 work. Phase 1 must keep at least
+these 28 tests passing and add no new failures. Restoring the 2 broken
+tests is out of scope for the split (separate cleanup task).
+
+==============================================================================
+3. apps/olonjs.io — dist after Phase 1-4 perf slices
+==============================================================================
+
+After `cd apps/olonjs.io && npm run build`. The build reflects the four
+perf slices already shipped on this branch (defer GTM, lazy Shiki, lazy
+sections, optimized hero image).
+
+Initial entry chunk (visitor + admin combined, since App.tsx still uses
+a single import path today):
+
+  dist/assets/index-C5gIr8ju.js   1,321,883 bytes raw   ~395 kB gzipped
+
+Other notable chunks (lazy, not on first paint):
+
+  index-DFn8KXyB.js                 217,819 bytes      (Shiki entry chunk)
+  index-D64TltSW.js                  13,065 bytes
+  index-CpYmsQa4.js                  10,915 bytes      (one section)
+  wasm-CG6Dc4jp.js                  622,336 bytes      (Shiki/oniguruma)
+  emacs-lisp-C9XAeP06.js            779,852 bytes      (Shiki grammar)
+  cpp-CofmeUqb.js                   626,082 bytes      (Shiki grammar)
+  hero-plug-graded-768.avif          18,777 bytes      (LCP image)
+
+Total dist: ~19 MB (mostly Shiki language grammars, all lazy).
+
+==============================================================================
+4. Lighthouse scores (post-Phase-1-4, captured 2026-05-08)
+==============================================================================
+
+Source: olon-mobile.report.html, olon-desktop.report.html (local artifacts
+provided by the user, summarized in docs/plans/perf-olonjs-io.md
+"Mid-implementation measurement" section).
+
+  Mobile  Performance:  58
+            FCP: 1.9 s   LCP: 4.9 s   TBT: 860 ms   SI: 4.5 s   CLS: 0
+  Desktop Performance:  83
+            FCP: 1.4 s   LCP: 2.1 s   TBT: 70 ms    SI: 1.6 s   CLS: 0
+
+The Studio/runtime split (this work) is expected to push mobile to ≥ 90
+by removing Studio code from the visitor bundle, dropping the entry
+chunk from ~395 kB gzipped to ≤ 250 kB gzipped (target per ADR-0008 / D-
+in ADR-0009).
+
+==============================================================================
+5. Verification commands (use these for every Phase 1+ checkpoint)
+==============================================================================
+
+    # In packages/core
+    cd packages/core
+    npm run build      # must succeed; emit sizes for diffing
+    npm test           # must keep ≥ 28 tests passing; 2 pre-existing
+                       # failures may persist but no new failures allowed
+
+    # In apps/olonjs.io
+    cd apps/olonjs.io
+    npm run build      # must succeed
+    # Compare visitor entry chunk size against this baseline (1,321,883 B)
+
+After Phase 3.1 (tenant adopts /runtime entry), the visitor entry chunk
+must be ≤ 250 KB gzipped. After Phase 4.1, mobile Lighthouse must be ≥ 90.
+
+==============================================================================
+6. Pre-existing dirty files in the worktree (not part of this work)
+==============================================================================
+
+Files modified before this session, owned by other unrelated work:
+
+  M  packages/cli/assets/templates/alpha/src_tenant.sh
+  M  packages/cli/src/index.js
+  M  packages/jsonpages-cli-compat/bin/jsonpages.js
+  M  .claude/settings.local.json   (gitignored)
+
+Do not touch any of these during the split implementation.
