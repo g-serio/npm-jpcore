@@ -33,7 +33,9 @@
     "access": "public"
   },
   "scripts": {
-    "build": "vite build",
+    "build:full": "vite build",
+    "build:runtime": "vite build --config vite.config.runtime.ts",
+    "build": "node scripts/build-dual.mjs",
     "prepack": "node scripts/sync-peers-from-stack.js",
     "test": "vitest run",
     "test:boundary": "node scripts/check-runtime-decoupling.mjs",
