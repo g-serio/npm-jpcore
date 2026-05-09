@@ -1,9 +1,9 @@
 # Implementation Plan: Performance optimization for `apps/olonjs.io`
 
-Status: **Ready for incremental implementation** — pending user greenlight on each phase
-Decision record: [ADR-0007](../decisions/ADR-0007-section-lazy-load-and-heavy-dep-budget.md)
+Status: **Phases 1–4 shipped (mobile 42 → 58); Phase A queued** — pending user greenlight per phase
+Decision records: [ADR-0007](../decisions/ADR-0007-section-lazy-load-and-heavy-dep-budget.md) (Phases 1–5, JS bundle), [ADR-0008](../decisions/ADR-0008-perf-roadmap-to-mobile-90.md) (full roadmap to mobile 90+: Phases A, B, C)
 Owner: tenant runtime (`apps/olonjs.io`)
-Out of scope: changes to `@olonjs/core` public API; SSR/SSG migration; redesign of Studio bundle.
+Out of scope: changes to `@olonjs/core` public API; SSR/SSG migration; redesign of Studio bundle (likely future ADR-0009).
 
 ## Goal
 
@@ -237,3 +237,146 @@ After each phase:
 1. Confirm we proceed phase-by-phase with a measurement gate between phases (recommended), vs. landing all phases in one branch and measuring once at the end.
 2. Confirm CI integration: which CI surface should `size-limit` plug into? GitHub Actions? Vercel preview check? Local pre-push only?
 3. Confirm the analytics-deferral approach: do we keep GTM, or is this a moment to consider a lighter analytics tool (e.g. Plausible)? If keeping GTM, deferring is straightforward; switching tools is a separate decision and out of scope here.
+
+---
+
+## Mid-implementation measurement (2026-05-08, after Phases 1–4)
+
+After shipping Phases 1–4 (defer GTM, lazy Shiki, lazy below-fold sections, optimize hero image), Lighthouse 13.3.0 reports:
+
+| Metric | Baseline | After Phases 1–4 | Δ |
+|---|---|---|---|
+| Performance (mobile) | 42 | **58** | +16 |
+| Performance (desktop) | 81 | **83** | +2 |
+| LCP (mobile) | 7.3s | **4.9s** | −2.4s |
+| TBT (mobile) | 1300ms | **860ms** | −440ms |
+| Speed Index (mobile) | 7.2s | **4.5s** | −2.7s |
+| CLS | 0 | 0 | — |
+
+The 16-point mobile gain validates the ADR-0007 hypothesis. The remaining LCP gap is now dominated by **two specific** problems Lighthouse explicitly calls out:
+
+1. **Render-blocking `fonts.googleapis.com/css2?…`** — Lighthouse: *Est savings of 1,450 ms*. The Google Fonts stylesheet is 1.4 KiB but its position on the critical path costs ~1.5 s of LCP on throttled mobile.
+2. **Oversized PNGs** flagged by `image-delivery-insight`:
+   - `1778141660323-site_as_holon.png` 512×512 → displayed 109×109 (−18 KB)
+   - `1778141326605-DATACONTRACT.png` 512×512 → displayed 109×109 (−15 KB)
+   - `1778141730071-2bgen_1_.png` 512×512 → displayed 193×193 (−15 KB)
+   - `1778098423562-olon-mark-dark-256.png` 256×256 → displayed 49×49 (−9 KB)
+3. **Cache TTL of 600,000 ms (10 minutes)** on hashed assets — Lighthouse: *Est savings of 752 KiB on repeat view*. Vercel default; should be 1 year `immutable` for content-hashed files in `assets/`.
+
+Phase A below addresses these three.
+
+The main JS chunk is still `1,322 KB raw / 395 KB gzipped` and accounts for ~1.4 s of mobile bootup time. Splitting Studio out of `@olonjs/core` is the architectural move that would close that gap; see "Phase B / ADR-0009 candidate" below — out of scope for the current ADR set.
+
+---
+
+## Phase A — Critical-rendering-path fixes (post-Phase-4 quick wins)
+
+**Why:** Three independent, low-risk changes that together recover ~1.5 s of LCP on mobile and close the gap toward the 90-point target. None of them touch `@olonjs/core` or the section architecture.
+
+Decision record: [ADR-0008](../decisions/ADR-0008-perf-roadmap-to-mobile-90.md) for the font deferral; the other two are operational tweaks documented inline here.
+
+### A.1 — Defer Google Fonts CSS via media-swap
+
+**Why:** Lighthouse's largest single remaining LCP opportunity (~1,450 ms). See [ADR-0008](../decisions/ADR-0008-perf-roadmap-to-mobile-90.md) for the full rationale.
+
+**Tasks**
+
+1. In `apps/olonjs.io/index.html`, replace the current `<link rel="stylesheet" href="…fonts.googleapis.com…">` with the media-swap pattern:
+   ```html
+   <link rel="preload" as="style" href="…fonts.googleapis.com…" />
+   <link rel="stylesheet" href="…fonts.googleapis.com…"
+         media="print" onload="this.media='all'" />
+   <noscript><link rel="stylesheet" href="…fonts.googleapis.com…" /></noscript>
+   ```
+2. Keep the existing `<link rel="preconnect">` to both `fonts.googleapis.com` and `fonts.gstatic.com`.
+3. Verify by viewing source on the deployed page that the three `<link>` elements are in place; verify by Lighthouse rerun that the Render-blocking opportunity drops to zero or near-zero.
+
+**Acceptance criteria**
+
+- Lighthouse no longer reports the Google Fonts CSS under "Render-blocking requests".
+- A brief FOUT (Flash of Unstyled Text) is acceptable on first visit, masked by `font-display: swap` already in the URL.
+- Fonts continue to load without `noscript` fallback only being hit by JS-disabled users.
+
+**Exit measurement:** rerun Lighthouse mobile. Expected: LCP drops by ~1.4 s, score moves from 58 → ~70-75.
+
+### A.2 — Resize oversized icon PNGs
+
+**Why:** Four PNGs are served at 5–10× the displayed dimensions, wasting ~57 KB of transfer and a small amount of decode time. Operational fix; no architectural decision needed.
+
+**Tasks**
+
+1. Reuse the `scripts/optimize-hero.mjs` approach (sharp-based, run as one-off): generate resized variants of the four offenders:
+   - `1778141326605-DATACONTRACT.png` → 256×256 (or use SVG if a vector source exists)
+   - `1778141660323-site_as_holon.png` → 256×256
+   - `1778141730071-2bgen_1_.png` → 384×384
+   - `1778098423562-olon-mark-dark-256.png` → 96×96 (or convert the existing logo PNG to use `olon-mark-dark-128.png` already in the assets folder)
+2. Update `home.json` references where applicable, or overwrite the source files in place if no other consumer uses them. Audit with grep before overwriting.
+3. Add `width` and `height` attributes to the `<img>` elements in their respective Section Views (if not already present). Lighthouse currently flags only the two shields.io badges as "unsized images"; the others have CSS dimensions but no intrinsic ones.
+
+**Acceptance criteria**
+
+- `image-delivery-insight` score in Lighthouse goes from 0.5 to 1.
+- Total transfer size for the home page drops by ~57 KB.
+- No visual regression at any breakpoint.
+
+**Exit measurement:** Lighthouse rerun; mobile score expected +1–3 points.
+
+### A.3 — Cache headers in `vercel.json`
+
+**Why:** Lighthouse `cache-insight` reports *Est savings of 752 KiB on repeat view, 1.5 s LCP* because the current Cache-Control TTL is 10 minutes for everything in `/assets/`. Those assets are content-hashed (Vite emits names like `index-C5gIr8ju.js`), so 1-year `immutable` caching is safe and standard.
+
+**Tasks**
+
+1. In `apps/olonjs.io/vercel.json`, add headers config:
+   ```json
+   {
+     "headers": [
+       {
+         "source": "/assets/(.*)",
+         "headers": [
+           { "key": "Cache-Control", "value": "public, max-age=31536000, immutable" }
+         ]
+       },
+       {
+         "source": "/((?!assets/).*)",
+         "headers": [
+           { "key": "Cache-Control", "value": "public, max-age=0, must-revalidate" }
+         ]
+       }
+     ]
+   }
+   ```
+2. Verify on the deployed site with `curl -I https://olon.js.org/assets/index-XXXX.js` that the response carries `Cache-Control: public, max-age=31536000, immutable`.
+3. Verify the HTML root still revalidates (so deploys propagate).
+
+**Acceptance criteria**
+
+- `cache-insight` score in Lighthouse goes from 0 to 1.
+- Repeat-view LCP improves substantially (no quantitative target — it's a separate dimension from cold-start LCP).
+
+**Exit measurement:** Lighthouse rerun for first visit (no change expected); manual check of repeat-view in DevTools → Network tab with cache enabled.
+
+---
+
+## Phase A — Combined exit gate
+
+After A.1, A.2, A.3 ship together:
+
+- [ ] Lighthouse mobile rerun captured.
+- [ ] Mobile Performance score recorded; target ≥ 70 (stretch ≥ 80).
+- [ ] CLS still 0.
+- [ ] No visual regression on home or in Studio.
+
+If mobile reaches ≥ 90 the work is done and ADR-0007 + ADR-0008 can be moved to `Accepted`. If mobile lands in the 70–85 range, Phase B (Studio split, ADR-0009 candidate) becomes necessary.
+
+---
+
+## Phase B — Studio split (ADR-0009 candidate, out of current scope)
+
+The remaining LCP/TBT pressure after Phases 1–4 + A is the main JS chunk (~395 KB gzipped after our work). A large portion of this is `@olonjs/core` Studio code that visitors never use. Splitting Studio off requires:
+
+- Two entry points in `@olonjs/core`: a runtime-only export and a runtime+studio export.
+- Tenant `App.tsx` decides at startup which to load (e.g. by inspecting `window.location.pathname` for `/admin`).
+- Re-test of the editor experience after the split to ensure no Studio path was missed.
+
+This is a Core change with a release impact (likely a minor version bump of `@olonjs/core`). The decision deserves its own ADR. Drafting deferred until after Phase A measurements quantify whether it's actually needed to clear 90.
