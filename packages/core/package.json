@@ -1,6 +1,6 @@
 {
   "name": "@olonjs/core",
-  "version": "1.0.127",
+  "version": "1.1.0",
   "private": false,
   "type": "module",
   "main": "./dist/olonjs-core.umd.cjs",
@@ -11,6 +11,10 @@
       "types": "./dist/index.d.ts",
       "import": "./dist/olonjs-core.js",
       "require": "./dist/olonjs-core.umd.cjs"
+    },
+    "./runtime": {
+      "types": "./dist/runtime.d.ts",
+      "import": "./dist/olonjs-core-runtime.js"
     },
     "./package.json": "./package.json"
   },
