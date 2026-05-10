@@ -2,11 +2,11 @@
 
 ## Status
 
-Proposed — pending implementation and verification (2026-05-08)
+Accepted (2026-05-09) — implemented in `@olonjs/core` v1.1.0. Both bundles publish via `npm run build -w @olonjs/core` (`scripts/build-dual.mjs`). Tenants `apps/olonjs.io` and `apps/tenant-alpha` migrated to `@olonjs/core/runtime` for the visitor path with `JsonPagesEngine` lazy-loaded on `/admin`. Boundary check (`packages/core/scripts/check-runtime-decoupling.mjs`) enforced via `npm run test:boundary`. Production deploy of `apps/olonjs.io` confirms the decoupled artifacts on `gh-pages`.
 
 ## Date
 
-2026-05-08
+2026-05-08 (proposal) · 2026-05-09 (acceptance)
 
 ## Scope
 

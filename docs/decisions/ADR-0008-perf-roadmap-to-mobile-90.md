@@ -2,11 +2,15 @@
 
 ## Status
 
-Proposed — three-phase roadmap; each phase has its own greenlight gate (2026-05-08)
+Accepted as roadmap (2026-05-09). Per-phase status:
+
+- **Phase A — Tactical wins on the visitor critical path:** *In flight.* Non-blocking Google Fonts CSS, deep schema imports in `lib/schemas.ts` and `lib/ComponentRegistry.tsx`, GTM deferred to first-interaction-or-10s, and explicit `width`/`height` on shield badges shipped in commit `4ee9d8e` and deployed to `olon.js.org`. Post-deploy Lighthouse measurement is the next gate.
+- **Phase B — Studio / runtime decoupling:** *Done.* Implemented per [ADR-0009](./ADR-0009-core-studio-split-via-runtime-subpath.md); `@olonjs/core` v1.1.0 ships dual bundles; tenants migrated; boundary check enforced.
+- **Phase C — Polish and budget guards:** *Pending.* Triggered only if Phase A + Phase B together fall short of mobile Performance ≥ 90.
 
 ## Date
 
-2026-05-08
+2026-05-08 (proposal) · 2026-05-09 (acceptance as roadmap; Phase B closed, Phase A in flight)
 
 ## Scope
 

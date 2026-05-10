@@ -20,8 +20,12 @@ Root workspace config is in `package.json` (`workspaces: ["packages/*", "apps/*"
 
 ## `@olonjs/core`
 
-- runtime engine used by tenant apps
-- published package consumed by generated tenants
+- runtime engine and Studio editor surface, shipped as a single npm package with two physical bundles (see [Build and Distribution Topology](#build-and-distribution-topology) below)
+- consumed by generated tenants and bound by [ADR-0009](./decisions/ADR-0009-core-studio-split-via-runtime-subpath.md)
+- public API surface lives at two import specifiers:
+  - `@olonjs/core` — full bundle including Studio admin, FormFactory, AdminSidebar, StudioStage; size ~128 KB gzipped
+  - `@olonjs/core/runtime` — visitor-only subset (engine, rendering, theme, DNA); size ~28 KB gzipped
+- a CI-enforced boundary check (`packages/core/scripts/check-runtime-decoupling.mjs`) prevents the runtime bundle from regressing into Studio admin imports
 
 ## `@olonjs/cli`
 
@@ -73,8 +77,83 @@ Manual edits directly in template DNA files are not the preferred workflow.
 - `npm run release` -> legacy release flow
 - `npm run release:enterprise` -> gated flow (`check:templates`, `dist:dna:all`, then legacy release)
 
+## Build and Distribution Topology
+
+`@olonjs/core` ships **one npm package with two physical bundles**, gated by Node `exports` subpath conditions. This is the implementation of [ADR-0009](./decisions/ADR-0009-core-studio-split-via-runtime-subpath.md).
+
+### Package layout
+
+```
+@olonjs/core (single package, single version)
+└── dist/
+    ├── olonjs-core.js              full bundle (ESM)   — runtime + Studio admin
+    ├── olonjs-core.umd.cjs         full bundle (UMD)   — Node interop
+    ├── olonjs-core-runtime.js      runtime bundle (ESM) — visitor subset
+    ├── index.d.ts                  full types
+    └── runtime.d.ts                runtime-only types
+```
+
+### Subpath exports
+
+`packages/core/package.json` declares two import specifiers:
+
+```json
+"exports": {
+  ".":         { "types": "./dist/index.d.ts",   "import": "./dist/olonjs-core.js",         "require": "./dist/olonjs-core.umd.cjs" },
+  "./runtime": { "types": "./dist/runtime.d.ts", "import": "./dist/olonjs-core-runtime.js" }
+}
+```
+
+The runtime subpath is ESM-only by design (no Node CJS consumer needs the runtime bundle). The full bundle keeps UMD/CJS parity for backwards compatibility.
+
+### Tenant consumption pattern
+
+Tenants import the runtime engine statically and the full Studio engine as a `React.lazy` chunk gated on `/admin`. This keeps the visitor critical path free of editor code while preserving a single binary for tenants that mount Studio:
+
+```tsx
+// apps/<tenant>/src/App.tsx
+import { OlonJSEngine } from '@olonjs/core/runtime';
+
+const isAdminPath =
+  typeof window !== 'undefined' && window.location.pathname.startsWith('/admin');
+
+const LazyJsonPagesEngine = lazy(() =>
+  import('@olonjs/core').then((m) => ({ default: m.JsonPagesEngine })),
+);
+
+return isAdminPath
+  ? <Suspense fallback={null}><LazyJsonPagesEngine config={config} /></Suspense>
+  : <OlonJSEngine config={config} />;
+```
+
+Vite/Rollup observe the two specifiers as distinct dependency edges and emit two output chunks: the visitor entry includes only `olonjs-core-runtime.js`; the admin chunk that includes `olonjs-core.js` is fetched on demand.
+
+### Composition root
+
+`OlonJSEngine` and `JsonPagesEngine` are sibling thin wrappers around `JsonPagesEngineCore` (`packages/core/src/runtime/engine/JsonPagesEngineCore.tsx`). Each invokes the core with a different `routesBuilder`:
+
+- `OlonJSEngine` → `buildRuntimeRoutes` (visitor routes only)
+- `JsonPagesEngine` → builder that mounts visitor routes plus `/admin` (StudioRoute) and `/preview` (PreviewRoute)
+
+This avoids code duplication and keeps the engine boot sequence (config resolution, theme loading, error boundaries, head sync) authored once.
+
+### Module augmentation note
+
+The MTRP module augmentation (`SectionDataRegistry`, `SectionSettingsRegistry`) must target **both** import specifiers in tenant `types.ts`, because TypeScript treats `'@olonjs/core'` and `'@olonjs/core/runtime'` as distinct module identifiers. See [ADR-0009](./decisions/ADR-0009-core-studio-split-via-runtime-subpath.md) for the rationale and the canonical pattern.
+
+### Boundary enforcement
+
+`packages/core/scripts/check-runtime-decoupling.mjs` is a static analyzer that walks the import graph from `src/runtime-entry.ts` and fails if any reachable file imports from `src/studio/admin/` or `src/studio/orchestration/`. Allowed integration points are the three documented edges (`JsonPagesEngine`, `StudioRoute`, `PreviewRoute`). Run via:
+
+```bash
+npm run test:boundary -w @olonjs/core
+```
+
+The check is part of `npm run test:all` and is intended to be wired into CI before publish.
+
 ## Constraints and caveats
 
 - On Windows UNC paths (`\\wsl.localhost\...`), npm/cmd invocation may fail; prefer WSL shell for release operations.
 - `scripts/release.js` currently updates only `tenant-alpha` dependency pin during publish flow.
 - `scripts/release-enterprise.js` adds pre-flight template governance but delegates to legacy release script.
+- Both bundles must be rebuilt together. `npm run build -w @olonjs/core` invokes `scripts/build-dual.mjs` which runs `vite.config.ts` and `vite.config.runtime.ts` in sequence and stitches the dts outputs. Do not invoke either Vite config standalone — the runtime build sets `emptyOutDir: false` to preserve the full build's artifacts and depends on the orchestrator for ordering.

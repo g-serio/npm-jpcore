@@ -40,9 +40,77 @@ Typing (TypeScript types + Zod schemas) serves **two levels**: Governance (Devel
 -   **`src/lib/schemas.ts`** — SECTION_SCHEMAS (aggregate of data schemas per type) + export SectionType.
 -   **`src/lib/ComponentRegistry.tsx`** — Typed Registry: `{ [K in SectionType]: React.FC<SectionComponentPropsMap[K]> }`.
 -   **`src/lib/addSectionConfig.ts`** — AddSectionConfig (addableSectionTypes, sectionTypeLabels, getDefaultSectionData).
--   **`src/types.ts`** — SectionComponentPropsMap, PageConfig, SiteConfig, MenuConfig, ThemeConfig; **module augmentation** for SectionDataRegistry and SectionSettingsRegistry; re-export from `@olonjs/core` (`@jsonpages/core` compatibility alias).
--   **`src/App.tsx`** — Bootstrap: config (tenantId, registry, schemas, pages, siteConfig, themeConfig, menuConfig, themeCss, addSection); `<JsonPagesEngine config={config} />`.
+-   **`src/types.ts`** — SectionComponentPropsMap, PageConfig, SiteConfig, MenuConfig, ThemeConfig; **module augmentation** for SectionDataRegistry and SectionSettingsRegistry **on both** `@olonjs/core` **and** `@olonjs/core/runtime` identifiers (see §2.1 below); re-export from `@olonjs/core/runtime` (the `@jsonpages/core` compatibility alias still points at the full package).
+-   **`src/App.tsx`** — Bootstrap: config (tenantId, registry, schemas, pages, siteConfig, themeConfig, menuConfig, themeCss, addSection). Mounts `<OlonJSEngine>` for visitor paths and lazy-loads `<JsonPagesEngine>` only on `/admin` paths (see §2.1 below).
 -   **Global CSS** — Includes TOCC selectors for overlay (hover/selected/type label).
+
+---
+
+## 2.1 Runtime / Studio Split (ADR-0009)
+
+As of `@olonjs/core` v1.1.0, the package ships **two physical bundles**:
+
+-   **`@olonjs/core/runtime`** — visitor-only subset, ~28 KB gzipped. Includes `OlonJSEngine`, `PageRenderer`, `SectionRenderer`, `ConfigProvider`, `ThemeLoader`, `resolveAssetUrl`, the no-op `StudioProvider`/`useStudio` stubs, and the entire DNA surface (`BaseSectionData`, `CtaSchema`, `DEPLOY_STEPS`, `OlonFormsContext`, etc.).
+-   **`@olonjs/core`** — full bundle including everything above **plus** `JsonPagesEngine`, `StudioRoute`, `PreviewRoute`, `AdminSidebar`, `FormFactory`, `StudioStage`, and admin-skin CSS. ~128 KB gzipped.
+
+### What this means for tenant authoring
+
+**Default to `@olonjs/core/runtime`** for every tenant import that participates in the visitor critical path: section schemas, View components, base schema fragments, `cn`, `useConfig`, `resolveAssetUrl`, `STUDIO_EVENTS`, `useStudio`, etc. The runtime bundle exports all of these as a strict subset of the full bundle's surface.
+
+**Use `@olonjs/core`** only inside the lazy admin chunk in `App.tsx` (see canonical pattern below). Importing `JsonPagesEngine` from anywhere else collapses the split and ships the full bundle to every visitor.
+
+### Canonical `App.tsx` pattern
+
+```tsx
+import { useEffect, useMemo, useState, Suspense, lazy } from 'react';
+import { OlonJSEngine, type JsonPagesConfig } from '@olonjs/core/runtime';
+
+// /admin gate evaluated at module load — Vite splits the chunks statically.
+const isAdminPath =
+  typeof window !== 'undefined' && window.location.pathname.startsWith('/admin');
+
+const LazyJsonPagesEngine = lazy(() =>
+  import('@olonjs/core').then((m) => ({ default: m.JsonPagesEngine })),
+);
+
+export default function App() {
+  const config: JsonPagesConfig = { /* ... */ };
+
+  return isAdminPath
+    ? <Suspense fallback={null}><LazyJsonPagesEngine config={config} /></Suspense>
+    : <OlonJSEngine config={config} />;
+}
+```
+
+### Module augmentation must target both identifiers
+
+TypeScript treats `'@olonjs/core'` and `'@olonjs/core/runtime'` as **distinct module identifiers**. The MTRP augmentation in `types.ts` must therefore declare the registry on both, otherwise `PageConfig.sections` falls back to a generic `FallbackSection` on the runtime side and the tenant loses the typed contract that drives the Form Factory.
+
+```ts
+// apps/<tenant>/src/types.ts
+declare module '@olonjs/core' {
+  export interface SectionDataRegistry { /* tenant types */ }
+  export interface SectionSettingsRegistry { /* tenant settings */ }
+}
+
+declare module '@olonjs/core/runtime' {
+  export interface SectionDataRegistry { /* same tenant types */ }
+  export interface SectionSettingsRegistry { /* same tenant settings */ }
+}
+
+// IMPORTANT: this is a *value* re-export, not just a type re-export.
+// Vite treats `export *` as a runtime dependency edge in its module graph,
+// so this anchor decides which physical bundle the tenant entry pulls in.
+// Always point it at the runtime subpath; never at '@olonjs/core'.
+export * from '@olonjs/core/runtime';
+```
+
+### Why this matters for governance
+
+The split is enforced at the bundler level, not by convention. A regression — for example, a tenant component that imports `JsonPagesEngine` directly, or a `lib/schemas.ts` that pulls section barrels containing heavy View dependencies — collapses the runtime bundle back to ~400+ KB on the visitor critical path. Two safeguards:
+
+1.  **Core-side boundary check** (`packages/core/scripts/check-runtime-decoupling.mjs`) prevents `runtime-entry.ts` from importing Studio admin modules. Run via `npm run test:boundary -w @olonjs/core`.
+2.  **Tenant-side practice** (this section) — keep `@olonjs/core` imports confined to the lazy admin chunk; use deep schema-only imports (`@/components/<x>/schema` rather than `@/components/<x>`) anywhere a section schema is referenced eagerly, to avoid dragging the View into the visitor entry.
 
 ---
 
