@@ -69,7 +69,12 @@ export { SectionRenderer } from './runtime/rendering/SectionRenderer';
 
 // ── Theme ─────────────────────────────────────────────────────────
 export { ThemeLoader, type ThemeLoaderProps } from './runtime/theme/ThemeLoader';
-export { themeManager } from './runtime/theme/theme-manager';
+// `themeManager` (singleton, identity-bearing) and `buildThemeVariableMap`
+// (pure function) live in the same source file. ADR-0012 externalizes the
+// file as a unit in the full-bundle Vite config, so the runtime bundle must
+// re-export every symbol the full bundle's public surface forwards through
+// `runtime/theme/index.ts → runtime/index.ts → src/index.ts`.
+export { themeManager, buildThemeVariableMap } from './runtime/theme/theme-manager';
 
 // ── URL utilities ─────────────────────────────────────────────────
 export { normalizeBasePath, withBasePath } from './runtime/url';
