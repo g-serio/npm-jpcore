@@ -831,6 +831,34 @@
 
 
 /* ─────────────────────────────────────────────────────────────
+   5b. HERO ANIMATIONS — LCP-critical (ADR-0010)
+   CSS-only keyframes used by premium-hero/View.tsx.
+   Stagger via inline animation-delay; reduced-motion users skip
+   the animation entirely (the @media block omits the class, so
+   elements render at their natural opacity:1 state).
+───────────────────────────────────────────────────────────── */
+@media (prefers-reduced-motion: no-preference) {
+  @keyframes jp-fade-up {
+    from { opacity: 0; transform: translateY(16px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
+  @keyframes jp-fade-in {
+    from { opacity: 0; }
+    to   { opacity: 1; }
+  }
+
+  .jp-anim-fade-up {
+    animation: jp-fade-up 0.65s cubic-bezier(0.16, 1, 0.3, 1) both;
+  }
+
+  .jp-anim-fade-in {
+    animation: jp-fade-in 2s ease-out both;
+  }
+}
+
+
+/* ─────────────────────────────────────────────────────────────
    6. LIGHT MODE
    Applied when <html data-theme="light">.
    Overrides the bridge vars directly.

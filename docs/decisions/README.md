@@ -50,6 +50,8 @@ Optional: `Follow-ups`, `Open Points`, `Compliance mapping`, `Risk mitigation`, 
 | 0007 | [Section capsule lazy-loading and heavy-dep budget for tenant apps](./ADR-0007-section-lazy-load-and-heavy-dep-budget.md) | Proposed — pending implementation and verification | 2026-05-08 |
 | 0008 | [Performance roadmap from Lighthouse mobile 58 to ≥ 90](./ADR-0008-perf-roadmap-to-mobile-90.md) | Accepted as roadmap — Phase B done; Phase A in flight; Phase C pending measurement | 2026-05-09 |
 | 0009 | [Split Studio from `@olonjs/core` runtime via `/runtime` subpath export](./ADR-0009-core-studio-split-via-runtime-subpath.md) | Accepted — implemented in `@olonjs/core` v1.1.0; deployed to `olon.js.org` | 2026-05-09 |
+| 0010 | [Replace `motion/react` with CSS animations on the LCP path](./ADR-0010-hero-css-animation-over-motion-on-lcp-path.md) | Proposed — pending implementation and Lighthouse verification | 2026-05-10 |
+| 0011 | [Declare `@olonjs/core` as side-effect-free for aggressive tree-shaking](./ADR-0011-olonjs-core-side-effects-false.md) | Proposed — pending audit, implementation, and bundle-size verification | 2026-05-10 |
 
 ## For agents
 

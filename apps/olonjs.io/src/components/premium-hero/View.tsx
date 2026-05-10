@@ -1,21 +1,11 @@
 'use client';
 
 import { ArrowRight, Play } from 'lucide-react';
-import { motion, useReducedMotion, type Variants } from 'motion/react';
 import type { CSSProperties } from 'react';
 import { resolveAssetUrl, useConfig } from '@olonjs/core/runtime';
 import { TwoToneHeading } from '@/components/ui/two-tone-heading';
 import { cn } from '@/lib/utils';
 import type { PremiumHeroData, PremiumHeroSettings } from './types';
-
-const fadeUpVariants: Variants = {
-  hidden: { opacity: 0, y: 16 },
-  visible: (delay = 0) => ({
-    opacity: 1,
-    y: 0,
-    transition: { type: 'spring', duration: 0.65, bounce: 0.1, delay },
-  }),
-};
 
 /** Avatar ramps: only `theme.json` colors via `:root` bridge (`index.css`). */
 const PRESET_AVATAR: Record<'amber' | 'emerald' | 'blue' | 'rose' | 'violet', CSSProperties> = {
@@ -47,8 +37,6 @@ type PremiumHeroViewProps = {
 };
 
 export function PremiumHeroView({ data }: PremiumHeroViewProps) {
-  const shouldReduceMotion = useReducedMotion();
-  const initial = shouldReduceMotion ? 'visible' : 'hidden';
   const { tenantId = 'alpha' } = useConfig();
 
   const bgUrlRaw = data.backgroundImage?.url?.trim();
@@ -103,15 +91,12 @@ export function PremiumHeroView({ data }: PremiumHeroViewProps) {
         </span>
       )}
       <div className="pointer-events-none absolute inset-0 z-[1] overflow-hidden">
-        <motion.div
-          animate={{ opacity: 1 }}
-          className="-translate-x-1/2 absolute top-[-20%] left-1/2 h-[800px] w-[1200px]"
-          initial={{ opacity: 0 }}
+        <div
+          className="-translate-x-1/2 absolute top-[-20%] left-1/2 h-[800px] w-[1200px] jp-anim-fade-in"
           style={{
             background:
               'radial-gradient(ellipse at center, color-mix(in hsl, var(--primary) 14%, transparent) 0%, color-mix(in hsl, var(--primary) 5%, transparent) 35%, transparent 70%)',
           }}
-          transition={{ duration: 2, ease: 'easeOut' }}
         />
         <div
           className="absolute inset-0 opacity-[0.012] dark:opacity-[0.025]"
@@ -123,13 +108,7 @@ export function PremiumHeroView({ data }: PremiumHeroViewProps) {
       </div>
 
       <div className="relative z-10 flex flex-col items-center px-6 pt-[12vh] pb-24 sm:pt-[16vh]">
-        <motion.div
-          animate="visible"
-          className="mb-8 flex items-center gap-2"
-          custom={0}
-          initial={initial}
-          variants={fadeUpVariants}
-        >
+        <div className="mb-8 flex items-center gap-2 jp-anim-fade-up">
           <a href="https://www.npmjs.com/package/@olonjs/core">
             <img
               alt="npm version"
@@ -150,15 +129,9 @@ export function PremiumHeroView({ data }: PremiumHeroViewProps) {
               decoding="async"
             />
           </a>
-        </motion.div>
+        </div>
 
-        <motion.div
-          animate="visible"
-          className="max-w-3xl"
-          custom={0}
-          initial={initial}
-          variants={fadeUpVariants}
-        >
+        <div className="max-w-3xl jp-anim-fade-up">
           <TwoToneHeading
             align="center"
             as="h1"
@@ -170,25 +143,19 @@ export function PremiumHeroView({ data }: PremiumHeroViewProps) {
             secondaryGradient="secondary"
             secondaryText={data.secondaryTitle}
           />
-        </motion.div>
+        </div>
 
-        <motion.p
-          animate="visible"
-          className="mt-8 max-w-lg text-pretty text-center text-base text-muted-foreground leading-[1.6] sm:text-lg md:text-xl"
-          custom={0.22}
+        <p
+          className="mt-8 max-w-lg text-pretty text-center text-base text-muted-foreground leading-[1.6] sm:text-lg md:text-xl jp-anim-fade-up"
           data-jp-field="subtitle"
-          initial={initial}
-          variants={fadeUpVariants}
+          style={{ animationDelay: '0.22s' }}
         >
           {data.subtitle}
-        </motion.p>
+        </p>
 
-        <motion.div
-          animate="visible"
-          className="mt-10 flex flex-col items-center gap-3 sm:flex-row sm:gap-4"
-          custom={0.34}
-          initial={initial}
-          variants={fadeUpVariants}
+        <div
+          className="mt-10 flex flex-col items-center gap-3 sm:flex-row sm:gap-4 jp-anim-fade-up"
+          style={{ animationDelay: '0.34s' }}
         >
           {data.primaryCta.label && data.primaryCta.href && (
             <a
@@ -226,50 +193,47 @@ export function PremiumHeroView({ data }: PremiumHeroViewProps) {
               </span>
             </a>
           )}
-        </motion.div>
+        </div>
 
-        {(data.socialProofCount || data.socialProofPrefix) && <motion.div
-          animate="visible"
-          className="mt-14 flex select-none items-center gap-4"
-          custom={0.5}
-          initial={initial}
-          variants={fadeUpVariants}
-        >
-          <div className="-space-x-3 flex">
-            {data.avatars.map((avatar, i) => (
-              <motion.div
-                animate={{ opacity: 1, x: 0 }}
-                className={cn(
-                  'flex size-10 items-center justify-center rounded-full font-semibold text-xs ring-[2.5px] ring-background',
-                  'outline outline-1 outline-offset-[-1px] outline-border'
-                )}
-                data-jp-item-field="avatars"
-                data-jp-item-id={avatar.id}
-                initial={shouldReduceMotion ? { opacity: 1 } : { opacity: 0, x: -8 }}
-                key={avatar.id}
-                style={PRESET_AVATAR[avatar.preset]}
-                transition={{ type: 'spring', duration: 0.4, delay: 0.56 + i * 0.05, bounce: 0 }}
-              >
-                <span data-jp-field="initials">{avatar.initials}</span>
-              </motion.div>
-            ))}
-          </div>
-          <div className="flex flex-col gap-0.5">
-            <div className="flex items-center gap-0.5">
-              {Array.from({ length: 5 }).map((_, i) => (
-                <svg className="size-4 fill-current text-[var(--warning)]" key={i} viewBox="0 0 20 20">
-                  <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
-                </svg>
+        {(data.socialProofCount || data.socialProofPrefix) && (
+          <div
+            className="mt-14 flex select-none items-center gap-4 jp-anim-fade-up"
+            style={{ animationDelay: '0.5s' }}
+          >
+            <div className="-space-x-3 flex">
+              {data.avatars.map((avatar, i) => (
+                <div
+                  className={cn(
+                    'flex size-10 items-center justify-center rounded-full font-semibold text-xs ring-[2.5px] ring-background',
+                    'outline outline-1 outline-offset-[-1px] outline-border',
+                    'jp-anim-fade-up'
+                  )}
+                  data-jp-item-field="avatars"
+                  data-jp-item-id={avatar.id}
+                  key={avatar.id}
+                  style={{ ...PRESET_AVATAR[avatar.preset], animationDelay: `${0.56 + i * 0.05}s` }}
+                >
+                  <span data-jp-field="initials">{avatar.initials}</span>
+                </div>
               ))}
             </div>
-            <span className="text-muted-foreground text-sm">
-              <span data-jp-field="socialProofPrefix">{data.socialProofPrefix}</span>{' '}
-              <span className="font-semibold text-foreground tabular-nums" data-jp-field="socialProofCount">
-                {data.socialProofCount}
+            <div className="flex flex-col gap-0.5">
+              <div className="flex items-center gap-0.5">
+                {Array.from({ length: 5 }).map((_, i) => (
+                  <svg className="size-4 fill-current text-[var(--warning)]" key={i} viewBox="0 0 20 20">
+                    <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
+                  </svg>
+                ))}
+              </div>
+              <span className="text-muted-foreground text-sm">
+                <span data-jp-field="socialProofPrefix">{data.socialProofPrefix}</span>{' '}
+                <span className="font-semibold text-foreground tabular-nums" data-jp-field="socialProofCount">
+                  {data.socialProofCount}
+                </span>
               </span>
-            </span>
+            </div>
           </div>
-        </motion.div>}
+        )}
       </div>
     </section>
   );
