@@ -36,6 +36,53 @@ Reason:
 - `cli` must package DNA generated from tenant source apps using the new `core` version
 - compatibility bridges must point to freshly published `@olonjs/*` versions
 
+## `@olonjs/core` dual-bundle build
+
+As of v1.1.0 (see [ADR-0009](./decisions/ADR-0009-core-studio-split-via-runtime-subpath.md)), `@olonjs/core` ships two physical bundles in a single package:
+
+- `dist/olonjs-core.js` — full bundle (runtime + Studio admin), imported via `from '@olonjs/core'`
+- `dist/olonjs-core-runtime.js` — runtime-only bundle (visitor subset), imported via `from '@olonjs/core/runtime'`
+
+### Build commands
+
+| Command | Effect |
+|---|---|
+| `npm run build -w @olonjs/core` | Full dual build via `scripts/build-dual.mjs`. **Use this.** Runs both Vite configs and stitches dts outputs. |
+| `npm run build:full -w @olonjs/core` | Full bundle only. Used internally by the orchestrator. |
+| `npm run build:runtime -w @olonjs/core` | Runtime bundle only. Used internally by the orchestrator. Sets `emptyOutDir: false` and depends on a pre-existing full build. |
+
+Do not invoke `build:full` or `build:runtime` directly during a release — the orchestrator handles dts file rename/restore so both `index.d.ts` and `runtime.d.ts` survive.
+
+### Pre-publish gate
+
+Before publishing `@olonjs/core`, the boundary check must pass. It enforces that `src/runtime-entry.ts` and its import graph never reach into `src/studio/admin/` or `src/studio/orchestration/`:
+
+```bash
+npm run test:boundary -w @olonjs/core   # decoupling check (~1s)
+npm run test:all     -w @olonjs/core    # boundary + vitest unit tests
+```
+
+A failing boundary check is a **publish blocker**: it means a recent change has put Studio admin code on the visitor critical path, defeating the purpose of [ADR-0009](./decisions/ADR-0009-core-studio-split-via-runtime-subpath.md).
+
+### Verifying the published artifacts
+
+After `npm publish`, sanity-check that both bundles are in the tarball and decoupled:
+
+```bash
+npm pack @olonjs/core
+tar -tzf olonjs-core-*.tgz | grep -E 'dist/(olonjs-core|runtime)'
+# Expected output:
+#   package/dist/olonjs-core.js
+#   package/dist/olonjs-core-runtime.js
+#   package/dist/olonjs-core.umd.cjs
+#   package/dist/index.d.ts
+#   package/dist/runtime.d.ts
+
+# Confirm runtime bundle has zero Studio admin symbols:
+node -e "const c=require('fs').readFileSync('node_modules/@olonjs/core/dist/olonjs-core-runtime.js','utf8'); console.log(['AdminSidebar','FormFactory','StudioStage'].map(s=>[s,(c.match(new RegExp(s,'g'))||[]).length]))"
+# Expected: all counts = 0
+```
+
 ## Release scripts
 
 ### `npm run release`
