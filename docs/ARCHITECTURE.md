@@ -131,6 +131,14 @@ return isAdminPath
 
 Vite/Rollup observe the two specifiers as distinct dependency edges and emit two output chunks: the visitor entry includes only `olonjs-core-runtime.js`; the admin chunk that includes `olonjs-core.js` is fetched on demand.
 
+### Cross-bundle singleton identity (ADR-0012)
+
+The full bundle does NOT inline the runtime source. Instead, `packages/core/vite.config.ts` externalizes four singleton-bearing files (`runtime/config/ConfigContext.tsx`, `studio/StudioContext.tsx`, `runtime/theme/theme-manager.ts`, `runtime/icons/IconRegistryContext.tsx`) and rewrites their emitted imports to `./olonjs-core-runtime.js`. At consumer load time, both `import { useConfig } from '@olonjs/core'` (full path) and `import { useConfig } from '@olonjs/core/runtime'` (runtime path) resolve to the same module instance — the runtime artifact loaded once, shared by both subpath consumers.
+
+Without this externalize boundary, each Vite build inlines its own copy of every shared file, producing two distinct `React.createContext()` instances at runtime. When Studio's `<ConfigProvider>` (from the full bundle) wraps tenant section views (which read `useConfig()` from the runtime bundle), the consumer reads from a different context than the provider populates, throwing `useConfig must be used within ConfigProvider`. This was the symptom that forced ADR-0012; see that ADR for the full diagnosis and the externalize ruleset.
+
+The colocation requirement that follows from this design — both `olonjs-core.js` and `olonjs-core-runtime.js` must sit side-by-side in any deployment of `@olonjs/core` — is documented in [PUBLISHING.md §"Colocation requirement"](./PUBLISHING.md#colocation-requirement-adr-0012).
+
 ### Composition root
 
 `OlonJSEngine` and `JsonPagesEngine` are sibling thin wrappers around `JsonPagesEngineCore` (`packages/core/src/runtime/engine/JsonPagesEngineCore.tsx`). Each invokes the core with a different `routesBuilder`:

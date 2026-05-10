@@ -47,12 +47,6 @@ export default defineConfig({
     })
   ],
   build: {
-    // ADR-0012: the orchestrator (`scripts/build-dual.mjs`) wipes dist
-    // once at step 0, then runs the runtime build first. The full build
-    // must NOT wipe dist again or it would erase the freshly emitted
-    // runtime artifacts (olonjs-core-runtime.js + runtime.d.ts) that the
-    // full bundle now references via './olonjs-core-runtime.js'.
-    emptyOutDir: false,
     lib: {
       // Punto di ingresso della libreria
       entry: path.resolve(__dirname, 'src/index.ts'),

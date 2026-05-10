@@ -6,6 +6,7 @@
   "main": "./dist/olonjs-core.umd.cjs",
   "module": "./dist/olonjs-core.js",
   "types": "./dist/index.d.ts",
+  "sideEffects": false,
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
@@ -42,7 +43,7 @@
     "build": "node scripts/build-dual.mjs",
     "prepack": "node scripts/sync-peers-from-stack.js",
     "test": "vitest run",
-    "test:boundary": "node scripts/check-runtime-decoupling.mjs",
+    "test:boundary": "node scripts/check-runtime-decoupling.mjs && node scripts/check-singleton-modules.mjs",
     "test:all": "npm run test:boundary && npm test"
   },
   "peerDependencies": {

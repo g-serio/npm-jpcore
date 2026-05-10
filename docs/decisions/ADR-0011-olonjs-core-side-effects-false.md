@@ -2,7 +2,7 @@
 
 ## Status
 
-Proposed — pending audit, implementation, and bundle-size verification (2026-05-10)
+Accepted — implemented in `@olonjs/core` v1.1.2; bundle-size win for `apps/olonjs.io` measured at **0 KB** (unexpected; see Implementation notes for the root cause). The flag is still architecturally correct and benefits future tenants with different consumption profiles. (2026-05-10)
 
 ## Date
 

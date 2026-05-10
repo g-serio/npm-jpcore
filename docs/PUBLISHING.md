@@ -87,7 +87,15 @@ tar -tzf olonjs-core-*.tgz | grep -E 'dist/(olonjs-core|runtime)'
 # Confirm runtime bundle has zero Studio admin symbols:
 node -e "const c=require('fs').readFileSync('node_modules/@olonjs/core/dist/olonjs-core-runtime.js','utf8'); console.log(['AdminSidebar','FormFactory','StudioStage'].map(s=>[s,(c.match(new RegExp(s,'g'))||[]).length]))"
 # Expected: all counts = 0
+
+# Confirm the full bundle imports the runtime sibling artifact (ADR-0012):
+node -e "const c=require('fs').readFileSync('node_modules/@olonjs/core/dist/olonjs-core.js','utf8'); console.log('runtime imports:', (c.match(/olonjs-core-runtime\.js/g) || []).length)"
+# Expected: ≥ 1 (typically ~12 in v1.1.1)
 ```
+
+### Colocation requirement (ADR-0012)
+
+As of v1.1.1, `dist/olonjs-core.js` (and its UMD sibling) contain explicit `import "./olonjs-core-runtime.js"` references for the four singleton-bearing modules (`ConfigContext`, `StudioContext`, `theme-manager`, `IconRegistryContext`). The runtime artifact MUST sit next to the full artifact in `dist/` for the package to load. This is already guaranteed by `package.json` `files: ["dist"]` and the `exports` map; the warning here is for any tooling that copies a subset of files (custom CDN setups, partial mirrors, certain bundle-size analyzers). If you see `ERR_MODULE_NOT_FOUND: olonjs-core-runtime.js` after install, the cause is colocation, not the package itself.
 
 ## Release scripts
 
