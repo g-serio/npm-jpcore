@@ -52,7 +52,7 @@ Optional: `Follow-ups`, `Open Points`, `Compliance mapping`, `Risk mitigation`, 
 | 0009 | [Split Studio from `@olonjs/core` runtime via `/runtime` subpath export](./ADR-0009-core-studio-split-via-runtime-subpath.md) | Accepted — implemented in `@olonjs/core` v1.1.0; deployed to `olon.js.org` | 2026-05-09 |
 | 0010 | [Replace `motion/react` with CSS animations on the LCP path](./ADR-0010-hero-css-animation-over-motion-on-lcp-path.md) | Proposed — pending implementation and Lighthouse verification | 2026-05-10 |
 | 0011 | [Declare `@olonjs/core` as side-effect-free for aggressive tree-shaking](./ADR-0011-olonjs-core-side-effects-false.md) | Proposed — pending audit, implementation, and bundle-size verification | 2026-05-10 |
-| 0012 | [Externalize the runtime entry from the full bundle to dedupe shared module instances](./ADR-0012-externalize-runtime-from-full-bundle.md) | Proposed — pending implementation and verification | 2026-05-10 |
+| 0012 | [Externalize the runtime entry from the full bundle to dedupe shared module instances](./ADR-0012-externalize-runtime-from-full-bundle.md) | Accepted — implemented in `@olonjs/core` v1.1.1; Studio renders sections verified | 2026-05-10 |
 
 ## For agents
 

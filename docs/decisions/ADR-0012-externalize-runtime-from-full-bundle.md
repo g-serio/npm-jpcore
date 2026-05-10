@@ -90,57 +90,64 @@ In short: ADR-0009 set the right architectural direction, the visitor side was v
 
 ## Decision
 
-The full bundle imports the runtime as an **external module reference**, not as inlined source. After this change, exactly one copy of every runtime module is loaded into memory regardless of which subpath the consumer imports.
+The full bundle imports the runtime as an **external module reference at the file granularity**, not as inlined source. After this change, exactly one copy of every singleton-bearing runtime module is loaded into memory regardless of which subpath the consumer imports.
 
-1. **Restructure `packages/core/src/index.ts`** so that every export which must be a singleton across bundles is re-exported from `./runtime-entry` (the file that becomes `olonjs-core-runtime.js`), not from the underlying `./runtime/*` source files. Concretely:
+The implementation has four moving parts. The proposal originally enumerated six (§1–§6); during implementation §1 was narrowed to a one-line addition and §3 was dropped entirely — both reasons documented under "Implementation notes" below.
 
-   ```ts
-   // BEFORE
-   export * from './runtime';
-   export * from './dna';
-   // ...
-
-   // AFTER
-   export * from './runtime-entry';
-   // Studio-only additions kept as before:
-   export { JsonPagesEngine } from './runtime/engine/JsonPagesEngine';
-   export { StudioRoute } from './studio/...';
-   export { PreviewRoute } from './studio/...';
-   export { AdminSidebar, FormFactory, StudioStage, ... } from './studio/admin/...';
-   ```
-
-   The full bundle keeps every Studio export it has today; only the *runtime* surface is re-routed through `runtime-entry`.
-
-2. **Externalize `runtime-entry` (and its compiled artifact) in `vite.config.ts`**. Add a `rollupOptions.external` entry that matches both the source-side specifier (`./runtime-entry`, `./runtime-entry.ts`) and the resolved import. Add a `rollupOptions.output.paths` mapping that rewrites the externalized specifier to the relative URL of the runtime artifact (`./olonjs-core-runtime.js`):
+1. **Externalize the four singleton-bearing source files in `packages/core/vite.config.ts`** and rewrite their emitted import path to the sibling runtime artifact. The implemented form:
 
    ```ts
-   // vite.config.ts (full)
-   rollupOptions: {
-     external: [
-       'react', 'react-dom', 'react-router-dom', 'zod',
-       /\/runtime-entry(\.ts|\.js)?$/,         // singleton boundary
-     ],
-     output: {
-       globals: { /* unchanged */ },
-       paths: {
-         // rewrite internal external to the sibling artifact
-         [path.resolve(__dirname, 'src/runtime-entry')]: './olonjs-core-runtime.js',
+   // vite.config.ts (full bundle)
+   const SINGLETON_RUNTIME_MODULES = [
+     /[/\\]runtime[/\\]config[/\\]ConfigContext(\.tsx?)?$/,
+     /[/\\]studio[/\\]StudioContext(\.tsx?)?$/,
+     /[/\\]runtime[/\\]theme[/\\]theme-manager(\.tsx?)?$/,
+     /[/\\]runtime[/\\]icons[/\\]IconRegistryContext(\.tsx?)?$/,
+   ];
+
+   const isSingletonRuntimeModule = (id: string): boolean =>
+     SINGLETON_RUNTIME_MODULES.some((re) => re.test(id));
+
+   build: {
+     emptyOutDir: false,                 // see point 4 below
+     rollupOptions: {
+       external: (id) =>
+         PEER_DEPS.includes(id) || isSingletonRuntimeModule(id),
+       output: {
+         globals: { /* unchanged */ },
+         paths: (id) =>
+           isSingletonRuntimeModule(id)
+             ? './olonjs-core-runtime.js'
+             : id,
        },
      },
    },
    ```
 
-   The exact regex/path form is an implementation detail; the contract is: any source-level reference to `runtime-entry` in the full build emits an `import` of the sibling runtime bundle.
+   The full bundle's compiled ESM output emits `import { ConfigProvider, useConfig, ... } from "./olonjs-core-runtime.js"` (12 such import sites confirmed in v1.1.1 dist). The UMD/CJS output emits the equivalent `require("./olonjs-core-runtime.js")` (5 sites). Both consumers (ESM and CJS) resolve the runtime sibling and share its module instance.
 
-3. **Build order is enforced by `scripts/build-dual.mjs`**. The runtime bundle must be produced **before** the full bundle, because the full bundle's compiled output references `./olonjs-core-runtime.js` as an existing sibling. The current orchestrator already runs `vite.config.runtime.ts` after `vite.config.ts` — this ADR **inverts that order** so the runtime artifact exists when the full build runs. The orchestrator continues to handle dts file rename/restore so both `index.d.ts` and `runtime.d.ts` survive.
+2. **Add `buildThemeVariableMap` to the runtime-entry surface (`packages/core/src/runtime-entry.ts`)**. Rollup externalizes at file granularity, not symbol granularity: when `runtime/theme/theme-manager.ts` is externalized, every symbol re-exported by the full bundle's public surface from that file must be available on the runtime artifact. `themeManager` (singleton) was already exported by `runtime-entry.ts`; `buildThemeVariableMap` (a pure function in the same source file, re-exported by `runtime/theme/index.ts → runtime/index.ts → src/index.ts`) was not, and the full build failed to load with `SyntaxError: ... does not provide an export named 'buildThemeVariableMap'`. The fix is one re-export line. No restructuring of `src/index.ts` is required — the audit during implementation showed every symbol the full bundle's import graph expects from the externalized files (`useConfig`, `ConfigProvider`, `useStudio`, `StudioProvider`, `themeManager`, `buildThemeVariableMap`, `IconRegistryContext`, `useIconRegistry`) is now exported by `runtime-entry.ts`.
 
-4. **Boundary check is extended.** `scripts/check-runtime-decoupling.mjs` (or a new sibling `scripts/check-singleton-modules.mjs`) walks the import graph of the **full** bundle entry and asserts that any file matching the singleton list (`runtime/config/ConfigContext.ts`, `studio/StudioContext.ts`, `runtime/icons/IconRegistryContext.ts`, `runtime/theme/theme-manager.ts`) is reached **only via `runtime-entry`**, never directly. This makes the singleton constraint a CI-enforced invariant, not just a build-config trick. Implementation can be deferred to a follow-up; it is not a release blocker.
+3. **Boundary check extension is deferred to a follow-up**, not blocking this fix. A future iteration of `scripts/check-runtime-decoupling.mjs` (or a sibling `scripts/check-singleton-modules.mjs`) should walk the import graph of the full entry and assert that any file matching `SINGLETON_RUNTIME_MODULES` is reached only via the externalize boundary, never inlined into the full bundle. The current safeguard is the regex list above plus the `output.paths` rewrite — both colocated in `vite.config.ts` and visible to reviewers.
 
-5. **Tenant consumption is unchanged.** Both `import { OlonJSEngine } from '@olonjs/core/runtime'` and `import { JsonPagesEngine } from '@olonjs/core'` keep their meaning. Tenants do not modify any source file. The dual-import pattern documented in ADR-0009 §"Tenant consumption pattern" remains canonical and now actually behaves as documented.
+4. **`packages/core/scripts/build-dual.mjs` keeps its original build order (full first, then runtime)** and `vite.config.ts` adds `build.emptyOutDir: false`. The original ADR draft proposed inverting the order so the runtime artifact would exist on disk before the full build runs; in practice this is not necessary because the externalize is resolved at *consumer load time*, not at the full bundle's compile time. The full build emits a textual `import "./olonjs-core-runtime.js"` regardless of whether the file currently exists; Rollup does not verify external paths. What inverting the order *did* break was `vite-plugin-dts`'s rolled-up declarations: when the runtime build ran first and wrote `dist/index.d.ts`, the subsequent full build's api-extractor pass produced `index.d.ts` containing 60+ types with `_2` suffix duplicates (`JsonPagesConfig` and `JsonPagesConfig_2`, `ProjectState_2`, `FallbackSection_2`, etc.). Tenant TypeScript compilation broke with `Type 'JsonPagesConfig' is not assignable to type 'JsonPagesConfig_2'` at every call site that crossed the boundary. Reverting to the original full-first order eliminates the duplication. The orchestrator already cleans `dist/` once at step 0; both Vite configs declare `emptyOutDir: false` so neither build wipes the other's artifacts.
+
+5. **Tenant consumption is unchanged.** Both `import { OlonJSEngine } from '@olonjs/core/runtime'` and `import { JsonPagesEngine } from '@olonjs/core'` keep their meaning. Tenants do not modify any source file. The dual-import pattern documented in ADR-0009 §"Tenant consumption pattern" remains canonical and now actually behaves as documented — Studio's `<ConfigProvider>`, `<StudioProvider>`, and `<IconRegistryContext.Provider>` instances reference the same React Context objects the tenant section views consume via `useConfig`, `useStudio`, `useIconRegistry`.
 
 6. **Versioning.** The change ships as `@olonjs/core` v1.1.1 (patch). It is a bug fix in the published artifact; the public API surface is unchanged. ADR-0009's status line (`implemented in @olonjs/core v1.1.0`) is left intact for historical accuracy; future ADR readers find the v1.1.1 reference here.
 
-After this change, both subpath imports of `useConfig`, `ConfigProvider`, `useStudio`, `StudioProvider`, `themeManager`, and `IconRegistryContext` resolve at runtime to **exactly one module instance**. The Studio preview stage will render tenant section views without spurious context errors.
+After this change, the symbols in both subpath public surfaces resolve to literally the same JavaScript reference at runtime. Verified 2026-05-10 in a Node ESM probe loading both `dist/olonjs-core.js` and `dist/olonjs-core-runtime.js`:
+
+| Symbol | Same reference? |
+|---|---|
+| `useConfig` | ✓ |
+| `ConfigProvider` | ✓ |
+| `useStudio` | ✓ |
+| `StudioProvider` | ✓ |
+| `themeManager` | ✓ |
+| `IconRegistryContext` | n/a — internal only, full bundle does not re-export it; the import-graph dedup is verified by inspecting the emitted `import { IconRegistryContext } from "./olonjs-core-runtime.js"` in `dist/olonjs-core.js` |
+
+The Studio preview stage in `apps/olonjs.io` `/admin` renders all 7 tenant sections without `useConfig must be used within ConfigProvider` errors (verified 2026-05-10).
 
 ## Alternatives Considered
 
@@ -180,18 +187,28 @@ Update ADR-0009 to say "Tenants that mount Studio MUST import all section-side h
 
 ### Positive
 
-- The Studio preview stage (`StudioStage` rendered inside `JsonPagesEngine`) renders tenant section views correctly. The seven `COMPONENT ERROR` panels seen on 2026-05-10 disappear.
-- `useConfig`, `useStudio`, `themeManager`, and any other singleton-bearing module observed at runtime are guaranteed to be the **same instance** regardless of which subpath the consumer imported. This invariant is now a build-time contract, not a coincidence.
-- The full bundle becomes physically smaller — the runtime source is no longer duplicated inside it. Estimated reduction: 25–40 KB raw / 8–12 KB gzipped on the full bundle (the runtime-entry surface is ~28 KB gz; deduping removes most of it from the full output, modulo a few re-exports).
-- The dual-bundle topology now matches its documented behavior in ADR-0009 §"Tenant consumption pattern". Tenants no longer have to discover by experimentation that Studio only works in dev.
-- The constraint is enforceable in CI (proposed follow-up #4 above): future regressions are caught before publish.
+- The Studio preview stage (`StudioStage` rendered inside `JsonPagesEngine`) renders tenant section views correctly. The seven `COMPONENT ERROR` panels seen on 2026-05-10 are gone — verified empirically against `apps/olonjs.io` `/admin`.
+- `useConfig`, `useStudio`, `themeManager`, and the other singleton-bearing modules observed at runtime are guaranteed to be the **same instance** regardless of which subpath the consumer imported. This invariant is now a build-time contract enforced by the externalize rule, not a coincidence of bundling.
+- The full bundle becomes substantially smaller. **Measured: 815 KB raw / 229 KB gzipped → 532 KB raw / 127 KB gzipped (−283 KB raw / −102 KB gzipped, ≈ 45 % reduction).** The savings come from no longer duplicating the runtime source into the full output: `ConfigContext`, `StudioContext`, `theme-manager`, `IconRegistryContext`, plus the React rendering primitives those files transitively depend on.
+- The dual-bundle topology now matches its documented behavior in ADR-0009 §"Tenant consumption pattern". Tenants no longer discover by experimentation that Studio only works in dev mode.
+- The constraint is enforceable in CI (follow-up #4 below): future regressions can be caught before publish.
 
 ### Negative
 
-- The full bundle now has a hard runtime dependency on the runtime bundle. If a consumer ships only `dist/olonjs-core.js` without `dist/olonjs-core-runtime.js` next to it (e.g. a misconfigured CDN, a custom bundler that resolves only the main field), the full bundle fails to load. We mitigate by keeping both files in `package.json` `files` and `exports` (already the case) and documenting the requirement in `docs/PUBLISHING.md`.
-- The build order in `scripts/build-dual.mjs` becomes meaningful: runtime first, full second. Reversing it produces a broken full bundle. We document this in the orchestrator script comment and assert the order programmatically.
+- The full bundle now has a hard runtime dependency on the runtime bundle. If a consumer ships only `dist/olonjs-core.js` without `dist/olonjs-core-runtime.js` next to it (e.g. a misconfigured CDN, a custom bundler that resolves only the main field), the full bundle fails to load. Mitigation: both files remain in `package.json` `files` and `exports` (already the case); a one-line note belongs in `docs/PUBLISHING.md` (follow-up #2 below).
 - Tooling that statically analyzes `dist/olonjs-core.js` (e.g. bundle-size visualizers, `npm pack` linters) sees an unresolved import to `./olonjs-core-runtime.js` until both files are colocated. This is correct ESM behavior but may surprise tools that expect a self-contained file.
-- A small migration burden if a future contributor adds a new singleton-bearing module: it must be exported from `runtime-entry.ts`, not from the full entry directly, otherwise the bug re-emerges. The CI check proposed in §4 above addresses this.
+- A small migration burden if a future contributor adds a new singleton-bearing module: it must be added to `SINGLETON_RUNTIME_MODULES` in `vite.config.ts` AND re-exported from `runtime-entry.ts`, otherwise the bug re-emerges silently. The CI check proposed in follow-up #4 below would catch this; until it lands, code review is the only safeguard.
+- The UMD output triggers eight Rollup warnings of the form `No name was provided for external module ".../ConfigContext.tsx" in "output.globals" – guessing "ConfigContext_tsx"`. The UMD wrapper falls back to `require()` for CJS consumers (which works correctly) and to a generated global name for IIFE consumers (which is unused — no published consumer of `@olonjs/core` uses the package via `<script>` tag). The warnings are noise and could be silenced by adding entries to `output.globals`, but doing so without a real consumer would just make the noise quieter at the cost of a misleading global. Left as is.
+
+### Implementation notes
+
+Three discoveries during implementation that future maintainers should be aware of:
+
+1. **`vite-plugin-dts` is order-sensitive.** Inverting the build order (runtime first) causes api-extractor's rolled-up `index.d.ts` to contain 60+ duplicate-suffixed types (`JsonPagesConfig_2`, `ProjectState_2`, `FallbackSection_2`, …) which cascade into tenant TypeScript errors at every assignment that crosses the runtime/full boundary. The behavior is reproducible with the runtime build emitting `dist/index.d.ts` first and the full build's api-extractor pass running second; reversing the order eliminates the duplication. Treat this as an empirical invariant of the current dts plugin version (`vite-plugin-dts` 4.x); revisit if the plugin changes its rollup model.
+
+2. **Rollup externalizes at file granularity, not symbol granularity.** When `runtime/theme/theme-manager.ts` is externalized to dedupe `themeManager` (a singleton), the pure function `buildThemeVariableMap` in the same file *also* becomes external. The full bundle's public surface re-exports `buildThemeVariableMap` (through `runtime/theme/index.ts → runtime/index.ts → src/index.ts`), so it must be available on the runtime artifact. Solution: re-export it from `runtime-entry.ts`. Generalization: any externalized file's full set of consumer-facing symbols must be on the runtime entry's surface, even if some are pure functions that don't strictly need deduping.
+
+3. **`IconRegistryContext` is a special case.** It is not exported by the full bundle's public surface (`fullBundle.IconRegistryContext === undefined`); it is only reachable via the runtime subpath. The dedup still works internally: when Studio admin's source code (e.g. `JsonPagesEngineCore.tsx`) does `import { IconRegistryContext } from '../../runtime/icons/IconRegistryContext'`, the externalize rule rewrites the emitted import to `import { IconRegistryContext } from './olonjs-core-runtime.js'`, so Studio's `<IconRegistryContext.Provider>` and the tenant View's `useIconRegistry()` hook share the same context object. The Node ESM probe in §6 above shows `IconRegistryContext` does not match across `fullBundle` and `runtimeBundle` exports, but that is a public-surface artefact — the import-graph dedup is verified separately by grepping the dist for the externalized import.
 
 ### Requirements imposed on other parts of the system
 
@@ -205,16 +222,18 @@ Update ADR-0009 to say "Tenants that mount Studio MUST import all section-side h
 
 ## Follow-ups
 
-- [ ] Implement the boundary extension described in §4 above (assert that singleton modules are reachable only via `runtime-entry` from the full entry). Non-blocking for shipping the fix; should land within one release of v1.1.1.
-- [ ] Re-evaluate Alternative B (single Vite build with shared chunks) if a third subpath is introduced or if more than two singleton modules need cross-bundle dedup. The threshold for migration is roughly: more than five singleton entries, or a need for nested subpaths (e.g. `@olonjs/core/runtime/forms`).
-- [ ] Add a smoke test in CI that boots `apps/olonjs.io` with the production build, navigates to `/admin`, and asserts that the StudioStage renders at least one section without an EngineErrorBoundary fallback. The bug this ADR fixes was invisible to current CI; a regression test prevents recurrence.
-- [ ] Update `apps/olonjs.io`'s deploy-landing workflow to also exercise an offline `/admin` path (not deployed publicly, but built and asserted-on) so the dual-bundle topology is verified on every push that touches `packages/core/**`.
+- [ ] Implement the boundary extension described in §3 above (assert that singleton modules are reachable from the full entry only via the externalize boundary). Non-blocking for shipping v1.1.1; should land within one release. Leaning toward a sibling script `scripts/check-singleton-modules.mjs` rather than extending `check-runtime-decoupling.mjs` — both walk the same import graph but assert different invariants.
+- [ ] Add a one-line `sideEffects`-style note to `docs/PUBLISHING.md` under the "Verifying the published artifacts" subsection: both `olonjs-core.js` and `olonjs-core-runtime.js` must be colocated for the full bundle to load.
+- [ ] Update `docs/ARCHITECTURE.md` §"Build and Distribution Topology" with a paragraph clarifying that the full bundle imports the runtime as an external sibling, not as inlined source. Corrects the implicit reading of ADR-0009 that the two bundles are independent.
+- [ ] Add a smoke test in CI that boots `apps/olonjs.io` with the production build, navigates to `/admin`, and asserts that the StudioStage renders at least one section without an `EngineErrorBoundary` fallback. The bug this ADR fixes was invisible to current CI; a regression test prevents recurrence.
+- [ ] Update `apps/olonjs.io`'s `deploy-landing.yml` workflow to also exercise an offline `/admin` path (built but not deployed) so the dual-bundle topology is verified on every push that touches `packages/core/**`.
+- [ ] Re-evaluate Alternative B (single Vite build with shared chunks) if a third subpath is introduced or if more than four singleton entries accumulate. The threshold for migration is roughly: more than seven singleton entries in `SINGLETON_RUNTIME_MODULES`, a need for nested subpaths (e.g. `@olonjs/core/runtime/forms`), or a future Rollup version that fixes the order-sensitive dts rollup behavior in `vite-plugin-dts` (which would unblock Alternative B's natural ordering).
+- [ ] Silence the eight UMD `output.globals` warnings if and when a real `<script>`-tag consumer of `@olonjs/core` emerges. Until then the warnings are correct (UMD does not have a sensible global name for an externalized internal module) and the noise is acceptable.
 
 ## Open Points
 
-- The exact form of the `external` regex in `vite.config.ts` (matching `./runtime-entry`, `./runtime-entry.ts`, and any path-resolved variants) is a one-iteration tuning task during implementation. Prior art from `vite-plugin-externalize-deps` may simplify; whether to add a dependency vs. write the rule by hand is decided in the implementation PR.
 - Whether to keep `themeManager` as a singleton stored in `runtime-entry`, or refactor it to live entirely inside React state (returned from a hook). Keeping it as a singleton is the lowest-risk path now; refactor is a separate ADR if it proves limiting.
-- Whether the proposed CI check (§4) lives inside the existing `check-runtime-decoupling.mjs` (extending its responsibilities) or as a sibling script (`check-singleton-modules.mjs`). Leaning sibling for separation of concerns; both walk the same import graph but assert different invariants.
+- Whether the four singleton files listed in `SINGLETON_RUNTIME_MODULES` are exhaustive. The 2026-05-10 audit was empirical (`grep` for `createContext` and module-scope identity sources reachable from `runtime-entry.ts`); if a future contributor adds a context or singleton elsewhere in `runtime/` or `studio/` shared paths, it would need to be added to the list. The follow-up #1 boundary check is the durable safeguard.
 
 ## References
 
