@@ -1674,7 +1674,7 @@ cat << 'END_OF_FILE_CONTENT' > "package.json"
     "@tiptap/extension-link": "^2.11.5",
     "@tiptap/react": "^2.11.5",
     "@tiptap/starter-kit": "^2.11.5",
-    "@olonjs/core": "^1.0.127",
+    "@olonjs/core": "^1.1.1",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "lucide-react": "^0.474.0",
@@ -2582,18 +2582,20 @@ cat << 'END_OF_FILE_CONTENT' > "src/App.tsx"
  * Data from getHydratedData (file-backed or draft); assets from public/assets/images.
  * Supports Hybrid Persistence: Local Filesystem (Dev) or Cloud Bridge (Prod).
  */
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { JsonPagesEngine } from '@olonjs/core';
-import type { JsonPagesConfig, LibraryImageEntry, ProjectState } from '@olonjs/core';
-import { normalizeBasePath, withBasePath } from '@olonjs/core';
+import { useCallback, useEffect, useMemo, useRef, useState, Suspense, lazy } from 'react';
+// Visitor path uses the runtime-only bundle (~28 KB gz), per ADR-0009 D7.
+// The full @olonjs/core is loaded on demand only when the URL targets /admin.
+import { OlonJSEngine } from '@olonjs/core/runtime';
+import type { JsonPagesConfig, LibraryImageEntry, ProjectState } from '@olonjs/core/runtime';
+import { normalizeBasePath, withBasePath } from '@olonjs/core/runtime';
 import { ComponentRegistry } from '@/lib/ComponentRegistry';
 import { SECTION_SCHEMAS, SECTION_SUBMISSION_SCHEMAS } from '@/lib/schemas';
 import { addSectionConfig } from '@/lib/addSectionConfig';
 import { getHydratedData } from '@/lib/draftStorage';
 import type { SiteConfig, ThemeConfig, MenuConfig, PageConfig } from '@/types';
-import type { DeployPhase, StepId } from '@olonjs/core';
-import { DEPLOY_STEPS } from '@olonjs/core';
-import { startCloudSaveStream } from '@olonjs/core';
+import type { DeployPhase, StepId } from '@olonjs/core/runtime';
+import { DEPLOY_STEPS } from '@olonjs/core/runtime';
+import { startCloudSaveStream } from '@olonjs/core/runtime';
 import siteData from '@/data/config/site.json';
 import themeData from '@/data/config/theme.json';
 import menuData from '@/data/config/menu.json';
@@ -2603,8 +2605,22 @@ import { EmptyTenantView } from '@/components/empty-tenant';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ThemeProvider } from '@/components/ThemeProvider';
 import { useOlonForms } from '@/lib/useOlonForms';
-import { OlonFormsContext } from '@olonjs/core';
+import { OlonFormsContext } from '@olonjs/core/runtime';
 import { iconMap } from '@/lib/IconResolver';
+
+/**
+ * Engine selector. Visitors get OlonJSEngine (~28 KB gz); /admin paths
+ * lazy-load the full JsonPagesEngine (~128 KB gz) which mounts the
+ * Studio editor surface. The check runs at module load time — once per
+ * page, before React mounts — so Vite statically splits the chunks.
+ * See ADR-0008 + ADR-0009 + docs/plans/core-studio-split.md (Task 3.1).
+ */
+const isAdminPath =
+  typeof window !== 'undefined' && window.location.pathname.startsWith('/admin');
+
+const LazyJsonPagesEngine = lazy(() =>
+  import('@olonjs/core').then((m) => ({ default: m.JsonPagesEngine })),
+);
 
 import tenantCss from './index.css?inline';
 
@@ -3664,7 +3680,17 @@ function App() {
           </div>
         </div>
       ) : null}
-     {shouldRenderEngine ? (isTenantEmpty ? <EmptyTenantView /> : <JsonPagesEngine config={config} />) : null}
+     {shouldRenderEngine ? (
+        isTenantEmpty ? (
+          <EmptyTenantView />
+        ) : isAdminPath ? (
+          <Suspense fallback={null}>
+            <LazyJsonPagesEngine config={config} />
+          </Suspense>
+        ) : (
+          <OlonJSEngine config={config} />
+        )
+      ) : null}
       {isCloudMode && (contentMode === 'error' || contentFallback?.reasonCode === 'CLOUD_REFRESH_FAILED') ? (
         <div
           role="status"
@@ -3838,7 +3864,7 @@ END_OF_FILE_CONTENT
 echo "Creating src/components/empty-tenant/schema.ts..."
 cat << 'END_OF_FILE_CONTENT' > "src/components/empty-tenant/schema.ts"
 import { z } from 'zod';
-import { BaseSectionData } from '@olonjs/core';
+import { BaseSectionData } from '@olonjs/core/runtime';
 
 export const EmptyTenantSchema = BaseSectionData.extend({
   title: z.string().optional().describe('ui:text'),
@@ -3861,7 +3887,7 @@ mkdir -p "src/components/form-demo"
 echo "Creating src/components/form-demo/View.tsx..."
 cat << 'END_OF_FILE_CONTENT' > "src/components/form-demo/View.tsx"
 import { Icon } from '@/lib/IconResolver';
-import { useFormState } from '@olonjs/core';
+import { useFormState } from '@olonjs/core/runtime';
 import type { FormDemoData } from './types';
 
 type FormDemoViewProps = {
@@ -4025,7 +4051,7 @@ END_OF_FILE_CONTENT
 echo "Creating src/components/form-demo/schema.ts..."
 cat << 'END_OF_FILE_CONTENT' > "src/components/form-demo/schema.ts"
 import { z } from 'zod';
-import { BaseSectionData, WithFormRecipient } from '@olonjs/core';
+import { BaseSectionData, WithFormRecipient } from '@olonjs/core/runtime';
 
 export const FormDemoSchema = BaseSectionData.merge(WithFormRecipient).extend({
   icon: z.string().optional().describe('ui:icon-picker'),
@@ -4064,7 +4090,7 @@ END_OF_FILE_CONTENT
 mkdir -p "src/components/save-drawer"
 echo "Creating src/components/save-drawer/DeployConnector.tsx..."
 cat << 'END_OF_FILE_CONTENT' > "src/components/save-drawer/DeployConnector.tsx"
-import type { StepState } from '@olonjs/core';
+import type { StepState } from '@olonjs/core/runtime';
 
 interface DeployConnectorProps {
   fromState: StepState;
@@ -4110,7 +4136,7 @@ END_OF_FILE_CONTENT
 echo "Creating src/components/save-drawer/DeployNode.tsx..."
 cat << 'END_OF_FILE_CONTENT' > "src/components/save-drawer/DeployNode.tsx"
 import type { CSSProperties } from 'react';
-import type { DeployStep, StepState } from '@olonjs/core';
+import type { DeployStep, StepState } from '@olonjs/core/runtime';
 
 interface DeployNodeProps {
   step: DeployStep;
@@ -4198,8 +4224,8 @@ echo "Creating src/components/save-drawer/DopaDrawer.tsx..."
 cat << 'END_OF_FILE_CONTENT' > "src/components/save-drawer/DopaDrawer.tsx"
 import { useEffect, useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
-import type { StepId, StepState } from '@olonjs/core';
-import { DEPLOY_STEPS } from '@olonjs/core';
+import type { StepId, StepState } from '@olonjs/core/runtime';
+import { DEPLOY_STEPS } from '@olonjs/core/runtime';
 import fontsCss from '@/fonts.css?inline';
 import saverStyleCss from './saverStyle.css?inline';
 import { DeployNode } from './DeployNode';
@@ -5406,7 +5432,7 @@ import {
   Code2, Quote, SquareCode,
   Link2, Unlink2, ImagePlus, Eraser,
 } from 'lucide-react';
-import { STUDIO_EVENTS, useConfig, useStudio } from '@olonjs/core';
+import { STUDIO_EVENTS, useConfig, useStudio } from '@olonjs/core/runtime';
 import type { TiptapData, TiptapSettings } from './types';
 
 // ── UI primitives ─────────────────────────────────────────────────
@@ -5729,7 +5755,7 @@ END_OF_FILE_CONTENT
 echo "Creating src/components/tiptap/schema.ts..."
 cat << 'END_OF_FILE_CONTENT' > "src/components/tiptap/schema.ts"
 import { z } from 'zod';
-import { BaseSectionData } from '@olonjs/core';
+import { BaseSectionData } from '@olonjs/core/runtime';
 
 export const TiptapSchema = BaseSectionData.extend({
   content: z.string().default('').describe('ui:editorial-markdown'),
@@ -5750,7 +5776,7 @@ END_OF_FILE_CONTENT
 mkdir -p "src/components/ui"
 echo "Creating src/components/ui/OlonMark.tsx..."
 cat << 'END_OF_FILE_CONTENT' > "src/components/ui/OlonMark.tsx"
-import { cn } from '@olonjs/core'
+import { cn } from '@olonjs/core/runtime'
 
 interface OlonMarkProps {
   size?: number
@@ -5840,7 +5866,7 @@ cat << 'END_OF_FILE_CONTENT' > "src/components/ui/accordion.tsx"
 import * as React from "react"
 import { Accordion as AccordionPrimitive } from "radix-ui"
 
-import { cn } from "@olonjs/core"
+import { cn } from "@olonjs/core/runtime"
 import { ChevronDownIcon, ChevronUpIcon } from "lucide-react"
 
 function Accordion({
@@ -5944,7 +5970,7 @@ cat << 'END_OF_FILE_CONTENT' > "src/components/ui/avatar.tsx"
 import * as React from "react"
 import { Avatar as AvatarPrimitive } from "radix-ui"
 
-import { cn } from "@olonjs/core"
+import { cn } from "@olonjs/core/runtime"
 
 function Avatar({
   className,
@@ -6059,7 +6085,7 @@ echo "Creating src/components/ui/badge.tsx..."
 cat << 'END_OF_FILE_CONTENT' > "src/components/ui/badge.tsx"
 import * as React from 'react'
 import { cva, type VariantProps } from 'class-variance-authority'
-import { cn } from '@olonjs/core'
+import { cn } from '@olonjs/core/runtime'
 
 const badgeVariants = cva(
   'inline-flex items-center px-2.5 py-0.5 text-xs font-medium transition-colors',
@@ -6094,7 +6120,7 @@ cat << 'END_OF_FILE_CONTENT' > "src/components/ui/breadcrumb.tsx"
 import * as React from "react"
 import { Slot } from "radix-ui"
 
-import { cn } from "@olonjs/core"
+import { cn } from "@olonjs/core/runtime"
 import { ChevronRightIcon, MoreHorizontalIcon } from "lucide-react"
 
 function Breadcrumb({ className, ...props }: React.ComponentProps<"nav">) {
@@ -6221,7 +6247,7 @@ echo "Creating src/components/ui/button.tsx..."
 cat << 'END_OF_FILE_CONTENT' > "src/components/ui/button.tsx"
 import * as React from 'react'
 import { cva, type VariantProps } from 'class-variance-authority'
-import { cn } from '@olonjs/core'
+import { cn } from '@olonjs/core/runtime'
 
 const buttonVariants = cva(
   'inline-flex items-center justify-center gap-2 whitespace-nowrap font-medium transition-all duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-40 shrink-0',
@@ -6282,7 +6308,7 @@ END_OF_FILE_CONTENT
 echo "Creating src/components/ui/card.tsx..."
 cat << 'END_OF_FILE_CONTENT' > "src/components/ui/card.tsx"
 import * as React from 'react'
-import { cn } from '@olonjs/core'
+import { cn } from '@olonjs/core/runtime'
 
 const Card = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivElement>>(
   ({ className, ...props }, ref) => (
@@ -6341,7 +6367,7 @@ cat << 'END_OF_FILE_CONTENT' > "src/components/ui/checkbox.tsx"
 import * as React from "react"
 import { Checkbox as CheckboxPrimitive } from "radix-ui"
 
-import { cn } from "@olonjs/core"
+import { cn } from "@olonjs/core/runtime"
 import { CheckIcon } from "lucide-react"
 
 function Checkbox({
@@ -6381,7 +6407,7 @@ cat << 'END_OF_FILE_CONTENT' > "src/components/ui/dialog.tsx"
 import * as React from "react"
 import { Dialog as DialogPrimitive } from "radix-ui"
 
-import { cn } from "@olonjs/core"
+import { cn } from "@olonjs/core/runtime"
 import { Button } from "@/components/ui/button"
 import { XIcon } from "lucide-react"
 
@@ -6553,7 +6579,7 @@ cat << 'END_OF_FILE_CONTENT' > "src/components/ui/dropdown-menu.tsx"
 import * as React from "react"
 import { DropdownMenu as DropdownMenuPrimitive } from "radix-ui"
 
-import { cn } from "@olonjs/core"
+import { cn } from "@olonjs/core/runtime"
 import { CheckIcon, ChevronRightIcon } from "lucide-react"
 
 function DropdownMenu({
@@ -6828,7 +6854,7 @@ cat << 'END_OF_FILE_CONTENT' > "src/components/ui/hover-card.tsx"
 import * as React from "react"
 import { HoverCard as HoverCardPrimitive } from "radix-ui"
 
-import { cn } from "@olonjs/core"
+import { cn } from "@olonjs/core/runtime"
 
 function HoverCard({
   ...props
@@ -6874,7 +6900,7 @@ END_OF_FILE_CONTENT
 echo "Creating src/components/ui/input.tsx..."
 cat << 'END_OF_FILE_CONTENT' > "src/components/ui/input.tsx"
 import * as React from 'react'
-import { cn } from '@olonjs/core'
+import { cn } from '@olonjs/core/runtime'
 
 export interface InputProps extends React.InputHTMLAttributes<HTMLInputElement> {}
 
@@ -6905,7 +6931,7 @@ END_OF_FILE_CONTENT
 echo "Creating src/components/ui/label.tsx..."
 cat << 'END_OF_FILE_CONTENT' > "src/components/ui/label.tsx"
 import * as React from 'react'
-import { cn } from '@olonjs/core'
+import { cn } from '@olonjs/core/runtime'
 
 const Label = React.forwardRef<
   HTMLLabelElement,
@@ -6929,7 +6955,7 @@ import * as React from "react"
 import { cva } from "class-variance-authority"
 import { NavigationMenu as NavigationMenuPrimitive } from "radix-ui"
 
-import { cn } from "@olonjs/core"
+import { cn } from "@olonjs/core/runtime"
 import { ChevronDownIcon } from "lucide-react"
 
 function NavigationMenu({
@@ -7098,7 +7124,7 @@ cat << 'END_OF_FILE_CONTENT' > "src/components/ui/progress.tsx"
 import * as React from "react"
 import { Progress as ProgressPrimitive } from "radix-ui"
 
-import { cn } from "@olonjs/core"
+import { cn } from "@olonjs/core/runtime"
 
 function Progress({
   className,
@@ -7133,7 +7159,7 @@ cat << 'END_OF_FILE_CONTENT' > "src/components/ui/scroll-area.tsx"
 import * as React from "react"
 import { ScrollArea as ScrollAreaPrimitive } from "radix-ui"
 
-import { cn } from "@olonjs/core"
+import { cn } from "@olonjs/core/runtime"
 
 function ScrollArea({
   className,
@@ -7192,7 +7218,7 @@ cat << 'END_OF_FILE_CONTENT' > "src/components/ui/select.tsx"
 import * as React from "react"
 import { Select as SelectPrimitive } from "radix-ui"
 
-import { cn } from "@olonjs/core"
+import { cn } from "@olonjs/core/runtime"
 import { ChevronDownIcon, CheckIcon, ChevronUpIcon } from "lucide-react"
 
 function Select({
@@ -7578,7 +7604,7 @@ END_OF_FILE_CONTENT
 echo "Creating src/components/ui/separator.tsx..."
 cat << 'END_OF_FILE_CONTENT' > "src/components/ui/separator.tsx"
 import * as React from 'react'
-import { cn } from '@olonjs/core'
+import { cn } from '@olonjs/core/runtime'
 
 const Separator = React.forwardRef<
   HTMLDivElement,
@@ -7607,7 +7633,7 @@ cat << 'END_OF_FILE_CONTENT' > "src/components/ui/sheet.tsx"
 import * as React from "react"
 import { Dialog as SheetPrimitive } from "radix-ui"
 
-import { cn } from "@olonjs/core"
+import { cn } from "@olonjs/core/runtime"
 import { Button } from "@/components/ui/button"
 import { XIcon } from "lucide-react"
 
@@ -7755,7 +7781,7 @@ END_OF_FILE_CONTENT
 # SKIP: src/components/ui/sheet.tsx:Zone.Identifier is binary and cannot be embedded as text.
 echo "Creating src/components/ui/skeleton.tsx..."
 cat << 'END_OF_FILE_CONTENT' > "src/components/ui/skeleton.tsx"
-import { cn } from '@olonjs/core';
+import { cn } from '@olonjs/core/runtime';
 import type { HTMLAttributes } from 'react';
 
 function Skeleton({
@@ -7779,7 +7805,7 @@ cat << 'END_OF_FILE_CONTENT' > "src/components/ui/switch.tsx"
 import * as React from "react"
 import { Switch as SwitchPrimitive } from "radix-ui"
 
-import { cn } from "@olonjs/core"
+import { cn } from "@olonjs/core/runtime"
 
 function Switch({
   className,
@@ -7815,7 +7841,7 @@ echo "Creating src/components/ui/table.tsx..."
 cat << 'END_OF_FILE_CONTENT' > "src/components/ui/table.tsx"
 import * as React from "react"
 
-import { cn } from "@olonjs/core"
+import { cn } from "@olonjs/core/runtime"
 
 function Table({ className, ...props }: React.ComponentProps<"table">) {
   return (
@@ -7939,7 +7965,7 @@ import * as React from "react"
 import { cva, type VariantProps } from "class-variance-authority"
 import { Tabs as TabsPrimitive } from "radix-ui"
 
-import { cn } from "@olonjs/core"
+import { cn } from "@olonjs/core/runtime"
 
 function Tabs({
   className,
@@ -8031,7 +8057,7 @@ echo "Creating src/components/ui/textarea.tsx..."
 cat << 'END_OF_FILE_CONTENT' > "src/components/ui/textarea.tsx"
 import * as React from "react"
 
-import { cn } from "@olonjs/core"
+import { cn } from "@olonjs/core/runtime"
 
 function Textarea({ className, ...props }: React.ComponentProps<"textarea">) {
   return (
@@ -8060,7 +8086,7 @@ import * as React from "react"
 import { type VariantProps } from "class-variance-authority"
 import { ToggleGroup as ToggleGroupPrimitive } from "radix-ui"
 
-import { cn } from "@olonjs/core"
+import { cn } from "@olonjs/core/runtime"
 import { toggleVariants } from "@/components/ui/toggle"
 
 const ToggleGroupContext = React.createContext<
@@ -8155,7 +8181,7 @@ import * as React from "react"
 import { cva, type VariantProps } from "class-variance-authority"
 import { Toggle as TogglePrimitive } from "radix-ui"
 
-import { cn } from "@olonjs/core"
+import { cn } from "@olonjs/core/runtime"
 
 const toggleVariants = cva(
   "group/toggle inline-flex items-center justify-center gap-1 rounded-lg text-sm font-medium whitespace-nowrap transition-all outline-none hover:bg-muted hover:text-foreground focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 disabled:pointer-events-none disabled:opacity-50 aria-invalid:border-destructive aria-invalid:ring-destructive/20 aria-pressed:bg-muted data-[state=on]:bg-muted dark:aria-invalid:ring-destructive/40 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
@@ -8207,7 +8233,7 @@ cat << 'END_OF_FILE_CONTENT' > "src/components/ui/tooltip.tsx"
 import * as React from "react"
 import { Tooltip as TooltipPrimitive } from "radix-ui"
 
-import { cn } from "@olonjs/core"
+import { cn } from "@olonjs/core/runtime"
 
 function TooltipProvider({
   delayDuration = 0,
@@ -8910,7 +8936,7 @@ echo "Creating src/entry-ssg.tsx..."
 cat << 'END_OF_FILE_CONTENT' > "src/entry-ssg.tsx"
 import { renderToString } from 'react-dom/server';
 import { StaticRouter } from 'react-router-dom/server';
-import { ConfigProvider, PageRenderer, StudioProvider, resolveRuntimeConfig } from '@olonjs/core';
+import { ConfigProvider, PageRenderer, StudioProvider, resolveRuntimeConfig } from '@olonjs/core/runtime';
 import type { JsonPagesConfig, PageConfig, SiteConfig, ThemeConfig } from '@/types';
 import { ThemeProvider } from '@/components/ThemeProvider';
 import { ComponentRegistry } from '@/lib/ComponentRegistry';
@@ -10118,7 +10144,7 @@ export const Icon: React.FC<IconProps> = ({ name, size = 20, className }) => {
 END_OF_FILE_CONTENT
 echo "Creating src/lib/addSectionConfig.ts..."
 cat << 'END_OF_FILE_CONTENT' > "src/lib/addSectionConfig.ts"
-import type { AddSectionConfig } from '@olonjs/core';
+import type { AddSectionConfig } from '@olonjs/core/runtime';
 
 const addableSectionTypes = ['empty-tenant', 'form-demo'] as const;
 
@@ -10259,7 +10285,7 @@ export {
   BaseSectionSettingsSchema,
   CtaSchema,
   ImageSelectionSchema,
-} from '@olonjs/core';
+} from '@olonjs/core/runtime';
 
 END_OF_FILE_CONTENT
 echo "Creating src/lib/useFormSubmit.ts..."
@@ -10354,7 +10380,7 @@ END_OF_FILE_CONTENT
 echo "Creating src/lib/useOlonForms.ts..."
 cat << 'END_OF_FILE_CONTENT' > "src/lib/useOlonForms.ts"
 import { useCallback, useEffect, useState } from 'react';
-import type { FormState } from '@olonjs/core';
+import type { FormState } from '@olonjs/core/runtime';
 
 const API_BASE =
   (import.meta.env.VITE_OLONJS_CLOUD_URL as string | undefined) ??
@@ -10555,6 +10581,12 @@ export type SectionComponentPropsMap = {
   'form-demo': { data: FormDemoData; settings?: FormDemoSettings };
 };
 
+// MTRP module augmentation. TypeScript treats `@olonjs/core` and
+// `@olonjs/core/runtime` as separate module identifiers (different
+// import specifiers). After ADR-0009 the tenant imports JsonPagesConfig
+// from `/runtime` for the visitor path, so the section registries must
+// be augmented for *both* identifiers, otherwise PageConfig.sections
+// resolves to a generic FallbackSection on the runtime side.
 declare module '@olonjs/core' {
   export interface SectionDataRegistry {
     'empty-tenant': EmptyTenantData;
@@ -10566,7 +10598,26 @@ declare module '@olonjs/core' {
   }
 }
 
-export * from '@olonjs/core';
+declare module '@olonjs/core/runtime' {
+  export interface SectionDataRegistry {
+    'empty-tenant': EmptyTenantData;
+    'form-demo': FormDemoData;
+  }
+  export interface SectionSettingsRegistry {
+    'empty-tenant': EmptyTenantSettings;
+    'form-demo': FormDemoSettings;
+  }
+}
+
+// ADR-0009 D7: tenant types re-export from the runtime subpath, NOT the
+// full @olonjs/core. This is a value re-export — even though every
+// consumer in this codebase only does `import type`, Vite's static
+// graph treats `export *` as a runtime dependency edge. Pointing it at
+// '@olonjs/core' would pull the full Studio bundle (AdminSidebar,
+// FormFactory, StudioStage, admin-skin) into the visitor main chunk.
+// Pointing it at '@olonjs/core/runtime' anchors the graph to the
+// runtime-only bundle (~28 KB gz) so the visitor entry stays clean.
+export * from '@olonjs/core/runtime';
 
 END_OF_FILE_CONTENT
 echo "Creating src/vite-env.d.ts..."
