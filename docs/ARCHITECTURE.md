@@ -74,8 +74,11 @@ Manual edits directly in template DNA files are not the preferred workflow.
 
 ## Release
 
-- `npm run release` -> legacy release flow
-- `npm run release:enterprise` -> gated flow (`check:templates`, `dist:dna:all`, then legacy release)
+Two distinct flows; see [PUBLISHING.md](./PUBLISHING.md) for the operational details:
+
+- `npm run release` -> legacy npm release flow (`@olonjs/stack`, `@olonjs/core`, `@olonjs/cli`, `@jsonpages/*` bridges)
+- `npm run release:enterprise` -> gated npm release (`check:templates`, `dist:dna:all`, then legacy)
+- `olon.js.org` site -> deployed automatically to `gh-pages` by `.github/workflows/deploy-landing.yml` on every push to `main` whose change set touches `apps/olonjs.io/**`, `packages/core/**`, or the workflow itself. No manual deploy command. The site builds `@olonjs/core` from the monorepo workspace, not from the npm registry, so it tracks the latest committed source independently of npm publish cadence.
 
 ## Build and Distribution Topology
 

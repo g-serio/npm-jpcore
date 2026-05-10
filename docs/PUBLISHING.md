@@ -1,12 +1,18 @@
 # Publishing and Release
 
-This document is the operational source of truth for publishing `@olonjs/stack`, `@olonjs/core`, and `@olonjs/cli` from this monorepo, plus compatibility bridge packages under `@jsonpages/*`.
+This document is the operational source of truth for two distinct publishing flows in this monorepo:
+
+1. **npm package publishing** — `@olonjs/stack`, `@olonjs/core`, `@olonjs/cli`, plus compatibility bridges under `@jsonpages/*`. Manual, gated, runs from a developer machine.
+2. **`olon.js.org` site deploy** — the marketing site lives at `apps/olonjs.io/` and ships to `gh-pages` automatically on every push to `main`. No manual step.
+
+The two flows are independent. A new `@olonjs/core` version can be published to npm without redeploying the site, and the site can redeploy without bumping any package version.
 
 ## Scope
 
 - Standard flow: `npm run release`
 - Enterprise-gated flow: `npm run release:enterprise`
 - DNA governance (`alpha`)
+- `olon.js.org` deploy (`gh-pages` via GitHub Actions)
 
 ## Prerequisites
 
@@ -171,6 +177,92 @@ npm run release -- --dry-run
 ```bash
 npm run release:enterprise
 ```
+
+## `olon.js.org` site deploy (gh-pages)
+
+The marketing site at https://olon.js.org is served from the `gh-pages` branch of this repo and rebuilt automatically by `.github/workflows/deploy-landing.yml`. There is no manual deploy script and no `gh-pages` package dependency — the GitHub Action does all the work.
+
+### Trigger
+
+The workflow runs on every push to `main` whose change set touches one of:
+
+- `apps/olonjs.io/**`
+- `packages/core/**`
+- `.github/workflows/deploy-landing.yml`
+
+Pushes that only touch `docs/`, `packages/cli/`, `packages/stack/`, or `apps/tenant-alpha/` do **not** trigger a redeploy. This is intentional — keeps the site stable when only ADRs or templates change.
+
+### Pipeline steps
+
+`.github/workflows/deploy-landing.yml`:
+
+1. `actions/checkout@v4` — full repo checkout.
+2. `actions/setup-node@v4` (Node 20, npm cache).
+3. `npm install` from monorepo root (workspaces resolve `@olonjs/core` from `packages/core/`).
+4. `cd packages/core && npm run build` — produces both bundles (`olonjs-core.js` + `olonjs-core-runtime.js`) via `scripts/build-dual.mjs`. Required because the tenant build imports from `@olonjs/core` and `@olonjs/core/runtime` and the in-monorepo workspace symlink resolves to `packages/core/dist/`.
+5. `node apps/olonjs.io/scripts/bake.mjs` — runs the OlonJS SSG bake:
+   - Builds the client bundle (`apps/olonjs.io/dist/`).
+   - Builds an SSR entry bundle (`apps/olonjs.io/dist-ssr/`).
+   - Discovers all page slugs from `apps/olonjs.io/src/data/pages/*.json`.
+   - Renders each slug via SSR and writes `dist/<slug>/index.html` plus the WebMCP page contracts and manifests.
+6. `JamesIves/github-pages-deploy-action@v4` — pushes `apps/olonjs.io/dist/` to the `gh-pages` branch with `clean: true`. GitHub Pages serves it at `olon.js.org` (CNAME).
+
+### Developer workflow
+
+The expected day-to-day flow for any change that should appear on `olon.js.org`:
+
+```bash
+# 1. Make changes in apps/olonjs.io/ or packages/core/
+git checkout -b my-change
+# … edit …
+
+# 2. Verify locally (no deploy yet)
+npm run build -w @olonjs/core         # if core changed
+npm run build -w olonjs-landing        # tenant build = same as CI step 5 minus SSG
+
+# 3. Commit and push the branch
+git add <files>
+git commit -m "…"
+git push origin my-change
+
+# 4. Open a PR to main, get review, merge
+
+# 5. After merge, watch the workflow:
+#    https://github.com/olonjs/core/actions/workflows/deploy-landing.yml
+#    Typical run: 2-3 minutes from push to gh-pages update.
+
+# 6. Verify the deploy:
+#    - Hard reload https://olon.js.org
+#    - Optionally re-run Lighthouse if perf-sensitive change
+```
+
+### Hot-fix flow (skip the PR)
+
+If you push directly to `main` (allowed for repo owners), the workflow triggers the same way. Use sparingly — there is no preview environment.
+
+### What if the workflow fails
+
+`deploy-landing.yml` has no rollback step. A failed deploy leaves the previous `gh-pages` commit live. Common failure modes:
+
+| Symptom | Likely cause | Fix |
+|---|---|---|
+| `Cannot find module '@olonjs/core/runtime'` | Step 4 didn't produce `dist/runtime.d.ts` (legacy single-bundle build invoked) | Verify `packages/core/package.json` `build` script points at `scripts/build-dual.mjs`, not raw `vite build` |
+| `npm error EISDIR symlink … node_modules/@olonjs/…` | npm workspaces collision on a stale symlink | Add a `rm -rf node_modules` step before install in the workflow, or use `npm ci` |
+| `bake.mjs: Cannot find page <slug>` | A page JSON was renamed but the menu/site reference wasn't updated | Sync the rename in `src/data/config/site.json` and `menu.json` |
+| Action succeeds but `olon.js.org` 404s | DNS / CNAME issue, not the build | Check `apps/olonjs.io/public/CNAME` and the GitHub Pages settings |
+
+The Lighthouse audit assets occasionally end up on disk during local runs (`C:\Users\…\AppData\Local\lighthouse.*\Singleton*`). These are Chromium temp dirs and **must not** be committed — confirm `.gitignore` covers `lighthouse.*` at the repo root before pushing.
+
+### Relationship to npm package publishing
+
+The site deploy reads `@olonjs/core` from the monorepo workspace, **not** from the npm registry. Publishing a new `@olonjs/core` version to npm therefore does not affect `olon.js.org` until a separate commit lands that touches `apps/olonjs.io/**` or `packages/core/**`. Conversely, `olon.js.org` always tracks the latest committed `packages/core/`, even if no npm version has been published with those changes yet.
+
+This means:
+
+- A perf fix in `apps/olonjs.io/` is live on `olon.js.org` ~3 minutes after merging to `main`. No npm publish required.
+- A breaking change in `packages/core/` is **live on `olon.js.org` ~3 minutes after merging to `main`** (because the workflow rebuilds core from source). External tenants on the published npm version are **unaffected** until you `npm run release`.
+
+The boundary check (`npm run test:boundary -w @olonjs/core`) should ideally be wired into the deploy-landing workflow as a pre-build gate, but currently runs only in the standalone npm release flow.
 
 ## Windows note
 
