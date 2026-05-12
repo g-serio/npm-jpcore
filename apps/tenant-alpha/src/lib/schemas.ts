@@ -25,4 +25,4 @@ export {
   BaseSectionSettingsSchema,
   CtaSchema,
   ImageSelectionSchema,
-} from '@olonjs/core/runtime';
+} from '@olonjs/core';

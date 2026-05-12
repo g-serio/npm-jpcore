@@ -3,20 +3,18 @@
  * Data from getHydratedData (file-backed or draft); assets from public/assets/images.
  * Supports Hybrid Persistence: Local Filesystem (Dev) or Cloud Bridge (Prod).
  */
-import { useCallback, useEffect, useMemo, useRef, useState, Suspense, lazy } from 'react';
-// Visitor path uses the runtime-only bundle (~28 KB gz), per ADR-0009 D7.
-// The full @olonjs/core is loaded on demand only when the URL targets /admin.
-import { OlonJSEngine } from '@olonjs/core/runtime';
-import type { JsonPagesConfig, LibraryImageEntry, ProjectState } from '@olonjs/core/runtime';
-import { normalizeBasePath, withBasePath } from '@olonjs/core/runtime';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { JsonPagesEngine } from '@olonjs/core';
+import type { JsonPagesConfig, LibraryImageEntry, ProjectState } from '@olonjs/core';
+import { normalizeBasePath, withBasePath } from '@olonjs/core';
 import { ComponentRegistry } from '@/lib/ComponentRegistry';
 import { SECTION_SCHEMAS, SECTION_SUBMISSION_SCHEMAS } from '@/lib/schemas';
 import { addSectionConfig } from '@/lib/addSectionConfig';
 import { getHydratedData } from '@/lib/draftStorage';
 import type { SiteConfig, ThemeConfig, MenuConfig, PageConfig } from '@/types';
-import type { DeployPhase, StepId } from '@olonjs/core/runtime';
-import { DEPLOY_STEPS } from '@olonjs/core/runtime';
-import { startCloudSaveStream } from '@olonjs/core/runtime';
+import type { DeployPhase, StepId } from '@olonjs/core';
+import { DEPLOY_STEPS } from '@olonjs/core';
+import { startCloudSaveStream } from '@olonjs/core';
 import siteData from '@/data/config/site.json';
 import themeData from '@/data/config/theme.json';
 import menuData from '@/data/config/menu.json';
@@ -26,22 +24,8 @@ import { EmptyTenantView } from '@/components/empty-tenant';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ThemeProvider } from '@/components/ThemeProvider';
 import { useOlonForms } from '@/lib/useOlonForms';
-import { OlonFormsContext } from '@olonjs/core/runtime';
+import { OlonFormsContext } from '@olonjs/core';
 import { iconMap } from '@/lib/IconResolver';
-
-/**
- * Engine selector. Visitors get OlonJSEngine (~28 KB gz); /admin paths
- * lazy-load the full JsonPagesEngine (~128 KB gz) which mounts the
- * Studio editor surface. The check runs at module load time — once per
- * page, before React mounts — so Vite statically splits the chunks.
- * See ADR-0008 + ADR-0009 + docs/plans/core-studio-split.md (Task 3.1).
- */
-const isAdminPath =
-  typeof window !== 'undefined' && window.location.pathname.startsWith('/admin');
-
-const LazyJsonPagesEngine = lazy(() =>
-  import('@olonjs/core').then((m) => ({ default: m.JsonPagesEngine })),
-);
 
 import tenantCss from './index.css?inline';
 
@@ -1104,12 +1088,8 @@ function App() {
      {shouldRenderEngine ? (
         isTenantEmpty ? (
           <EmptyTenantView />
-        ) : isAdminPath ? (
-          <Suspense fallback={null}>
-            <LazyJsonPagesEngine config={config} />
-          </Suspense>
         ) : (
-          <OlonJSEngine config={config} />
+          <JsonPagesEngine config={config} />
         )
       ) : null}
       {isCloudMode && (contentMode === 'error' || contentFallback?.reasonCode === 'CLOUD_REFRESH_FAILED') ? (

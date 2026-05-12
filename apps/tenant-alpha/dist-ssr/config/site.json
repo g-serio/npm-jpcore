@@ -3,16 +3,7 @@
     "title": "OlonJS",
     "logoUrl": "/brand/mark/olon-mark-dark.svg"
   },
-  "pages": [
-    {
-      "slug": "home",
-      "label": "Home"
-    },
-    {
-      "slug": "design-system",
-      "label": "Design System"
-    }
-  ],
+  
   "header": {
     "id": "global-header",
     "type": "header",

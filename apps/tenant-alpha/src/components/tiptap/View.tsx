@@ -15,7 +15,7 @@ import {
   Code2, Quote, SquareCode,
   Link2, Unlink2, ImagePlus, Eraser,
 } from 'lucide-react';
-import { STUDIO_EVENTS, useConfig, useStudio } from '@olonjs/core/runtime';
+import { STUDIO_EVENTS, useConfig, useStudio } from '@olonjs/core';
 import type { TiptapData, TiptapSettings } from './types';
 
 // ── UI primitives ─────────────────────────────────────────────────

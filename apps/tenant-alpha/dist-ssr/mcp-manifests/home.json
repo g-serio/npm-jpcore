@@ -1,0 +1,94 @@
+{
+  "version": "1.0.0",
+  "kind": "olonjs-page-mcp-manifest",
+  "generatedAt": "2026-04-13T09:55:25.033Z",
+  "slug": "home",
+  "title": "OlonJS — Contract Layer for the Agentic Web",
+  "description": "OlonJS is a TypeScript framework for building JSON-driven websites with a deterministic data contract. Every section is typed, validated, and structurally addressable.",
+  "contractHref": "/schemas/home.schema.json",
+  "transport": {
+    "kind": "window-message",
+    "requestType": "olonjs:webmcp:tool-call",
+    "resultType": "olonjs:webmcp:tool-result",
+    "target": "window"
+  },
+  "capabilities": {
+    "resources": [
+      {
+        "uri": "olon://pages/home",
+        "name": "OlonJS — Contract Layer for the Agentic Web Data",
+        "mimeType": "application/json",
+        "description": "Structured content for the home page."
+      },
+      {
+        "uri": "olon://pages",
+        "name": "Site Map",
+        "mimeType": "application/json",
+        "description": "Structured content for the map of this site"
+      }
+    ]
+  },
+  "sectionTypes": [
+    "header",
+    "footer",
+    "olon-hero",
+    "olon-why",
+    "olon-architecture",
+    "olon-example",
+    "olon-getstarted"
+  ],
+  "sectionInstances": [
+    {
+      "id": "global-header",
+      "type": "header",
+      "scope": "global",
+      "label": "header"
+    },
+    {
+      "id": "global-footer",
+      "type": "footer",
+      "scope": "global",
+      "label": "footer"
+    },
+    {
+      "id": "hero-main",
+      "type": "olon-hero",
+      "scope": "local",
+      "label": "olon-hero"
+    },
+    {
+      "id": "why-olon",
+      "type": "olon-why",
+      "scope": "local",
+      "label": "Why OlonJS"
+    },
+    {
+      "id": "architecture-protocols",
+      "type": "olon-architecture",
+      "scope": "local",
+      "label": "Architecture"
+    },
+    {
+      "id": "example-steps",
+      "type": "olon-example",
+      "scope": "local",
+      "label": "Quick Example"
+    },
+    {
+      "id": "getstarted-cards",
+      "type": "olon-getstarted",
+      "scope": "local",
+      "label": "Get Started"
+    }
+  ],
+  "tools": [
+    {
+      "name": "update-section",
+      "description": "Update a section field in the Studio draft. Does not persist — call save when all updates are complete. Use sectionType to select the matching schema from sectionSchemas."
+    },
+    {
+      "name": "save",
+      "description": "Persist all pending draft changes using the active save mode (local file, hot save, or save2repo). Call once after all update-section calls are complete."
+    }
+  ]
+}

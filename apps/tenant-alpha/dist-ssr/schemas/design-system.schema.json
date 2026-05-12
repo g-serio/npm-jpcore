@@ -1,0 +1,183 @@
+{
+  "version": "1.0.0",
+  "kind": "olonjs-page-contract",
+  "slug": "design-system",
+  "title": "Olon Design System — Design Language",
+  "description": "Token reference, color system, typography, components and brand identity for the OlonJS design language.",
+  "manifestHref": "/mcp-manifests/design-system.json",
+  "systemPrompt": "You are operating the \"Olon Design System — Design Language\" page in OlonJS Studio. Use only the declared tools and keep mutations valid against the section schema.",
+  "sectionTypes": [
+    "footer",
+    "design-system"
+  ],
+  "sectionInstances": [
+    {
+      "id": "global-footer",
+      "type": "footer",
+      "scope": "global",
+      "label": "footer"
+    },
+    {
+      "id": "ds-main",
+      "type": "design-system",
+      "scope": "local",
+      "label": "Olon"
+    }
+  ],
+  "sectionSchemas": {
+    "footer": {
+      "type": "object",
+      "properties": {
+        "brandText": {
+          "type": "string",
+          "description": "ui:text"
+        },
+        "copyright": {
+          "type": "string",
+          "description": "ui:text"
+        },
+        "links": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "label": {
+                "type": "string",
+                "description": "ui:text"
+              },
+              "href": {
+                "type": "string",
+                "description": "ui:text"
+              }
+            },
+            "additionalProperties": false,
+            "required": [
+              "label",
+              "href"
+            ]
+          },
+          "description": "ui:list"
+        },
+        "designSystemHref": {
+          "type": "string",
+          "description": "ui:text"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "brandText",
+        "copyright"
+      ]
+    },
+    "design-system": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "anchorId": {
+          "type": "string",
+          "description": "ui:text"
+        },
+        "title": {
+          "type": "string",
+          "description": "ui:text"
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "tools": [
+    {
+      "name": "update-section",
+      "description": "Update a section field in the Studio draft. Does not persist — call save when all updates are complete. Use sectionType to select the matching schema from sectionSchemas.",
+      "inputSchema": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "slug": {
+            "type": "string",
+            "description": "Canonical page slug currently open in Studio."
+          },
+          "sectionId": {
+            "type": "string",
+            "description": "Concrete section instance id inside the current draft."
+          },
+          "sectionType": {
+            "type": "string",
+            "description": "Section type being updated (for example \"hero\" or \"header\"). Used to select the correct validation schema."
+          },
+          "scope": {
+            "type": "string",
+            "enum": [
+              "local",
+              "global"
+            ],
+            "default": "local"
+          },
+          "data": {
+            "type": "object",
+            "description": "Full replacement payload validated against the schema declared for sectionType."
+          },
+          "itemPath": {
+            "type": "array",
+            "description": "Optional root-to-leaf selection path for targeted field mutation.",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "fieldKey": {
+                  "type": "string"
+                },
+                "itemId": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "fieldKey"
+              ]
+            }
+          },
+          "value": {
+            "description": "Value written to the final field targeted by itemPath."
+          },
+          "fieldKey": {
+            "type": "string",
+            "description": "Shorthand for a top-level scalar field update when itemPath is omitted."
+          }
+        },
+        "required": [
+          "sectionId"
+        ],
+        "oneOf": [
+          {
+            "required": [
+              "data"
+            ]
+          },
+          {
+            "required": [
+              "itemPath",
+              "value"
+            ]
+          },
+          {
+            "required": [
+              "fieldKey",
+              "value"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "name": "save",
+      "description": "Persist all pending draft changes using the active save mode (local file, hot save, or save2repo). Call once after all update-section calls are complete.",
+      "inputSchema": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {}
+      }
+    }
+  ]
+}

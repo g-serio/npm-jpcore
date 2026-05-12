@@ -1,4 +1,4 @@
-import type { StepState } from '@olonjs/core/runtime';
+import type { StepState } from '@olonjs/core';
 
 interface DeployConnectorProps {
   fromState: StepState;

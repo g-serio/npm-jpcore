@@ -15,10 +15,14 @@
         "release": "node scripts/release.js",
         "check:templates": "node scripts/check-cli-templates.mjs",
         "dist:dna:all": "npm run dist -w tenant-alpha",
-        "release:enterprise": "node scripts/release-enterprise.js"
+        "release:enterprise": "node scripts/release-enterprise.js",
+        "bump:all": "tsx scripts/bump-schemas.ts"
     },
     "devDependencies": {
-        "typescript": "^5.7.3"
+        "ajv": "^8.17.1",
+        "tsx": "^4.19.2",
+        "typescript": "^5.7.3",
+        "zod-to-json-schema": "^3.24.1"
     },
     "version": "0.0.64"
 }

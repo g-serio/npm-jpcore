@@ -1,5 +1,5 @@
 import * as React from 'react'
-import { cn } from '@olonjs/core/runtime'
+import { cn } from '@olonjs/core'
 
 export interface InputProps extends React.InputHTMLAttributes<HTMLInputElement> {}
 

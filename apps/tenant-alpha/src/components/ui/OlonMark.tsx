@@ -1,4 +1,4 @@
-import { cn } from '@olonjs/core/runtime'
+import { cn } from '@olonjs/core'
 
 interface OlonMarkProps {
   size?: number

@@ -3,7 +3,7 @@
 import * as React from "react"
 import { Avatar as AvatarPrimitive } from "radix-ui"
 
-import { cn } from "@olonjs/core/runtime"
+import { cn } from "@olonjs/core"
 
 function Avatar({
   className,

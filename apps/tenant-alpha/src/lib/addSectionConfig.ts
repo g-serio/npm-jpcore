@@ -1,4 +1,4 @@
-import type { AddSectionConfig } from '@olonjs/core/runtime';
+import type { AddSectionConfig } from '@olonjs/core';
 
 const addableSectionTypes = ['empty-tenant', 'form-demo'] as const;
 

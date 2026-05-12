@@ -3,7 +3,7 @@
 import * as React from "react"
 import { Dialog as SheetPrimitive } from "radix-ui"
 
-import { cn } from "@olonjs/core/runtime"
+import { cn } from "@olonjs/core"
 import { Button } from "@/components/ui/button"
 import { XIcon } from "lucide-react"
 

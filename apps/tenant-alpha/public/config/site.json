@@ -3,7 +3,6 @@
     "title": "OlonJS",
     "logoUrl": "/brand/mark/olon-mark-dark.svg"
   },
-  
   "header": {
     "id": "global-header",
     "type": "header",

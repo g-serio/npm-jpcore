@@ -1,85 +1,17 @@
 {
   "version": "1.0.0",
   "kind": "olonjs-mcp-manifest-index",
-  "generatedAt": "2026-04-13T09:55:25.041Z",
+  "generatedAt": "2026-05-12T15:20:43.903Z",
   "pages": [
     {
-      "slug": "design-system",
-      "title": "Olon Design System — Design Language",
-      "description": "Token reference, color system, typography, components and brand identity for the OlonJS design language.",
-      "manifestHref": "/mcp-manifests/design-system.json",
-      "contractHref": "/schemas/design-system.schema.json",
-      "sectionTypes": [
-        "footer",
-        "design-system"
-      ]
-    },
-    {
-      "slug": "docs",
-      "title": "OlonJS Architecture Specifications v1.5",
-      "description": "Mandatory Standard — Sovereign Core Edition. Canonical Studio actions, SSG, Save to file, and Hot Save.",
-      "manifestHref": "/mcp-manifests/docs.json",
-      "contractHref": "/schemas/docs.schema.json",
-      "sectionTypes": [
-        "header",
-        "footer",
-        "tiptap"
-      ]
-    },
-    {
       "slug": "home",
-      "title": "OlonJS — Contract Layer for the Agentic Web",
-      "description": "OlonJS is a TypeScript framework for building JSON-driven websites with a deterministic data contract. Every section is typed, validated, and structurally addressable.",
+      "title": "Home",
+      "description": "OlonJS tenant alpha — form smoke test",
       "manifestHref": "/mcp-manifests/home.json",
       "contractHref": "/schemas/home.schema.json",
       "sectionTypes": [
-        "header",
         "footer",
-        "olon-hero",
-        "olon-why",
-        "olon-architecture",
-        "olon-example",
-        "olon-getstarted"
-      ]
-    },
-    {
-      "slug": "home_",
-      "title": "OlonJS — Contract Layer for the Agentic Web",
-      "description": "OlonJS is a TypeScript framework for building JSON-driven websites with a deterministic data contract. Every section is typed, validated, and structurally addressable.",
-      "manifestHref": "/mcp-manifests/home_.json",
-      "contractHref": "/schemas/home_.schema.json",
-      "sectionTypes": [
-        "header",
-        "footer",
-        "olon-hero",
-        "olon-why",
-        "olon-architecture",
-        "olon-example",
-        "olon-getstarted"
-      ]
-    },
-    {
-      "slug": "platform/overview",
-      "title": "OlonJS — Platform Overview",
-      "description": "Overview of the OlonJS platform, architecture direction, and product surface.",
-      "manifestHref": "/mcp-manifests/platform/overview.json",
-      "contractHref": "/schemas/platform/overview.schema.json",
-      "sectionTypes": [
-        "header",
-        "footer",
-        "page-hero"
-      ]
-    },
-    {
-      "slug": "post",
-      "title": "Post",
-      "description": "Smoke test page for header + tiptap + footer flow.",
-      "manifestHref": "/mcp-manifests/post.json",
-      "contractHref": "/schemas/post.schema.json",
-      "sectionTypes": [
-        "header",
-        "footer",
-        "tiptap"
+        "form-demo"
       ]
     }
   ]

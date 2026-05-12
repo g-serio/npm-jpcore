@@ -1,5 +1,5 @@
 import * as React from 'react'
-import { cn } from '@olonjs/core/runtime'
+import { cn } from '@olonjs/core'
 
 const Card = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivElement>>(
   ({ className, ...props }, ref) => (

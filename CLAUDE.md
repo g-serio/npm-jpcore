@@ -71,6 +71,7 @@ Monorepo con due workspaces:
 ### Root
 ```bash
 npm install          # install all workspaces
+npm run bump:all     # regenerate canonical JSON Schemas at apps/olonjs.io/public/schemas/v1/
 ```
 
 ### apps/tenant-alpha
@@ -237,4 +238,30 @@ Quando si itera su `packages/core` localmente prima di pubblicare:
 ```bash
 npm run build:all
 ```
+
+---
+
+## Canonical Schemas v1 (ADR-0003, ADR-0013)
+
+Il contratto pubblico di OlonJS è pubblicato come JSON Schema a `https://olon.js.org/schemas/v1/`. **Zod è la SOT interna**, il JSON Schema è il contratto pubblico — mai modificare l'output `.schema.json` direttamente.
+
+**Set canonico v1** (5 file):
+- `menu.schema.json` — navigation menus (`MenuConfig`)
+- `site.schema.json` — site shell: identity, header, footer (`SiteConfig`)
+- `page.schema.json` — single page contract (`PageConfig`)
+- `tenant.schema.json` — top-level tenant manifest (thin wrapper, cross-file `$ref` agli altri 4)
+- `design.schema.json` — design system tokens (**hand-authored**, fuori dal pipeline)
+
+**File paths:**
+| Purpose | Path |
+|---|---|
+| Zod SOT interna | `packages/core/src/contract/zod-schemas.ts` |
+| Generator script | `scripts/bump-schemas.ts` |
+| Output pubblicati | `apps/olonjs.io/public/schemas/v1/` |
+
+**Aggiungere o modificare** uno schema canonico: vedi [docs/canonical-schemas-howto.md](docs/canonical-schemas-howto.md). Riassunto: edit Zod → `npm run bump:all` → diff review → commit. **Mai patch sul `.schema.json` direttamente**.
+
+**Gotcha non ovvi** (full detail in [ADR-0013](docs/decisions/ADR-0013-v1-schemas-implementation.md)):
+- `.optional().describe()` su schema registrate in `definitions`, mai `.describe()` diretto (preserva il `$ref` invece di decomporlo).
+- `z.object({}).passthrough()` per i placeholder cross-ref, mai `z.unknown()` (required-ness corretta).
 
