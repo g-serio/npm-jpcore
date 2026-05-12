@@ -1,0 +1,21 @@
+# Robots.txt for olon.it
+
+User-agent: *
+Allow: /
+
+User-agent: GPTBot
+Disallow: /
+
+User-agent: Claude-Web
+Disallow: /
+
+User-agent: PerplexityBot
+Disallow: /
+
+User-agent: Googlebot-Extended
+Disallow: /
+
+User-agent: AI-Agent
+Disallow: /
+
+Sitemap: olon.it/sitemap.xml

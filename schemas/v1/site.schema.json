@@ -1,0 +1,106 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://olon.js.org/schemas/v1/site.schema.json",
+  "title": "Olon Site Configuration",
+  "description": "Site-level configuration: brand identity, an optional global header section (rendered above every page unless the page opts out via `global-header: false`), and a required global footer section (rendered below every page).",
+  "type": "object",
+  "required": [
+    "identity",
+    "footer"
+  ],
+  "properties": {
+    "footer": {
+      "$ref": "#/definitions/Section"
+    },
+    "header": {
+      "$ref": "#/definitions/Section",
+      "description": "A page section: a self-contained, agent-addressable unit of content. The contract treats `data` and `settings` as open records; concrete shapes live in section-type schemas."
+    },
+    "identity": {
+      "$ref": "#/definitions/SiteIdentity"
+    }
+  },
+  "additionalProperties": false,
+  "definitions": {
+    "Section": {
+      "description": "A page section: a self-contained, agent-addressable unit of content. The contract treats `data` and `settings` as open records; concrete shapes live in section-type schemas.",
+      "type": "object",
+      "required": [
+        "id",
+        "type",
+        "data"
+      ],
+      "properties": {
+        "type": {
+          "description": "Section type identifier. Resolves to a concrete section schema published separately by the theme or tenant.",
+          "type": "string"
+        },
+        "data": {
+          "description": "Section content payload. Shape is determined by the section type and validated against the type-specific schema, not by this contract.",
+          "type": "object",
+          "additionalProperties": {}
+        },
+        "id": {
+          "description": "Stable identifier for this section instance. Must be unique within its parent page or shell. Used as the addressable anchor for in-page navigation and for agent-driven section selection.",
+          "type": "string"
+        },
+        "settings": {
+          "description": "Optional rendering settings (padding, theme variant, container width, …). Shape is determined by the section type.",
+          "type": "object",
+          "additionalProperties": {}
+        }
+      },
+      "additionalProperties": false
+    },
+    "SiteIdentity": {
+      "description": "Brand identity for a site: human-readable name and logo URL. Used by themes for the document title, header brand, social cards, and PWA manifests.",
+      "type": "object",
+      "required": [
+        "title"
+      ],
+      "properties": {
+        "title": {
+          "description": "Human-readable site name. Used in page titles, social previews, and the default header brand.",
+          "type": "string"
+        },
+        "logoUrl": {
+          "description": "URL of the site logo, root-relative (`/brand/logo.svg`) or absolute. SVG is preferred for resolution independence; the theme decides aspect-ratio handling (wordmark vs. square mark).",
+          "type": "string"
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "examples": [
+    {
+      "footer": {
+        "type": "footer",
+        "data": {
+          "copyright": "© 2026 OlonJS"
+        },
+        "id": "global-footer"
+      },
+      "header": {
+        "type": "header",
+        "data": {
+          "links": [
+            {
+              "href": "/docs",
+              "label": "Docs"
+            },
+            {
+              "href": "https://github.com/olonjs/core",
+              "label": "GitHub"
+            }
+          ],
+          "logoText": "Olon"
+        },
+        "id": "global-header"
+      },
+      "identity": {
+        "title": "Olon",
+        "logoUrl": "/brand/mark/olon-mark-dark.svg"
+      }
+    }
+  ]
+}

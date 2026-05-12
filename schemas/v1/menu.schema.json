@@ -1,0 +1,110 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://olon.js.org/schemas/v1/menu.schema.json",
+  "title": "Olon Menu Configuration",
+  "description": "Navigation menus, keyed by menu name. `main` is the default; additional named menus (footer, sidebar, …) sit alongside.",
+  "type": "object",
+  "properties": {
+    "main": {
+      "description": "The default top-level menu. Conventionally the primary navigation.",
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/MenuItem"
+      }
+    }
+  },
+  "additionalProperties": {
+    "type": "array",
+    "items": {
+      "$ref": "#/definitions/MenuItem"
+    }
+  },
+  "definitions": {
+    "MenuItem": {
+      "description": "A single navigation entry. Items may nest recursively via `children`.",
+      "type": "object",
+      "required": [
+        "label",
+        "href"
+      ],
+      "properties": {
+        "children": {
+          "description": "Sub-items rendered as a nested menu. Recursive; depth is not limited by the contract.",
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/MenuItem"
+          }
+        },
+        "external": {
+          "description": "When true, the link points outside the current site and should typically open in a new tab.",
+          "type": "boolean"
+        },
+        "href": {
+          "description": "Target URL. Accepts absolute (https://…), root-relative (/path), anchor (#id), mailto: and tel: schemes.",
+          "type": "string"
+        },
+        "icon": {
+          "description": "An icon slug from the theme's icon set (e.g. `arrow-right`), or an absolute URL to a custom asset. SVG is preferred for resolution independence.",
+          "type": "string"
+        },
+        "id": {
+          "description": "Stable identifier for this menu entry. Must be unique within its parent list when present. Optional in source data; the persistence layer assigns one if absent.",
+          "type": "string"
+        },
+        "isCta": {
+          "description": "When true, this item is rendered with call-to-action emphasis rather than as a plain link.",
+          "type": "boolean"
+        },
+        "label": {
+          "description": "Visible link text. Plain text, no markdown.",
+          "type": "string"
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "examples": [
+    {
+      "footer": [
+        {
+          "href": "/privacy",
+          "label": "Privacy"
+        },
+        {
+          "href": "/terms",
+          "label": "Terms"
+        }
+      ],
+      "main": [
+        {
+          "href": "/",
+          "label": "Home"
+        },
+        {
+          "children": [
+            {
+              "href": "/docs/getting-started",
+              "label": "Getting started"
+            },
+            {
+              "href": "/docs/api",
+              "label": "API reference"
+            }
+          ],
+          "href": "/docs",
+          "label": "Docs"
+        },
+        {
+          "external": true,
+          "href": "https://github.com/olonjs/core",
+          "label": "GitHub"
+        },
+        {
+          "href": "#get-started",
+          "isCta": true,
+          "label": "Get started"
+        }
+      ]
+    }
+  ]
+}

@@ -1,36 +1,124 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "https://schemas.olon.design/core/page/v1",
-  "title": "OlonJS Core Page Contract",
+  "$id": "https://olon.js.org/schemas/v1/page.schema.json",
+  "title": "Olon Page Contract",
+  "description": "Full contract for a single page: identity, URL slug, SEO metadata, ordered sections, and global-header opt-out.",
   "type": "object",
-  "required": ["id", "slug", "meta", "sections"],
+  "required": [
+    "id",
+    "slug",
+    "meta",
+    "sections"
+  ],
   "properties": {
-    "id": { "type": "string", "pattern": "^[a-z0-9-]+-page$" },
-    "slug": { "type": "string", "pattern": "^[a-z0-9-/]+$" },
-    "global-header": { "type": "boolean", "default": true },
+    "global-header": {
+      "description": "When `false`, this page opts out of the site-level global header. Defaults to `true` when omitted.",
+      "type": "boolean",
+      "default": true
+    },
+    "id": {
+      "description": "Stable page identifier. Convention: kebab-case ending in `-page` (e.g. `home-page`, `docs-getting-started-page`).",
+      "type": "string",
+      "pattern": "^[a-z0-9-]+-page$"
+    },
     "meta": {
-      "type": "object",
-      "required": ["title", "description"],
-      "properties": {
-        "title": { "type": "string", "minLength": 10 },
-        "description": { "type": "string", "minLength": 50 }
-      }
+      "$ref": "#/definitions/PageMeta"
     },
     "sections": {
+      "description": "Ordered list of page sections rendered top-to-bottom. Each section follows the open Section shape; concrete data is determined by the section `type`.",
       "type": "array",
-      "items": { "$ref": "#/definitions/section" }
+      "items": {
+        "$ref": "#/definitions/Section"
+      }
+    },
+    "slug": {
+      "description": "URL path segment(s). Kebab-case; slashes allowed for nested routes (e.g. `docs/getting-started`).",
+      "type": "string",
+      "pattern": "^[a-z0-9-/]+$"
     }
   },
+  "additionalProperties": false,
   "definitions": {
-    "section": {
+    "PageMeta": {
+      "description": "Page metadata for SEO, social previews, and the document `<head>`.",
       "type": "object",
-      "required": ["id", "type", "data"],
+      "required": [
+        "title",
+        "description"
+      ],
       "properties": {
-        "id": { "type": "string" },
-        "type": { "type": "string" },
-        "data": { "type": "object" },
-        "settings": { "type": "object", "default": {} }
-      }
+        "title": {
+          "description": "Page title used in `<title>`, social cards, and search results. Minimum 10 characters; aim for 30–60 for optimal display in search results.",
+          "type": "string",
+          "minLength": 10
+        },
+        "description": {
+          "description": "Page description for SEO and social cards. Minimum 50 characters; aim for 120–160.",
+          "type": "string",
+          "minLength": 50
+        }
+      },
+      "additionalProperties": false
+    },
+    "Section": {
+      "description": "A page section: a self-contained, agent-addressable unit of content. The contract treats `data` and `settings` as open records; concrete shapes live in section-type schemas.",
+      "type": "object",
+      "required": [
+        "id",
+        "type",
+        "data"
+      ],
+      "properties": {
+        "type": {
+          "description": "Section type identifier. Resolves to a concrete section schema published separately by the theme or tenant.",
+          "type": "string"
+        },
+        "data": {
+          "description": "Section content payload. Shape is determined by the section type and validated against the type-specific schema, not by this contract.",
+          "type": "object",
+          "additionalProperties": {}
+        },
+        "id": {
+          "description": "Stable identifier for this section instance. Must be unique within its parent page or shell. Used as the addressable anchor for in-page navigation and for agent-driven section selection.",
+          "type": "string"
+        },
+        "settings": {
+          "description": "Optional rendering settings (padding, theme variant, container width, …). Shape is determined by the section type.",
+          "type": "object",
+          "additionalProperties": {}
+        }
+      },
+      "additionalProperties": false
     }
-  }
+  },
+  "examples": [
+    {
+      "id": "home-page",
+      "meta": {
+        "title": "OlonJS — the contract layer for the agentic web",
+        "description": "OlonJS is the contract layer for the agentic web. A typed, deterministic JSON contract that AI agents and humans both understand."
+      },
+      "sections": [
+        {
+          "type": "hero",
+          "data": {
+            "title": "OlonJS",
+            "subtitle": "The contract layer for the agentic web"
+          },
+          "id": "home-hero"
+        },
+        {
+          "type": "feature-grid",
+          "data": {
+            "items": []
+          },
+          "id": "home-features",
+          "settings": {
+            "container": "boxed"
+          }
+        }
+      ],
+      "slug": "home"
+    }
+  ]
 }
