@@ -1,10 +1,10 @@
 {
   "version": "1.0.0",
   "kind": "olonjs-page-mcp-manifest",
-  "generatedAt": "2026-04-13T09:55:25.033Z",
+  "generatedAt": "2026-05-12T15:28:40.791Z",
   "slug": "home",
-  "title": "OlonJS — Contract Layer for the Agentic Web",
-  "description": "OlonJS is a TypeScript framework for building JSON-driven websites with a deterministic data contract. Every section is typed, validated, and structurally addressable.",
+  "title": "Home",
+  "description": "OlonJS tenant alpha — form smoke test",
   "contractHref": "/schemas/home.schema.json",
   "transport": {
     "kind": "window-message",
@@ -16,7 +16,7 @@
     "resources": [
       {
         "uri": "olon://pages/home",
-        "name": "OlonJS — Contract Layer for the Agentic Web Data",
+        "name": "Home Data",
         "mimeType": "application/json",
         "description": "Structured content for the home page."
       },
@@ -29,21 +29,10 @@
     ]
   },
   "sectionTypes": [
-    "header",
     "footer",
-    "olon-hero",
-    "olon-why",
-    "olon-architecture",
-    "olon-example",
-    "olon-getstarted"
+    "form-demo"
   ],
   "sectionInstances": [
-    {
-      "id": "global-header",
-      "type": "header",
-      "scope": "global",
-      "label": "header"
-    },
     {
       "id": "global-footer",
       "type": "footer",
@@ -51,34 +40,10 @@
       "label": "footer"
     },
     {
-      "id": "hero-main",
-      "type": "olon-hero",
+      "id": "form-demo-1",
+      "type": "form-demo",
       "scope": "local",
-      "label": "olon-hero"
-    },
-    {
-      "id": "why-olon",
-      "type": "olon-why",
-      "scope": "local",
-      "label": "Why OlonJS"
-    },
-    {
-      "id": "architecture-protocols",
-      "type": "olon-architecture",
-      "scope": "local",
-      "label": "Architecture"
-    },
-    {
-      "id": "example-steps",
-      "type": "olon-example",
-      "scope": "local",
-      "label": "Quick Example"
-    },
-    {
-      "id": "getstarted-cards",
-      "type": "olon-getstarted",
-      "scope": "local",
-      "label": "Get Started"
+      "label": "Contattaci"
     }
   ],
   "tools": [
