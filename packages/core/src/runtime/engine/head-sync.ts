@@ -31,6 +31,11 @@ export function syncWebMcpJsonLd(title: string, description: string, url: string
     name: title,
     description,
     url,
+    'subjectOf': {
+    '@type': 'CreativeWork',
+    'additionalType': 'mcp-manifest',
+    'url': '/mcp-manifests/home.json'
+  }
   });
 }
 

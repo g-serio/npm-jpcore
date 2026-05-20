@@ -4,7 +4,7 @@ export const config = {
 
 const COOKIE_NAME = '__olonjs_admin_session';
 const COOKIE_MAX_AGE = 3600;
-const JWT_MAX_AGE_SECONDS = 300;
+const JWT_MAX_AGE_SECONDS = 45;
 
 function base64urlToBase64(str: string): string {
   return str.replace(/-/g, '+').replace(/_/g, '/') + '='.repeat((4 - (str.length % 4)) % 4);

@@ -1,14 +1,9 @@
 {
-    "rewrites":  [
-                     {
-                         "source":  "/:pagePath*.json",
-                         "destination":  "/pages/:pagePath*.json"
-                     },
-                     {
-                         "source":  "/(.*)",
-                         "destination":  "/index.html"
-                     }
-                 ],
+    "rewrites": [
+
+    { "source": "/:path*.json",              "destination": "{BLOB_BASE}/tenants/{slug}/pages/:path*.json" },
+    { "source": "/(.*)",                     "destination": "/index.html" }
+  ],
     "headers":  [
                     {
                         "source":  "/assets/(.*)",

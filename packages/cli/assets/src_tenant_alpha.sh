@@ -1650,6 +1650,149 @@ cat << 'END_OF_FILE_CONTENT' > "index.html"
 
 
 END_OF_FILE_CONTENT
+echo "Creating middleware.ts..."
+cat << 'END_OF_FILE_CONTENT' > "middleware.ts"
+export const config = {
+  matcher: ['/admin', '/admin/:path*'],
+};
+
+const COOKIE_NAME = '__olonjs_admin_session';
+const COOKIE_MAX_AGE = 3600;
+const JWT_MAX_AGE_SECONDS = 300;
+
+function base64urlToBase64(str: string): string {
+  return str.replace(/-/g, '+').replace(/_/g, '/') + '='.repeat((4 - (str.length % 4)) % 4);
+}
+
+function base64ToArrayBuffer(b64: string): ArrayBuffer {
+  const binary = atob(b64);
+  const bytes = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+  return bytes.buffer;
+}
+
+function pemToArrayBuffer(pem: string): ArrayBuffer {
+  // Handle both actual newlines and literal \n sequences (common in Vercel env vars)
+  const b64 = pem
+    .replace(/-----BEGIN PUBLIC KEY-----/g, '')
+    .replace(/-----END PUBLIC KEY-----/g, '')
+    .replace(/\\n/g, '')
+    .replace(/\s+/g, '');
+  return base64ToArrayBuffer(b64);
+}
+
+async function importPublicKey(pem: string): Promise<CryptoKey> {
+  return crypto.subtle.importKey(
+    'spki',
+    pemToArrayBuffer(pem),
+    { name: 'ECDSA', namedCurve: 'P-256' },
+    false,
+    ['verify'],
+  );
+}
+
+interface JwtPayload {
+  sub?: string;
+  iat?: number;
+  exp?: number;
+}
+
+async function verifyAdminJwt(
+  token: string,
+  publicKey: CryptoKey,
+  options: { checkExp: boolean } = { checkExp: true },
+): Promise<boolean> {
+  try {
+    const parts = token.split('.');
+    if (parts.length !== 3) return false;
+    const [headerB64, payloadB64, signatureB64] = parts;
+
+    const payload = JSON.parse(atob(base64urlToBase64(payloadB64))) as JwtPayload;
+    if (payload.sub !== 'admin-access') return false;
+
+    if (options.checkExp) {
+      const now = Math.floor(Date.now() / 1000);
+      if (typeof payload.exp !== 'number' || payload.exp < now) return false;
+      if (typeof payload.iat !== 'number' || now - payload.iat > JWT_MAX_AGE_SECONDS) return false;
+    }
+
+    const message = new TextEncoder().encode(`${headerB64}.${payloadB64}`);
+    const signature = base64ToArrayBuffer(base64urlToBase64(signatureB64));
+    return crypto.subtle.verify({ name: 'ECDSA', hash: 'SHA-256' }, publicKey, signature, message);
+  } catch {
+    return false;
+  }
+}
+
+function parseCookies(header: string | null): Record<string, string> {
+  if (!header) return {};
+  return Object.fromEntries(
+    header.split(';').map((c) => {
+      const [k, ...v] = c.trim().split('=');
+      return [k.trim(), decodeURIComponent(v.join('='))];
+    }),
+  );
+}
+
+function deny(hint: string): Response {
+  console.error(`[admin-middleware] 401 reason: ${hint}`);
+  return new Response('Unauthorized', { status: 401 });
+}
+
+export default async function middleware(request: Request): Promise<Response | undefined> {
+  if (!process.env.VERCEL_ENV) return undefined;
+
+  const publicKeyPem = process.env.ADMIN_PUBLIC_KEY;
+  if (!publicKeyPem) return deny('missing_public_key');
+
+  let publicKey: CryptoKey;
+  try {
+    publicKey = await importPublicKey(publicKeyPem);
+  } catch (e) {
+    return deny(`key_import_failed: ${e instanceof Error ? e.message : String(e)}`);
+  }
+
+  const url = new URL(request.url);
+  const cookies = parseCookies(request.headers.get('Cookie'));
+
+  // 1. Session cookie — signature check only; session lifetime governed by cookie Max-Age.
+  //    The JWT stored in the cookie was valid at issue time; exp is intentionally skipped
+  //    to allow 1h sessions without requiring the private key in the Edge Runtime.
+  // parseCookies already decodes values — no extra decodeURIComponent needed here
+  const sessionToken = cookies[COOKIE_NAME];
+  if (sessionToken) {
+    const cookieValid = await verifyAdminJwt(sessionToken, publicKey, { checkExp: false });
+    console.error(`[admin-middleware] cookie check: present=${!!sessionToken} valid=${cookieValid}`);
+    if (cookieValid) return undefined;
+  }
+
+  // 2. Bearer token in Authorization header — full validation including exp
+  const authHeader = request.headers.get('Authorization') ?? '';
+  const bearerToken = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : null;
+  if (bearerToken && (await verifyAdminJwt(bearerToken, publicKey))) {
+    return undefined;
+  }
+
+  // 3. Token as query param — full validation; set session cookie and redirect to clean URL
+  const queryToken = url.searchParams.get('token');
+  if (queryToken && (await verifyAdminJwt(queryToken, publicKey))) {
+    const cleanUrl = new URL(url.toString());
+    cleanUrl.searchParams.delete('token');
+    return new Response(null, {
+      status: 302,
+      headers: {
+        Location: cleanUrl.toString(),
+        // SameSite=Lax required: navigation originates from a cross-site platform (app.olon.it)
+        // SameSite=Strict would block the cookie in the redirect follow-up request
+        'Set-Cookie': `${COOKIE_NAME}=${encodeURIComponent(queryToken)}; Path=/admin; HttpOnly; Secure; SameSite=Lax; Max-Age=${COOKIE_MAX_AGE}`,
+      },
+    });
+  }
+
+  return deny('token_invalid');
+}
+
+END_OF_FILE_CONTENT
 echo "Creating package.json..."
 cat << 'END_OF_FILE_CONTENT' > "package.json"
 {
@@ -1661,9 +1804,9 @@ cat << 'END_OF_FILE_CONTENT' > "package.json"
     "dev": "vite",
     "dev:clean": "vite --force",
     "verify:webmcp": "node scripts/webmcp-feature-check.mjs",
-    "prebuild": "node scripts/sync-pages-to-public.mjs && node scripts/generate-llms-txt.mjs && node scripts/bake.mjs",
+    "prebuild": "node scripts/sync-pages-to-public.mjs && node scripts/generate-llms-txt.mjs && node scripts/bake.mjs && node scripts/sitemap.mjs && node scripts/robots.mjs",
     "build": "tsc && vite build",
-    "dist": "bash ./src2Code.sh --template alpha src .cursor vercel.json components.json index.html tsconfig.json package.json tsconfig.node.json vite.config.ts scripts ",
+    "dist": "bash ./src2Code.sh --template alpha src .cursor vercel.json components.json index.html tsconfig.json package.json tsconfig.node.json vite.config.ts scripts middleware.ts",
     "preview": "vite preview",
     "bake:email": "tsx scripts/bake-email.tsx",
     "bakemail": "npm run bake:email --",
@@ -1674,7 +1817,7 @@ cat << 'END_OF_FILE_CONTENT' > "package.json"
     "@tiptap/extension-link": "^2.11.5",
     "@tiptap/react": "^2.11.5",
     "@tiptap/starter-kit": "^2.11.5",
-    "@olonjs/core": "^1.1.4",
+    "@olonjs/core": "^1.1.5",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "lucide-react": "^0.474.0",
@@ -2238,6 +2381,149 @@ const llmsTxt = buildLlmsTxt({ pages, schemas: {}, siteConfig });
 const outPath = path.join(rootDir, 'public', 'llms.txt');
 fs.writeFileSync(outPath, llmsTxt, 'utf-8');
 console.log('[generate-llms-txt] Written -> public/llms.txt');
+
+END_OF_FILE_CONTENT
+echo "Creating scripts/robots.mjs..."
+cat << 'END_OF_FILE_CONTENT' > "scripts/robots.mjs"
+import fs from 'fs';
+import path from 'path';
+import { fileURLToPath } from 'url';
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const rootDir = path.resolve(__dirname, '..');
+
+const baseUrl = process.env.VERCEL_PROJECT_PRODUCTION_URL
+  ? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}`
+  : 'http://localhost:5173';
+
+const robotsTxt = `User-agent: *
+Allow: /
+Disallow: /api/
+
+User-agent: GPTBot
+User-agent: ChatGPT-User
+User-agent: ClaudeBot
+User-agent: Claude-Web
+User-agent: PerplexityBot
+User-agent: OAI-SearchBot
+Allow: /
+Allow: /*.json
+Allow: /schemas/
+Allow: /llms.txt
+Allow: /mcp-manifest.json
+Disallow: /api/
+
+Sitemap: ${baseUrl}/sitemap.xml
+`;
+
+const outPath = path.join(rootDir, 'public', 'robots.txt');
+fs.writeFileSync(outPath, robotsTxt, 'utf-8');
+console.log('[robots] Written -> public/robots.txt');
+
+END_OF_FILE_CONTENT
+echo "Creating scripts/sitemap.mjs..."
+cat << 'END_OF_FILE_CONTENT' > "scripts/sitemap.mjs"
+import fs from 'fs';
+import path from 'path';
+import { fileURLToPath } from 'url';
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const rootDir = path.resolve(__dirname, '..');
+
+const baseUrl = process.env.VERCEL_PROJECT_PRODUCTION_URL
+  ? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}`
+  : 'http://localhost:5173';
+
+function listJsonFilesRecursive(dir) {
+  const items = fs.readdirSync(dir, { withFileTypes: true });
+  const files = [];
+  for (const item of items) {
+    const fullPath = path.join(dir, item.name);
+    if (item.isDirectory()) {
+      files.push(...listJsonFilesRecursive(fullPath));
+      continue;
+    }
+    if (item.isFile() && item.name.toLowerCase().endsWith('.json')) files.push(fullPath);
+  }
+  return files;
+}
+
+function toW3CDate(date) {
+  return date.toISOString().replace(/\.\d{3}Z$/, 'Z');
+}
+
+function urlEntry({ loc, lastmod, changefreq, priority, comment }) {
+  const lines = [];
+  if (comment) lines.push(`  <!-- ${comment} -->`);
+  lines.push(`  <url>`);
+  lines.push(`    <loc>${loc}</loc>`);
+  lines.push(`    <lastmod>${lastmod}</lastmod>`);
+  lines.push(`    <changefreq>${changefreq}</changefreq>`);
+  lines.push(`    <priority>${priority}</priority>`);
+  lines.push(`  </url>`);
+  return lines.join('\n');
+}
+
+function sectionComment(label) {
+  const bar = '='.repeat(42);
+  return [
+    `  <!-- ${bar} -->`,
+    `  <!-- ${label.padEnd(42)} -->`,
+    `  <!-- ${bar} -->`,
+  ].join('\n');
+}
+
+const pagesDir = path.join(rootDir, 'src', 'data', 'pages');
+const buildTime = toW3CDate(new Date());
+
+const pageFiles = listJsonFilesRecursive(pagesDir);
+const pages = pageFiles.map((fullPath) => {
+  const slug = path
+    .relative(pagesDir, fullPath)
+    .replace(/\\/g, '/')
+    .replace(/\.json$/i, '');
+  const lastmod = toW3CDate(fs.statSync(fullPath).mtime);
+  return { slug, lastmod };
+});
+
+const entries = [];
+
+entries.push(sectionComment('GLOBAL AGENT DISCOVERY NODES'));
+entries.push(
+  urlEntry({ loc: `${baseUrl}/llms.txt`, lastmod: buildTime, changefreq: 'weekly', priority: '1.0' }),
+);
+entries.push(
+  urlEntry({ loc: `${baseUrl}/mcp-manifest.json`, lastmod: buildTime, changefreq: 'weekly', priority: '1.0' }),
+);
+
+for (const { slug, lastmod } of pages) {
+  const humanPath = slug === 'home' ? '/' : `/${slug}`;
+  const label = `PAGE: ${slug.toUpperCase()}`;
+
+  entries.push(sectionComment(label));
+  entries.push(
+    urlEntry({ loc: `${baseUrl}${humanPath}`, lastmod, changefreq: 'daily', priority: '0.9', comment: 'Human UI' }),
+  );
+  entries.push(
+    urlEntry({ loc: `${baseUrl}/${slug}.json`, lastmod, changefreq: 'daily', priority: '0.9', comment: 'Machine Payload' }),
+  );
+  entries.push(
+    urlEntry({ loc: `${baseUrl}/schemas/${slug}.schema.json`, lastmod: buildTime, changefreq: 'weekly', priority: '0.8', comment: 'Machine Contract (Schema)' }),
+  );
+}
+
+const xml = [
+  `<?xml version="1.0" encoding="UTF-8"?>`,
+  `<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">`,
+  ``,
+  entries.join('\n'),
+  ``,
+  `</urlset>`,
+].join('\n');
+
+const outPath = path.join(rootDir, 'public', 'sitemap.xml');
+fs.writeFileSync(outPath, xml, 'utf-8');
+console.log('[sitemap] Written -> public/sitemap.xml');
 
 END_OF_FILE_CONTENT
 echo "Creating scripts/sync-pages-to-public.mjs..."
