@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import {
   applyValueAtSelectionPath,
   buildWebMcpToolName,
@@ -93,6 +93,126 @@ describe('webmcp runtime bridge', () => {
       });
 
       unregister();
+    } finally {
+      Object.defineProperty(globalThis, 'window', {
+        value: originalWindow,
+        configurable: true,
+        writable: true,
+      });
+      Object.defineProperty(globalThis, 'navigator', {
+        value: originalNavigator,
+        configurable: true,
+        writable: true,
+      });
+    }
+  });
+
+  it('delegates registration to a pre-existing navigator.modelContext.registerTool with an AbortSignal (Chrome native WebMCP)', () => {
+    const originalWindow = globalThis.window;
+    const originalNavigator = globalThis.navigator;
+    if (globalThis.window) {
+      delete (globalThis.window as unknown as { __olonWebMcpControllers__?: unknown }).__olonWebMcpControllers__;
+    }
+
+    const nativeRegisterTool = vi.fn();
+    const nativeModelContext = { registerTool: nativeRegisterTool };
+
+    Object.defineProperty(globalThis, 'window', {
+      value: {} as Window,
+      configurable: true,
+      writable: true,
+    });
+    Object.defineProperty(globalThis, 'navigator', {
+      value: { modelContext: nativeModelContext } as Navigator,
+      configurable: true,
+      writable: true,
+    });
+
+    try {
+      const tool = {
+        name: 'update-section',
+        description: 'Update section',
+        inputSchema: { type: 'object', properties: {} },
+        execute: async () => ({ content: [{ type: 'text', text: 'ok' }], isError: false }),
+      };
+
+      const unregister = registerWebMcpTool(tool);
+
+      expect(nativeRegisterTool).toHaveBeenCalledTimes(1);
+      const [calledTool, calledOptions] = nativeRegisterTool.mock.calls[0] as [
+        unknown,
+        { signal: AbortSignal },
+      ];
+      expect(calledTool).toBe(tool);
+      expect(calledOptions.signal).toBeInstanceOf(AbortSignal);
+      expect(calledOptions.signal.aborted).toBe(false);
+
+      unregister();
+      expect(calledOptions.signal.aborted).toBe(true);
+    } finally {
+      Object.defineProperty(globalThis, 'window', {
+        value: originalWindow,
+        configurable: true,
+        writable: true,
+      });
+      Object.defineProperty(globalThis, 'navigator', {
+        value: originalNavigator,
+        configurable: true,
+        writable: true,
+      });
+    }
+  });
+
+  it('aborts a prior registration before re-registering the same tool name (React StrictMode safety on Chrome native WebMCP)', () => {
+    const originalWindow = globalThis.window;
+    const originalNavigator = globalThis.navigator;
+    if (globalThis.window) {
+      delete (globalThis.window as unknown as { __olonWebMcpControllers__?: unknown }).__olonWebMcpControllers__;
+    }
+
+    const registeredNames = new Set<string>();
+    const nativeRegisterTool = vi.fn(
+      (t: { name: string }, options?: { signal?: AbortSignal }) => {
+        if (registeredNames.has(t.name)) {
+          throw new Error('InvalidStateError: Duplicate tool name');
+        }
+        registeredNames.add(t.name);
+        options?.signal?.addEventListener('abort', () => {
+          registeredNames.delete(t.name);
+        });
+      }
+    );
+
+    Object.defineProperty(globalThis, 'window', {
+      value: {} as Window,
+      configurable: true,
+      writable: true,
+    });
+    Object.defineProperty(globalThis, 'navigator', {
+      value: { modelContext: { registerTool: nativeRegisterTool } } as Navigator,
+      configurable: true,
+      writable: true,
+    });
+
+    try {
+      const tool = {
+        name: 'update-section',
+        description: 'Update section',
+        inputSchema: { type: 'object', properties: {} },
+        execute: async () => ({ content: [{ type: 'text', text: 'ok' }], isError: false }),
+      };
+
+      expect(() => {
+        registerWebMcpTool(tool);
+        registerWebMcpTool(tool);
+      }).not.toThrow();
+
+      expect(nativeRegisterTool).toHaveBeenCalledTimes(2);
+      const firstSignal = (nativeRegisterTool.mock.calls[0][1] as { signal: AbortSignal }).signal;
+      const secondSignal = (nativeRegisterTool.mock.calls[1][1] as { signal: AbortSignal }).signal;
+      expect(firstSignal.aborted).toBe(true);
+      expect(secondSignal.aborted).toBe(false);
+      expect(registeredNames.has('update-section')).toBe(true);
     } finally {
       Object.defineProperty(globalThis, 'window', {
         value: originalWindow,

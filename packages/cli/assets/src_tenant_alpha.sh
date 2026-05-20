@@ -1658,7 +1658,7 @@ export const config = {
 
 const COOKIE_NAME = '__olonjs_admin_session';
 const COOKIE_MAX_AGE = 3600;
-const JWT_MAX_AGE_SECONDS = 300;
+const JWT_MAX_AGE_SECONDS = 45;
 
 function base64urlToBase64(str: string): string {
   return str.replace(/-/g, '+').replace(/_/g, '/') + '='.repeat((4 - (str.length % 4)) % 4);
@@ -1817,7 +1817,7 @@ cat << 'END_OF_FILE_CONTENT' > "package.json"
     "@tiptap/extension-link": "^2.11.5",
     "@tiptap/react": "^2.11.5",
     "@tiptap/starter-kit": "^2.11.5",
-    "@olonjs/core": "^1.1.5",
+    "@olonjs/core": "^1.1.6",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "lucide-react": "^0.474.0",
@@ -4150,6 +4150,10 @@ export type EmptyTenantSettings = z.infer<typeof EmptyTenantSettingsSchema>;
 
 END_OF_FILE_CONTENT
 mkdir -p "src/components/form-demo"
+echo "Creating src/components/form-demo/Untitled..."
+cat << 'END_OF_FILE_CONTENT' > "src/components/form-demo/Untitled"
+useFormSubmit
+END_OF_FILE_CONTENT
 echo "Creating src/components/form-demo/View.tsx..."
 cat << 'END_OF_FILE_CONTENT' > "src/components/form-demo/View.tsx"
 import { Icon } from '@/lib/IconResolver';
@@ -10926,16 +10930,11 @@ END_OF_FILE_CONTENT
 echo "Creating vercel.json..."
 cat << 'END_OF_FILE_CONTENT' > "vercel.json"
 {
-    "rewrites":  [
-                     {
-                         "source":  "/:pagePath*.json",
-                         "destination":  "/pages/:pagePath*.json"
-                     },
-                     {
-                         "source":  "/(.*)",
-                         "destination":  "/index.html"
-                     }
-                 ],
+    "rewrites": [
+
+    { "source": "/:path*.json",              "destination": "{BLOB_BASE}/tenants/{slug}/pages/:path*.json" },
+    { "source": "/(.*)",                     "destination": "/index.html" }
+  ],
     "headers":  [
                     {
                         "source":  "/assets/(.*)",

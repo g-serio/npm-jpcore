@@ -20,8 +20,10 @@ type WebMcpTool = {
 
 type WebMcpToolInfo = Omit<WebMcpTool, 'execute'>;
 
+type WebMcpRegisterToolOptions = { signal?: AbortSignal };
+
 type ModelContextLike = {
-  registerTool?: (tool: WebMcpTool) => void;
+  registerTool?: (tool: WebMcpTool, options?: WebMcpRegisterToolOptions) => void;
   unregisterTool?: (name: string) => void;
   readResource?: (uri: string) => Promise<unknown>;
 };
@@ -34,6 +36,7 @@ type ModelContextProtocolLike = {
 
 type WebMcpWindow = Window & {
   __olonWebMcpTools__?: Map<string, WebMcpTool>;
+  __olonWebMcpControllers__?: Map<string, AbortController>;
 };
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -51,6 +54,15 @@ function getToolRegistry(): Map<string, WebMcpTool> | null {
     webMcpWindow.__olonWebMcpTools__ = new Map<string, WebMcpTool>();
   }
   return webMcpWindow.__olonWebMcpTools__;
+}
+
+function getControllerRegistry(): Map<string, AbortController> | null {
+  if (typeof window === 'undefined') return null;
+  const webMcpWindow = window as WebMcpWindow;
+  if (!webMcpWindow.__olonWebMcpControllers__) {
+    webMcpWindow.__olonWebMcpControllers__ = new Map<string, AbortController>();
+  }
+  return webMcpWindow.__olonWebMcpControllers__;
 }
 
 export function buildWebMcpToolName(): string {
@@ -119,14 +131,35 @@ export function parseWebMcpMutationArgs(rawArgs: unknown): WebMcpMutationArgs {
   return parsedArgs;
 }
 
-export function createWebMcpToolInputSchema(): Record<string, unknown> {
+export type WebMcpSectionCatalogEntry = { id: string; type: string };
+
+export function createWebMcpToolInputSchema(
+  catalog?: ReadonlyArray<WebMcpSectionCatalogEntry>
+): Record<string, unknown> {
+  const ids = catalog ? Array.from(new Set(catalog.map((entry) => entry.id))) : [];
+  const types = catalog ? Array.from(new Set(catalog.map((entry) => entry.type))) : [];
+
+  const sectionIdSchema: Record<string, unknown> = {
+    type: 'string',
+    description:
+      'The unique ID of the section to update. Pick one from the enum below; these are the only valid IDs for the current page.',
+  };
+  if (ids.length > 0) sectionIdSchema.enum = ids;
+
+  const sectionTypeSchema: Record<string, unknown> = {
+    type: 'string',
+    description:
+      'The type of the section being updated (e.g. "olon-hero"). Used to pick the correct validation schema.',
+  };
+  if (types.length > 0) sectionTypeSchema.enum = types;
+
   return {
     type: 'object',
     additionalProperties: false,
     properties: {
       slug: { type: 'string' },
-      sectionId: { type: 'string', description: 'The unique ID of the section to update (found via data-jp-section-id or MCP read).' },
-      sectionType: { type: 'string', description: 'The type of the section being updated (e.g. "olon-hero"). Used to pick the correct validation schema.' },
+      sectionId: sectionIdSchema,
+      sectionType: sectionTypeSchema,
       scope: { type: 'string', enum: ['local', 'global'], default: 'local' },
       data: {
         type: 'object',
@@ -273,20 +306,33 @@ async function resolveResource(uri: string): Promise<unknown> {
 export function ensureWebMcpRuntime(): void {
   if (typeof window === 'undefined' || typeof navigator === 'undefined') return;
 
-  const registry = getToolRegistry();
-  if (!registry) return;
-
   const currentNavigator = navigator as Navigator & {
     modelContext?: ModelContextLike;
     modelContextProtocol?: ModelContextProtocolLike;
   };
 
+  // If a registerTool already exists — Chrome 146+ native WebMCP, or our polyfill from
+  // a previous call — leave it intact so tools flow into the registry the WebMCP Inspector
+  // reads via navigator.modelContextTesting.
+  if (typeof currentNavigator.modelContext?.registerTool === 'function') return;
+
+  const registry = getToolRegistry();
+  if (!registry) return;
+
   if (!currentNavigator.modelContext) {
     currentNavigator.modelContext = {};
   }
 
-  currentNavigator.modelContext.registerTool = (tool: WebMcpTool) => {
+  currentNavigator.modelContext.registerTool = (
+    tool: WebMcpTool,
+    options?: WebMcpRegisterToolOptions
+  ) => {
     registry.set(tool.name, tool);
+    options?.signal?.addEventListener('abort', () => {
+      if (registry.get(tool.name) === tool) {
+        registry.delete(tool.name);
+      }
+    });
   };
 
   currentNavigator.modelContext.unregisterTool = (name: string) => {
@@ -313,15 +359,37 @@ export function ensureWebMcpRuntime(): void {
 }
 
 export function registerWebMcpTool(tool: WebMcpTool): () => void {
-  ensureWebMcpRuntime();
-
-  const registry = getToolRegistry();
-  if (!registry) {
+  if (typeof window === 'undefined' || typeof navigator === 'undefined') {
     return () => undefined;
   }
 
-  registry.set(tool.name, tool);
+  ensureWebMcpRuntime();
+
+  const currentNavigator = navigator as Navigator & {
+    modelContext?: ModelContextLike;
+  };
+
+  const modelContext = currentNavigator.modelContext;
+  if (typeof modelContext?.registerTool !== 'function') {
+    return () => undefined;
+  }
+
+  // The native Chrome WebMCP API throws InvalidStateError on duplicate tool names
+  // and exposes deregistration only via the AbortSignal option passed to registerTool.
+  // We track one controller per tool name so a re-registration (React StrictMode
+  // double-invocation, HMR, or effect re-run) cleanly aborts the previous one first.
+  const controllers = getControllerRegistry();
+  controllers?.get(tool.name)?.abort();
+
+  const controller = new AbortController();
+  controllers?.set(tool.name, controller);
+
+  modelContext.registerTool(tool, { signal: controller.signal });
+
   return () => {
-    registry.delete(tool.name);
+    controller.abort();
+    if (controllers?.get(tool.name) === controller) {
+      controllers.delete(tool.name);
+    }
   };
 }

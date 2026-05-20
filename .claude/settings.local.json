@@ -82,7 +82,12 @@
       "Bash(wsl -d Ubuntu -e bash -c 'export NVM_DIR=$HOME/.nvm; [ -s $NVM_DIR/nvm.sh ] && . $NVM_DIR/nvm.sh; cd /home/dev/npm-jpcore/packages/core && yalc push 2>&1 && cd /home/dev/temp/santa1 && yalc add @olonjs/core && npm install 2>&1 | tail -10')",
       "Bash(wsl -d Ubuntu -e bash -c 'export NVM_DIR=$HOME/.nvm; [ -s $NVM_DIR/nvm.sh ] && . $NVM_DIR/nvm.sh; cd /home/dev/temp/santa1 && npm run build 2>&1 | tail -20')",
       "Bash(wsl -d Ubuntu -e bash -c 'export NVM_DIR=$HOME/.nvm; [ -s $NVM_DIR/nvm.sh ] && . $NVM_DIR/nvm.sh; cd /home/dev/temp/santa1 && git stash && npm run build 2>&1 | grep '\\\\''error TS'\\\\'' | head -10')",
-      "Read(//mnt/wsl/instances/Ubuntu/home/dev/temp/**)"
+      "Read(//mnt/wsl/instances/Ubuntu/home/dev/temp/**)",
+      "WebFetch(domain:chromewebstore.google.com)",
+      "WebSearch",
+      "WebFetch(domain:developer.chrome.com)",
+      "WebFetch(domain:github.com)",
+      "Bash(npm test *)"
     ]
   }
 }

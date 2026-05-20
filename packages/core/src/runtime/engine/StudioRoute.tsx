@@ -569,10 +569,24 @@ export const StudioRoute: React.FC<StudioRouteProps> = ({
     const currentDraft = draftRef.current;
     if (!currentDraft) return;
 
+    const currentGlobalDraft = globalDraftRef.current;
+    const catalog: Array<{ id: string; type: string }> = [];
+    if (currentGlobalDraft?.header?.id && currentGlobalDraft.header?.type) {
+      catalog.push({ id: currentGlobalDraft.header.id, type: String(currentGlobalDraft.header.type) });
+    }
+    if (currentGlobalDraft?.footer?.id && currentGlobalDraft.footer?.type) {
+      catalog.push({ id: currentGlobalDraft.footer.id, type: String(currentGlobalDraft.footer.type) });
+    }
+    for (const section of currentDraft.sections) {
+      if (typeof section.id === 'string' && section.id.length > 0) {
+        catalog.push({ id: section.id, type: String(section.type) });
+      }
+    }
+
     const unregisterUpdate = registerWebMcpTool({
       name: buildWebMcpToolName(),
       description: 'Update a section field in the Studio draft. Does not persist — call save when all updates are complete. Use "sectionType" in input args to ensure correct schema validation.',
-      inputSchema: createWebMcpToolInputSchema(),
+      inputSchema: createWebMcpToolInputSchema(catalog),
       execute: (args) => handleWebMcpToolCall(buildWebMcpToolName(), args),
     });
 
