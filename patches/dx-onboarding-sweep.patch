@@ -1,0 +1,498 @@
+From a0cc3469fa6292e766c3cd69b441a32572286285 Mon Sep 17 00:00:00 2001
+From: Atlas <atlas@olon.it>
+Date: Fri, 22 May 2026 15:23:42 +0000
+Subject: [PATCH 1/4] docs(core): add npm-facing README for @olonjs/core
+
+---
+ packages/core/README.md | 77 +++++++++++++++++++++++++++++++++++++++++
+ 1 file changed, 77 insertions(+)
+ create mode 100644 packages/core/README.md
+
+diff --git a/packages/core/README.md b/packages/core/README.md
+new file mode 100644
+index 0000000..29686cd
+--- /dev/null
++++ b/packages/core/README.md
+@@ -0,0 +1,77 @@
++# @olonjs/core
++
++> The Sovereign Core Engine for [OlonJS](https://olon.js.org) — websites that are natively readable and operable by AI agents.
++
++[![npm version](https://img.shields.io/npm/v/@olonjs/core?color=blue&style=flat-square)](https://www.npmjs.com/package/@olonjs/core)
++[![license](https://img.shields.io/badge/license-MIT-green?style=flat-square)](https://github.com/olonjs/npm-jpcore/blob/main/LICENSE)
++
++OlonJS is the AI-native content infrastructure for the agentic web. Every page is a typed JSON contract served at `/{slug}.json`, validated with Zod, and exposed to agents through a per-tenant MCP gateway with scope-bound OAuth. No scraping. No guesswork. One deterministic surface for humans and agents.
++
++`@olonjs/core` is the runtime engine that powers it: routing, state orchestration, schema validation, and deterministic rendering.
++
++---
++
++## Quickstart
++
++You do not install `@olonjs/core` directly. You scaffold a tenant with the CLI, which wires the core in for you.
++
++```bash
++npx @olonjs/cli new tenant my-agentic-site --template alpha
++cd my-agentic-site
++npm run dev
++```
++
++Then verify the agent surface:
++
++```bash
++# Human view
++curl http://localhost:5173/
++
++# Agent view — the typed contract for the same page
++curl http://localhost:5173/home.json
++```
++
++You should see a Zod-validated JSON document describing the page's sections, ready to be consumed by any MCP-aware agent.
++
++---
++
++## What you get
++
++- **Typed JSON contracts.** Every route ships a `/{slug}.json` sidecar. The schema is the API.
++- **WebMCP-ready.** OlonJS tenants act as MCP servers: pages are Resources, sections are Tools.
++- **Deterministic rendering.** The same contract produces the same DOM. No surprises for agents or for humans.
++- **Sovereign by design.** Your tenant, your schema, your data. Git-backed, self-hostable, MIT-licensed.
++
++## When to reach for OlonJS
++
++- You are building an AI product that needs to read or operate websites reliably.
++- You publish content and want agents to consume it without HTML scraping.
++- You want to expose scoped, OAuth-gated actions to AI agents without writing a custom MCP server.
++
++## Documentation
++
++- [Architecture](https://github.com/olonjs/npm-jpcore/blob/main/docs/ARCHITECTURE.md)
++- [CLI reference](https://github.com/olonjs/npm-jpcore/blob/main/docs/CLI.md)
++- [WebMCP browser API](https://github.com/olonjs/npm-jpcore/blob/main/docs/webmcp.md)
++- [Canonical schemas](https://github.com/olonjs/npm-jpcore/blob/main/docs/canonical-schemas-howto.md)
++- [Spec v1.6](https://github.com/olonjs/npm-jpcore/blob/main/specs/olonjsSpecs_V_1_6.md)
++
++## Ecosystem
++
++| Package | Purpose |
++|---|---|
++| [`@olonjs/cli`](https://www.npmjs.com/package/@olonjs/cli) | Tenant generator. Your entry point. |
++| [`@olonjs/core`](https://www.npmjs.com/package/@olonjs/core) | Runtime engine. This package. |
++| [`@olonjs/stack`](https://www.npmjs.com/package/@olonjs/stack) | Dependency manifest for tenants. |
++| [`@olonjs/mcp`](https://www.npmjs.com/package/@olonjs/mcp) | Local MCP server bridge for Zero-UI automation. |
++
++## Requirements
++
++- Node.js 18+
++- React 19, React DOM 19, React Router 6.29+, Zod 3.24+ (peer dependencies)
++
++## License
++
++MIT © OlonJS Team. See [LICENSE](https://github.com/olonjs/npm-jpcore/blob/main/LICENSE).
++
++— Built in Italy. Learn more at [olon.js.org](https://olon.js.org).
+-- 
+2.47.3
+
+
+From a9f4851d76a98127da72762d960b4e2ba2aed58a Mon Sep 17 00:00:00 2001
+From: Atlas <atlas@olon.it>
+Date: Fri, 22 May 2026 15:24:45 +0000
+Subject: [PATCH 2/4] feat(cli): inject Olon-branded README into scaffolded
+ tenants
+
+Adds packages/cli/assets/tenant-readme.md and patches injectInfraFiles()
+in packages/cli/src/index.js to render it (with {{TENANT_NAME}}) into
+the new tenant directory, overwriting the default Vite boilerplate
+README. Includes the template in the published cli package files.
+---
+ packages/cli/assets/tenant-readme.md | 76 ++++++++++++++++++++++++++++
+ packages/cli/package.json            |  3 +-
+ packages/cli/src/index.js            |  8 +++
+ 3 files changed, 86 insertions(+), 1 deletion(-)
+ create mode 100644 packages/cli/assets/tenant-readme.md
+
+diff --git a/packages/cli/assets/tenant-readme.md b/packages/cli/assets/tenant-readme.md
+new file mode 100644
+index 0000000..aef00cb
+--- /dev/null
++++ b/packages/cli/assets/tenant-readme.md
+@@ -0,0 +1,76 @@
++# {{TENANT_NAME}}
++
++> An [OlonJS](https://olon.js.org) Sovereign Tenant — a website that is natively readable and operable by AI agents.
++
++## What this is
++
++This project is built with [OlonJS](https://olon.js.org), the AI-native content infrastructure for the agentic web. Every page in this site ships **two views of the same content**:
++
++- A human view at `/{slug}` — your usual React UI.
++- A machine view at `/{slug}.json` — a typed JSON contract, validated with Zod, ready for any MCP-aware agent.
++
++The schema is the API. No scraping. No guesswork. One deterministic surface.
++
++## Run it
++
++```bash
++npm run dev
++```
++
++Then open both views of the same page:
++
++```bash
++# Human view
++open http://localhost:5173/
++
++# Agent view — same page, typed contract
++curl http://localhost:5173/home.json
++```
++
++## Edit your first page
++
++Pages live in `src/data/pages/`. Each page is a typed object defining its `sections`. The runtime renders the React UI and serves the JSON sidecar from the same source.
++
++```ts
++// src/data/pages/home.ts (sketch)
++export default {
++  id: 'home-page',
++  slug: 'home',
++  meta: { title: 'Home', description: '…' },
++  sections: [
++    { id: 'hero-1', type: 'hero', data: { /* … */ } },
++  ],
++}
++```
++
++Add a new file in `src/data/pages/` and the route plus its `.json` sidecar appear automatically.
++
++## Project scripts
++
++- `npm run dev` — start the dev server (Vite + HMR).
++- `npm run build` — type-check and build the production bundle.
++- `npm run preview` — preview the production build locally.
++- `npm run verify:webmcp` — sanity-check the WebMCP surface.
++
++## Where to go next
++
++- **[Quickstart →](https://github.com/olonjs/npm-jpcore/blob/main/README.md)** — the canonical OlonJS overview.
++- **[Architecture →](https://github.com/olonjs/npm-jpcore/blob/main/docs/ARCHITECTURE.md)** — how the runtime, CLI, and DNA fit together.
++- **[Canonical schemas →](https://github.com/olonjs/npm-jpcore/blob/main/docs/canonical-schemas-howto.md)** — how to define your own section types.
++- **[WebMCP →](https://github.com/olonjs/npm-jpcore/blob/main/docs/webmcp.md)** — the browser API for agent-driven mutations.
++
++## Stack
++
++- React 19 + TypeScript + Vite 6
++- Tailwind CSS v4
++- Zod for contract validation
++- `@olonjs/core` runtime engine
++
++## Help and feedback
++
++- Issues: [github.com/olonjs/npm-jpcore/issues](https://github.com/olonjs/npm-jpcore/issues)
++- Site: [olon.js.org](https://olon.js.org)
++
++---
++
++Built with OlonJS. MIT-licensed. Sovereign by design.
+diff --git a/packages/cli/package.json b/packages/cli/package.json
+index 142ec46..e34cc49 100644
+--- a/packages/cli/package.json
++++ b/packages/cli/package.json
+@@ -10,7 +10,8 @@
+     "files": [
+         "src",
+         "assets/src_tenant_alpha.sh",
+-        "assets/templates"
++        "assets/templates",
++        "assets/tenant-readme.md"
+     ],
+     "author": "JsonPages Team",
+     "license": "MIT",
+diff --git a/packages/cli/src/index.js b/packages/cli/src/index.js
+index a171c8a..1a79118 100755
+--- a/packages/cli/src/index.js
++++ b/packages/cli/src/index.js
+@@ -226,6 +226,14 @@ async function injectInfraFiles(targetDir, name) {
+     },
+   };
+   await fs.writeJson(path.join(targetDir, 'components.json'), shadcnConfig, { spaces: 2 });
++
++  // Overwrite the default Vite README with an OlonJS-branded one.
++  const readmeTemplatePath = path.join(CLI_ASSETS_DIR, 'tenant-readme.md');
++  if (await fs.pathExists(readmeTemplatePath)) {
++    const readmeTemplate = await fs.readFile(readmeTemplatePath, 'utf-8');
++    const rendered = readmeTemplate.replace(/{{TENANT_NAME}}/g, name);
++    await fs.writeFile(path.join(targetDir, 'README.md'), rendered);
++  }
+ }
+ 
+ program
+-- 
+2.47.3
+
+
+From c3f813b6e2093182ce4c642e2bf4385267b5b329 Mon Sep 17 00:00:00 2001
+From: Atlas <atlas@olon.it>
+Date: Fri, 22 May 2026 15:25:35 +0000
+Subject: [PATCH 3/4] docs(cli,stack,mcp): add per-package READMEs
+
+---
+ packages/cli/README.md   | 53 +++++++++++++++++++++++++++++++++++++++
+ packages/mcp/README.md   | 47 ++++++++++++++++++++++++++++++++++
+ packages/stack/README.md | 54 ++++++++++++++++++++--------------------
+ 3 files changed, 127 insertions(+), 27 deletions(-)
+ create mode 100644 packages/cli/README.md
+ create mode 100644 packages/mcp/README.md
+
+diff --git a/packages/cli/README.md b/packages/cli/README.md
+new file mode 100644
+index 0000000..af87673
+--- /dev/null
++++ b/packages/cli/README.md
+@@ -0,0 +1,53 @@
++# @olonjs/cli
++
++> The Sovereign CLI Engine for [OlonJS](https://olon.js.org). Scaffolds AI-native tenants in one command.
++
++[![npm version](https://img.shields.io/npm/v/@olonjs/cli?color=blue&style=flat-square)](https://www.npmjs.com/package/@olonjs/cli)
++[![license](https://img.shields.io/badge/license-MIT-green?style=flat-square)](https://github.com/olonjs/npm-jpcore/blob/main/LICENSE)
++
++`@olonjs/cli` is the primary entry point for developers building on [OlonJS](https://olon.js.org), the AI-native content infrastructure where every page is a typed JSON contract for both humans and AI agents.
++
++## Quickstart
++
++```bash
++npx @olonjs/cli new tenant my-agentic-site --template alpha
++cd my-agentic-site
++npm run dev
++```
++
++Then verify both surfaces:
++
++```bash
++curl http://localhost:5173/         # human view (HTML)
++curl http://localhost:5173/home.json # agent view (typed JSON contract)
++```
++
++## Commands
++
++| Command | Purpose |
++|---|---|
++| `olonjs new tenant <name> [--template alpha]` | Scaffold a new OlonJS tenant from a DNA template. |
++| `olonjs init-mcp` | Configure the local MCP server in your editor (Cursor, Cline, etc.). |
++
++Templates are projected deterministically from the canonical DNA. The CLI wipes Vite's default boilerplate, injects the Sovereign infrastructure, installs dependencies, and leaves you with a working dev server.
++
++## Available templates
++
++- `alpha` (default) — the reference DNA template, generated from `apps/tenant-alpha` in the [OlonJS monorepo](https://github.com/olonjs/npm-jpcore).
++
++## Requirements
++
++- Node.js 18+
++- npm 9+ (the CLI shells out to `npm create vite@latest` during scaffolding)
++
++## Documentation
++
++- [CLI reference](https://github.com/olonjs/npm-jpcore/blob/main/docs/CLI.md)
++- [Templates governance](https://github.com/olonjs/npm-jpcore/blob/main/docs/TEMPLATES.md)
++- [Architecture](https://github.com/olonjs/npm-jpcore/blob/main/docs/ARCHITECTURE.md)
++
++## License
++
++MIT © OlonJS Team.
++
++— Learn more at [olon.js.org](https://olon.js.org).
+diff --git a/packages/mcp/README.md b/packages/mcp/README.md
+new file mode 100644
+index 0000000..6d540eb
+--- /dev/null
++++ b/packages/mcp/README.md
+@@ -0,0 +1,47 @@
++# @olonjs/mcp
++
++> Local MCP server bridge for [OlonJS](https://olon.js.org) tenants. Enables Zero-UI automation of an OlonJS site via Playwright, exposed as MCP tools.
++
++[![npm version](https://img.shields.io/npm/v/@olonjs/mcp?color=blue&style=flat-square)](https://www.npmjs.com/package/@olonjs/mcp)
++[![license](https://img.shields.io/badge/license-MIT-green?style=flat-square)](https://github.com/olonjs/npm-jpcore/blob/main/LICENSE)
++
++`@olonjs/mcp` runs locally and bridges your AI editor or agent runtime to a running OlonJS tenant. It exposes each section of every page as an MCP Tool, and each typed JSON contract as an MCP Resource, so an agent can read pages and trigger scoped mutations through a clean tool surface.
++
++## Quickstart
++
++If you scaffolded a tenant with `@olonjs/cli`, configure your editor in one command:
++
++```bash
++npx @olonjs/cli init-mcp
++```
++
++That writes the right entry into Cursor / Cline / compatible MCP clients, pointing them at `npx -y @olonjs/mcp@latest http://localhost:5174`.
++
++To run it manually against any OlonJS tenant:
++
++```bash
++npx -y @olonjs/mcp@latest http://localhost:5173
++```
++
++## What it exposes
++
++- **Resources** — every `/{slug}.json` typed contract on the tenant.
++- **Tools** — Playwright-driven actions for each section type, scoped to the tenant's schema.
++- **Health checks** — verify the WebMCP surface is ready before invoking tools.
++
++## Requirements
++
++- A running OlonJS tenant (`npm run dev` inside the tenant directory).
++- Node.js 18+.
++- Playwright browsers (installed on first run).
++
++## Documentation
++
++- [WebMCP browser API](https://github.com/olonjs/npm-jpcore/blob/main/docs/webmcp.md)
++- [MCP guide](https://github.com/olonjs/npm-jpcore/blob/main/docs/mcp-guide.md)
++
++## License
++
++MIT © OlonJS Team.
++
++— Learn more at [olon.js.org](https://olon.js.org).
+diff --git a/packages/stack/README.md b/packages/stack/README.md
+index 3644b41..ae2bee5 100644
+--- a/packages/stack/README.md
++++ b/packages/stack/README.md
+@@ -1,27 +1,27 @@
+-# @olonjs/stack
+-
+-**Single source of truth** for OlonJS tenant dependency versions (enterprise stack manifest).
+-
+-## Purpose
+-
+-- **Core** syncs its `peerDependencies` from this manifest (via `prepack` script).
+-- **CLI** uses this manifest when projecting a new tenant so `npm install` gets the exact versions defined here.
+-- No version drift: one file to change when upgrading React, Vite, React Router, etc.
+-
+-## Workflow
+-
+-1. **Upgrade stack:** Edit `stack-versions.json` (dependencies, devDependencies, peerDependencies). Keep `peerDependencies` in sync with what Core supports.
+-2. **Publish order:** Publish `@olonjs/stack` first, then `@olonjs/core`, then `@olonjs/cli` (legacy aliases: `@jsonpages/stack`, `@jsonpages/core`, `@jsonpages/cli`).
+-3. **From repo:** Run `npm install` at monorepo root so workspace deps resolve; then build/publish Core and CLI as needed.
+-
+-## Consumers
+-
+-| Package        | Use |
+-|----------------|-----|
+-| @olonjs/core | `prepack` runs `scripts/sync-peers-from-stack.js` → copies `peerDependencies` into Core’s package.json. |
+-| @olonjs/cli  | On `olonjs new tenant <name>` (legacy alias command: `jsonpages new tenant <name>`), installs deps with `name@version` from `dependencies` and `devDependencies`. |
+-
+-## File layout
+-
+-- `stack-versions.json` — canonical versions (peerDependencies, dependencies, devDependencies).
+-- `index.js` — ESM export for Node (used by Core sync script and CLI).
++# @olonjs/stack
++
++> Dependency manifest for [OlonJS](https://olon.js.org) tenants — single source of truth for stack versions.
++
++[![npm version](https://img.shields.io/npm/v/@olonjs/stack?color=blue&style=flat-square)](https://www.npmjs.com/package/@olonjs/stack)
++[![license](https://img.shields.io/badge/license-MIT-green?style=flat-square)](https://github.com/olonjs/npm-jpcore/blob/main/LICENSE)
++
++`@olonjs/stack` pins the canonical versions of the runtime, build, and peer dependencies used by every OlonJS tenant. The CLI and the core runtime read from this manifest so that scaffolds, releases, and tenants stay in lockstep.
++
++## What it pins
++
++- React 19 / React DOM 19
++- React Router 6.29+
++- Vite 6
++- Tailwind CSS v4
++- TypeScript
++- Zod 3.24+
++
++## When you touch this
++
++You should not need to. Stack updates are driven by the OlonJS release process. If you are working inside the [monorepo](https://github.com/olonjs/npm-jpcore), see [docs/PUBLISHING.md](https://github.com/olonjs/npm-jpcore/blob/main/docs/PUBLISHING.md) for the release flow.
++
++## License
++
++MIT © OlonJS Team.
++
++— Learn more at [olon.js.org](https://olon.js.org).
+-- 
+2.47.3
+
+
+From b4728e7b8a32df0d6a4a28b33757ea4f9340c120 Mon Sep 17 00:00:00 2001
+From: Atlas <atlas@olon.it>
+Date: Fri, 22 May 2026 15:26:24 +0000
+Subject: [PATCH 4/4] chore: align canonical domain to olon.js.org and fix dead
+ docs link
+
+- README: rewrite olonjs.io references to olon.js.org
+- README: fix dead link ./docs_governance_en.md -> ./docs/docs_governance_en.md
+- packages/core, packages/cli: set homepage to https://olon.js.org
+
+Historical references in ADRs, specs, and plans are preserved.
+---
+ README.md                  | 6 +++---
+ packages/cli/package.json  | 2 +-
+ packages/core/package.json | 2 +-
+ 3 files changed, 5 insertions(+), 5 deletions(-)
+
+diff --git a/README.md b/README.md
+index e4eea82..7ac7b22 100644
+--- a/README.md
++++ b/README.md
+@@ -2,7 +2,7 @@
+ 
+ 
+ <p align="center">
+-  <a href="https://olonjs.io">
++  <a href="https://olon.js.org">
+     <img src="https://github.com/olonjs/npm-jpcore/blob/main/brand/mark/olon-mark-dark-256.png" width="120" height="120" alt="OlonJS Logo">
+   </a>
+ </p>
+@@ -104,7 +104,7 @@ Detailed technical documentation is available in the `docs/` directory:
+ - **[WebMCP (Browser API)](./docs/webmcp.md):** The Agent-Native browser API for Zero-UI mutations and programmatic exploration.
+ 
+ ### Onboarding & Governance
+-- **[Client Onboarding](./docs_governance_en.md):** Guide for graphics and data development.
++- **[Client Onboarding](./docs/docs_governance_en.md):** Guide for graphics and data development.
+ - **[Governance Path](./docs/docs_governance_en.md):** Full CMS integration (Studio, ICE, Form Factory, IDAC).
+ 
+ 
+@@ -126,7 +126,7 @@ Distributed under the MIT License. See `LICENSE` for more information.
+ ---
+ 
+ **Built for the Agentic Web by the OlonJS Team.**  
+-[olonjs.io](https://olonjs.io)
++[olon.js.org](https://olon.js.org)
+ 
+ ---
+ 
+diff --git a/packages/cli/package.json b/packages/cli/package.json
+index e34cc49..39653c9 100644
+--- a/packages/cli/package.json
++++ b/packages/cli/package.json
+@@ -15,7 +15,7 @@
+     ],
+     "author": "JsonPages Team",
+     "license": "MIT",
+-    "homepage": "https://github.com/olonjs/npm-jpcore#readme",
++    "homepage": "https://olon.js.org",
+     "repository": {
+         "type": "git",
+         "url": "git+https://github.com/olonjs/npm-jpcore.git",
+diff --git a/packages/core/package.json b/packages/core/package.json
+index ce4d2c4..0a14c96 100644
+--- a/packages/core/package.json
++++ b/packages/core/package.json
+@@ -25,7 +25,7 @@
+   "description": "The Sovereign Core Engine for OlonJS.",
+   "author": "JsonPages Team",
+   "license": "MIT",
+-  "homepage": "https://github.com/olonjs/npm-jpcore#readme",
++  "homepage": "https://olon.js.org",
+   "repository": {
+     "type": "git",
+     "url": "git+https://github.com/olonjs/npm-jpcore.git",
+-- 
+2.47.3
+
