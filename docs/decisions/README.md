@@ -53,6 +53,9 @@ Optional: `Follow-ups`, `Open Points`, `Compliance mapping`, `Risk mitigation`, 
 | 0010 | [Replace `motion/react` with CSS animations on the LCP path](./ADR-0010-hero-css-animation-over-motion-on-lcp-path.md) | Proposed — pending implementation and Lighthouse verification | 2026-05-10 |
 | 0011 | [Declare `@olonjs/core` as side-effect-free for aggressive tree-shaking](./ADR-0011-olonjs-core-side-effects-false.md) | Accepted — implemented in `@olonjs/core` v1.1.2; predicted bundle-size win measured at 0 KB for `apps/olonjs.io` (see Implementation notes) | 2026-05-10 |
 | 0012 | [Externalize the runtime entry from the full bundle to dedupe shared module instances](./ADR-0012-externalize-runtime-from-full-bundle.md) | Accepted — implemented in `@olonjs/core` v1.1.1; Studio renders sections verified | 2026-05-10 |
+| 0013 | [Implementation of the v1 canonical JSON Schema set via `npm run bump:all`](./ADR-0013-v1-schemas-implementation.md) | Accepted | 2026-05-12 |
+| 0014 | [Opt-in server-side rendering via `createStaticRouter` and a `/server` subpath export](./ADR-0014-opt-in-ssr-via-static-router-and-server-subpath.md) | Proposed — pending implementation and verification | 2026-06-04 |
+| 0015 | [SSR initial-data and hydration handoff contract](./ADR-0015-ssr-initial-data-and-hydration-contract.md) | Proposed — pending implementation and verification | 2026-06-04 |
 
 ## For agents
 

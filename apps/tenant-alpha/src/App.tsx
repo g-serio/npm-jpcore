@@ -8,7 +8,7 @@ import { JsonPagesEngine } from '@olonjs/core';
 import type { JsonPagesConfig, LibraryImageEntry, ProjectState } from '@olonjs/core';
 import { normalizeBasePath, withBasePath } from '@olonjs/core';
 import { ComponentRegistry } from '@/lib/ComponentRegistry';
-import { SECTION_SCHEMAS, SECTION_SUBMISSION_SCHEMAS } from '@/lib/schemas';
+import { SECTION_SCHEMAS } from '@/lib/schemas';
 import { addSectionConfig } from '@/lib/addSectionConfig';
 import { getHydratedData } from '@/lib/draftStorage';
 import type { SiteConfig, ThemeConfig, MenuConfig, PageConfig } from '@/types';
@@ -172,6 +172,7 @@ function coerceSiteConfig(value: unknown): SiteConfig | null {
   }
   if (!isObjectRecord(input)) return null;
   if (!isObjectRecord(input.identity)) return null;
+  if (!Array.isArray(input.pages)) return null;
 
   return input as unknown as SiteConfig;
 }
@@ -862,14 +863,13 @@ function App() {
     basePath: APP_BASE_PATH,
     registry: ComponentRegistry as JsonPagesConfig['registry'],
     schemas: SECTION_SCHEMAS as unknown as JsonPagesConfig['schemas'],
-    submissionSchemas: SECTION_SUBMISSION_SCHEMAS as unknown as JsonPagesConfig['submissionSchemas'],
     pages,
     siteConfig,
     themeConfig,
     menuConfig,
     refDocuments,
-    iconRegistry: iconMap,
     themeCss: { tenant: resolvedTenantCss },
+    iconRegistry: iconMap,
     addSection: addSectionConfig,
     webmcp: {
       enabled: true,
@@ -1085,13 +1085,7 @@ function App() {
           </div>
         </div>
       ) : null}
-     {shouldRenderEngine ? (
-        isTenantEmpty ? (
-          <EmptyTenantView />
-        ) : (
-          <JsonPagesEngine config={config} />
-        )
-      ) : null}
+     {shouldRenderEngine ? (isTenantEmpty ? <EmptyTenantView /> : <JsonPagesEngine config={config} />) : null}
       {isCloudMode && (contentMode === 'error' || contentFallback?.reasonCode === 'CLOUD_REFRESH_FAILED') ? (
         <div
           role="status"
