@@ -919,6 +919,7 @@ function App() {
             slug,
             page: state.page,
             siteConfig: state.site,
+            menuConfig: state.menu,
           }),
         });
         const body = (await res.json().catch(() => ({}))) as { error?: string; code?: string };

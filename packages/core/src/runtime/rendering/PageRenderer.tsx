@@ -218,7 +218,11 @@ export const PageRenderer: React.FC<Props> = ({
           data-section-id={footerSection.id}
           onMouseEnter={() => handleSectionHover(footerSection.id)}
         >
-          <SectionRenderer section={footerSection} selectedId={selectedId} />
+          <SectionRenderer
+            section={footerSection}
+            menu={resolveSectionMenuItems(footerSection, menuConfig.main ?? [])}
+            selectedId={selectedId}
+          />
         </div>
       )}
     </div>

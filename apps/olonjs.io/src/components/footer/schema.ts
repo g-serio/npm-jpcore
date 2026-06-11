@@ -12,9 +12,7 @@ export const FooterColumnItemSchema = BaseArrayItem.extend({
   links: z.array(FooterLinkItem).describe('ui:list'),
 });
 
-export const FooterSocialItemSchema = BaseArrayItem.extend({
-  name: z.string().describe('ui:text'),
-  href: z.string().describe('ui:text'),
+export const FooterSocialItemSchema = MenuItemSchema.extend({
   icon: z.enum(['github', 'x', 'discord']).default('github').describe('ui:select'),
 });
 
@@ -26,6 +24,7 @@ export const FooterSchema = BaseSectionData.extend({
   taglineSecondary: z.string().describe('ui:text'),
   logoMark: ImageSelectionSchema.optional(),
   columns: z.array(FooterColumnItemSchema).describe('ui:list'),
+  /** Resolved from `menu.json` via `data.socialLinks.$ref` in authored `site.json` (JSP §2.5). */
   socialLinks: z.array(FooterSocialItemSchema).describe('ui:list'),
   /** Resolved from `menu.json` via `data.legalLinks.$ref` in authored `site.json` (JSP §2.5). */
   legalLinks: z.array(MenuItemSchema).describe('ui:list'),

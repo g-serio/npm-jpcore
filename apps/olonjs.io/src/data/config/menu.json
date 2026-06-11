@@ -19,7 +19,16 @@
       "id": "nav-blog",
       "label": "Get Started",
       "href": "#templates",
-      "isCta": "true"
+      "isCta": true
+    }
+  ],
+  "footerSocial": [
+    {
+      "id": "soc-gh",
+      "label": "GitHub",
+      "href": "https://github.com/olonjs",
+      "icon": "github",
+      "external": true
     }
   ],
   "footerLegal": [

@@ -130,7 +130,7 @@ export function FooterView({ data }: FooterViewProps) {
             <div className="flex items-center gap-3">
               {data.socialLinks.map((social) => (
                 <a
-                  aria-label={social.name}
+                  aria-label={social.label}
                   className="flex size-8 items-center justify-center rounded-lg text-muted-foreground transition-colors duration-200 hover:bg-muted/50 hover:text-foreground"
                   data-jp-field="href"
                   data-jp-item-field="socialLinks"
@@ -141,8 +141,8 @@ export function FooterView({ data }: FooterViewProps) {
                   target="_blank"
                 >
                   <SocialGlyph className="size-4" icon={social.icon} />
-                  <span className="sr-only" data-jp-field="name">
-                    {social.name}
+                  <span className="sr-only" data-jp-field="label">
+                    {social.label}
                   </span>
                 </a>
               ))}

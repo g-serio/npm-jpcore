@@ -6,7 +6,7 @@ import { StudioStage } from '../../studio/admin/StudioStage';
 import { appendDraftSection, reorderPageSections } from '../../studio/orchestration/section-ops';
 import { useStudioPersistence } from '../../studio/orchestration/useStudioPersistence';
 import { useStudioSelectionState } from '../../studio/orchestration/useStudioSelectionState';
-import { resolveRuntimeConfig } from '../../contract/config-resolver';
+import { applyMenuRefBindingsToDraft, resolveRuntimeConfig } from '../../contract/config-resolver';
 import type { JsonPagesConfig, SelectionPath } from '../../contract/types-engine';
 import type { MenuConfig, PageConfig, ProjectState, Section, SiteConfig } from '../../contract/kernel';
 import { StudioProvider } from '../../studio/StudioContext';
@@ -148,6 +148,7 @@ export const StudioRoute: React.FC<StudioRouteProps> = ({
     slug,
     saveToFile,
     hotSave,
+    authoredSiteConfig: siteConfig,
     themeConfig,
     refDocuments,
   });
@@ -214,14 +215,6 @@ export const StudioRoute: React.FC<StudioRouteProps> = ({
     setMenuDraft(getInitialMenuDraft());
   }, [getInitialMenuDraft]);
 
-  const decodePointerSegment = useCallback((segment: string) => segment.replace(/~1/g, '/').replace(/~0/g, '~'), []);
-
-  const isRefObject = useCallback(
-    (value: unknown): value is Record<string, unknown> & { $ref: string } =>
-      isRecord(value) && typeof value.$ref === 'string' && value.$ref.trim().length > 0,
-    []
-  );
-
   const getAuthoredGlobalSection = useCallback(
     (site: SiteConfig, sectionId: string): Section | null => {
       if (site.header?.id === sectionId) return site.header;
@@ -240,34 +233,6 @@ export const StudioRoute: React.FC<StudioRouteProps> = ({
     []
   );
 
-  const getMenuBindingPointer = useCallback(
-    (sectionData: unknown): string[] | null => {
-      if (!isRecord(sectionData) || !isRefObject(sectionData.menu)) return null;
-      const rawRef = sectionData.menu.$ref.trim();
-      const [rawDocPath, rawPointer = ''] = rawRef.split('#');
-      if (!/menu\.json$/i.test(rawDocPath)) return null;
-      const pointer = rawPointer.replace(/^\//, '');
-      if (!pointer) return null;
-      const segments = pointer
-        .split('/')
-        .map(decodePointerSegment)
-        .filter(Boolean);
-      return segments.length > 0 ? segments : null;
-    },
-    [decodePointerSegment, isRefObject]
-  );
-
-  const writeValueAtPath = useCallback((target: unknown, path: string[], value: unknown): unknown => {
-    if (path.length === 0) return value;
-
-    const [head, ...tail] = path;
-    const source = isRecord(target) ? target : {};
-    return {
-      ...source,
-      [head]: writeValueAtPath(source[head], tail, value),
-    };
-  }, []);
-
   const applyGlobalSectionUpdate = useCallback(
     (
       sectionId: string,
@@ -282,21 +247,11 @@ export const StudioRoute: React.FC<StudioRouteProps> = ({
         return { nextGlobalDraft: currentGlobalDraft, nextMenuDraft: currentMenuDraft };
       }
 
-      let nextMenuDraft = currentMenuDraft;
-      const menuPointer = getMenuBindingPointer(authoredSection.data);
-      const resolvedMenuValue = nextData.menu;
-      const authoredData = isRecord(authoredSection.data) ? authoredSection.data : {};
-
-      const normalizedData: Record<string, unknown> = menuPointer
-        ? {
-            ...nextData,
-            ...(authoredData.menu !== undefined ? { menu: authoredData.menu } : {}),
-          }
-        : nextData;
-
-      if (menuPointer && Array.isArray(resolvedMenuValue)) {
-        nextMenuDraft = writeValueAtPath(currentMenuDraft, menuPointer, resolvedMenuValue) as MenuConfig;
-      }
+      const { normalizedData, menuDraft: nextMenuDraft } = applyMenuRefBindingsToDraft(
+        authoredSection.data,
+        nextData,
+        currentMenuDraft
+      );
 
       const nextSection = { ...authoredSection, data: normalizedData } as Section;
       const nextGlobalDraft =
@@ -306,7 +261,7 @@ export const StudioRoute: React.FC<StudioRouteProps> = ({
 
       return { nextGlobalDraft, nextMenuDraft };
     },
-    [getAuthoredGlobalSection, getMenuBindingPointer, getResolvedGlobalSection, writeValueAtPath]
+    [getAuthoredGlobalSection, getResolvedGlobalSection]
   );
 
   const handleResetToFile = useCallback(() => {

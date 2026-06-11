@@ -24,6 +24,11 @@ interface ResolveContext {
   stack: string[];
 }
 
+export interface MenuRefBinding {
+  fieldKey: string;
+  path: string[];
+}
+
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null;
 }
@@ -242,21 +247,137 @@ function isMenuItemShape(value: unknown): value is MenuItem {
   return isRecord(value) && typeof value.label === 'string' && typeof value.href === 'string';
 }
 
-function getHeaderDataMenuCandidate(headerData: unknown): MenuItem[] | null {
-  if (!isRecord(headerData)) return null;
-  const menu = headerData.menu;
+function parseMenuRefPointer(value: unknown): string[] | null {
+  if (!isRefObject(value)) return null;
+  const rawRef = value.$ref.trim();
+  const [rawDocPath, rawPointer = ''] = rawRef.split('#');
+  if (!/menu\.json$/i.test(rawDocPath)) return null;
+  const pointer = rawPointer.replace(/^\//, '');
+  if (!pointer) return null;
+  const segments = pointer
+    .split('/')
+    .map(decodePointerSegment)
+    .filter(Boolean);
+  return segments.length > 0 ? segments : null;
+}
+
+export function getMenuRefBindings(sectionData: unknown): MenuRefBinding[] {
+  if (!isRecord(sectionData)) return [];
+  return Object.entries(sectionData)
+    .map(([fieldKey, value]) => {
+      const path = parseMenuRefPointer(value);
+      return path ? { fieldKey, path } : null;
+    })
+    .filter((binding): binding is MenuRefBinding => binding != null);
+}
+
+function writeValueAtPath(target: unknown, path: string[], value: unknown): unknown {
+  if (path.length === 0) return value;
+
+  const [head, ...tail] = path;
+  const source = isRecord(target) ? target : {};
+  return {
+    ...source,
+    [head]: writeValueAtPath(source[head], tail, value),
+  };
+}
+
+export function applyMenuRefBindingsToDraft(
+  authoredSectionData: unknown,
+  nextData: Record<string, unknown>,
+  menuDraft: MenuConfig
+): { normalizedData: Record<string, unknown>; menuDraft: MenuConfig } {
+  const bindings = getMenuRefBindings(authoredSectionData);
+  if (bindings.length === 0) {
+    return { normalizedData: nextData, menuDraft };
+  }
+
+  const authoredData = isRecord(authoredSectionData) ? authoredSectionData : {};
+  const normalizedData: Record<string, unknown> = { ...nextData };
+  let nextMenuDraft = menuDraft;
+
+  for (const binding of bindings) {
+    if (authoredData[binding.fieldKey] !== undefined) {
+      normalizedData[binding.fieldKey] = authoredData[binding.fieldKey];
+    }
+    const resolvedMenuValue = nextData[binding.fieldKey];
+    if (Array.isArray(resolvedMenuValue)) {
+      nextMenuDraft = writeValueAtPath(nextMenuDraft, binding.path, resolvedMenuValue) as MenuConfig;
+    }
+  }
+
+  return { normalizedData, menuDraft: nextMenuDraft };
+}
+
+function applySectionDataMenuRefBindings(
+  authoredSection: Section | undefined,
+  nextSection: Section | undefined,
+  menuDraft: MenuConfig
+): { section: Section | undefined; menuDraft: MenuConfig } {
+  if (!authoredSection || !nextSection || !isRecord(nextSection.data)) {
+    return { section: nextSection, menuDraft };
+  }
+
+  const { normalizedData, menuDraft: nextMenuDraft } = applyMenuRefBindingsToDraft(
+    authoredSection.data,
+    nextSection.data,
+    menuDraft
+  );
+
+  return {
+    section: { ...nextSection, data: normalizedData } as Section,
+    menuDraft: nextMenuDraft,
+  };
+}
+
+export function applySiteMenuRefBindingsToDraft(
+  authoredSite: SiteConfig,
+  nextSite: SiteConfig,
+  menuDraft: MenuConfig
+): { site: SiteConfig; menuDraft: MenuConfig } {
+  let nextMenuDraft = menuDraft;
+
+  const headerResult = applySectionDataMenuRefBindings(
+    authoredSite.header,
+    nextSite.header,
+    nextMenuDraft
+  );
+  nextMenuDraft = headerResult.menuDraft;
+
+  const footerResult = applySectionDataMenuRefBindings(
+    authoredSite.footer,
+    nextSite.footer,
+    nextMenuDraft
+  );
+  nextMenuDraft = footerResult.menuDraft;
+
+  return {
+    site: {
+      ...nextSite,
+      ...(headerResult.section ? { header: headerResult.section } : {}),
+      footer: footerResult.section ?? nextSite.footer,
+    },
+    menuDraft: nextMenuDraft,
+  };
+}
+
+function getSectionDataMenuCandidate(sectionData: unknown): MenuItem[] | null {
+  if (!isRecord(sectionData)) return null;
+  const menu = sectionData.menu;
   if (Array.isArray(menu) && menu.every(isMenuItemShape)) return menu as MenuItem[];
   return null;
 }
 
 export function resolveHeaderMenuItems(headerData: unknown, fallbackMain: MenuItem[]): MenuItem[] {
-  const candidate = getHeaderDataMenuCandidate(headerData);
+  const candidate = getSectionDataMenuCandidate(headerData);
   return candidate ?? (Array.isArray(fallbackMain) ? fallbackMain : []);
 }
 
 export function resolveSectionMenuItems(section: Section, fallbackMain: MenuItem[]): MenuItem[] | undefined {
-  if (section.type !== 'header') return undefined;
-  return resolveHeaderMenuItems(section.data as unknown, fallbackMain);
+  const candidate = getSectionDataMenuCandidate(section.data as unknown);
+  if (candidate) return candidate;
+  if (section.type === 'header') return Array.isArray(fallbackMain) ? fallbackMain : [];
+  return undefined;
 }
 
 export function resolveRuntimeConfig(input: RuntimeResolutionInput): RuntimeResolutionResult {

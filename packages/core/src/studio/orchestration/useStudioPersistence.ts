@@ -1,5 +1,5 @@
 import { useCallback, useState } from 'react';
-import { resolveRuntimeConfig } from '../../contract/config-resolver';
+import { applySiteMenuRefBindingsToDraft, resolveRuntimeConfig } from '../../contract/config-resolver';
 import type { MenuConfig, PageConfig, ProjectState, SiteConfig } from '../../contract/kernel';
 import type { JsonPagesConfig } from '../../contract/types-engine';
 import { STUDIO_EVENTS } from '../events';
@@ -8,6 +8,7 @@ interface UseStudioPersistenceArgs {
   slug: string;
   saveToFile?: (state: ProjectState, slug: string) => Promise<void>;
   hotSave?: (state: ProjectState, slug: string) => Promise<void>;
+  authoredSiteConfig: SiteConfig;
   themeConfig: JsonPagesConfig['themeConfig'];
   refDocuments?: JsonPagesConfig['refDocuments'];
 }
@@ -16,6 +17,7 @@ export function useStudioPersistence({
   slug,
   saveToFile,
   hotSave,
+  authoredSiteConfig,
   themeConfig,
   refDocuments,
 }: UseStudioPersistenceArgs) {
@@ -53,21 +55,26 @@ export function useStudioPersistence({
       nextGlobalDraft: SiteConfig,
       nextMenuDraft: MenuConfig
     ): ProjectState => {
+      const normalizedGlobal = applySiteMenuRefBindingsToDraft(
+        authoredSiteConfig,
+        nextGlobalDraft,
+        nextMenuDraft
+      );
       const resolvedSaveRuntime = resolveRuntimeConfig({
         pages: { [slug]: nextDraft },
-        siteConfig: nextGlobalDraft,
+        siteConfig: normalizedGlobal.site,
         themeConfig,
-        menuConfig: nextMenuDraft,
+        menuConfig: normalizedGlobal.menuDraft,
         refDocuments,
       });
       return {
         page: nextDraft,
-        site: nextGlobalDraft,
-        menu: nextMenuDraft,
+        site: normalizedGlobal.site,
+        menu: normalizedGlobal.menuDraft,
         theme: resolvedSaveRuntime.themeConfig,
       };
     },
-    [slug, themeConfig, refDocuments]
+    [authoredSiteConfig, slug, themeConfig, refDocuments]
   );
 
   const persistProjectState = useCallback(

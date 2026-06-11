@@ -156,7 +156,7 @@ export const SectionRenderer: React.FC<SectionRendererProps> = ({
       settings?: unknown;
       menu?: MenuItem[];
     }>;
-    if (section.type === 'header' && menu) {
+    if (menu) {
       return <DynamicComponent data={section.data} settings={section.settings} menu={menu} />;
     }
     return <DynamicComponent data={section.data} settings={section.settings} />;
