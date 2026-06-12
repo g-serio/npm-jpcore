@@ -286,7 +286,7 @@
               "id": {
                 "type": "string"
               },
-              "name": {
+              "label": {
                 "type": "string",
                 "description": "ui:text"
               },
@@ -303,11 +303,17 @@
                 ],
                 "description": "ui:select",
                 "default": "github"
+              },
+              "external": {
+                "type": "boolean"
+              },
+              "isCta": {
+                "type": "boolean"
               }
             },
             "additionalProperties": false,
             "required": [
-              "name",
+              "label",
               "href"
             ]
           },
