@@ -1817,7 +1817,7 @@ cat << 'END_OF_FILE_CONTENT' > "package.json"
     "@tiptap/extension-link": "^2.11.5",
     "@tiptap/react": "^2.11.5",
     "@tiptap/starter-kit": "^2.11.5",
-    "@olonjs/core": "^1.1.6",
+    "@olonjs/core": "^1.1.10",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "lucide-react": "^0.474.0",
@@ -2146,6 +2146,7 @@ const root = path.resolve(__dirname, '..');
 const pagesDir = path.resolve(root, 'src/data/pages');
 const publicDir = path.resolve(root, 'public');
 const distDir = path.resolve(root, 'dist');
+const distSsrDir = path.resolve(root, 'dist-ssr');
 
 async function writeTargets(relativePath, content) {
   const targets = [
@@ -2161,6 +2162,15 @@ async function writeTargets(relativePath, content) {
 
 async function writeJsonTargets(relativePath, value) {
   await writeTargets(relativePath, `${JSON.stringify(value, null, 2)}\n`);
+}
+
+// Schemas go to dist-ssr ONLY: committed (dist-ssr is not gitignored) so provisioning can read
+// them from the repo, but NOT served as static files — so /schemas/* falls through to the
+// blob rewrite, and provision/hotSave own the served contract.
+async function writeSsrJson(relativePath, value) {
+  const target = path.resolve(distSsrDir, relativePath);
+  await fs.mkdir(path.dirname(target), { recursive: true });
+  await fs.writeFile(target, `${JSON.stringify(value, null, 2)}\n`, 'utf-8');
 }
 
 function escapeHtmlAttribute(value) {
@@ -2264,9 +2274,10 @@ for (const { slug } of targets) {
     slug,
     pageConfig,
     schemas: webMcpBuildState.schemas,
+    submissionSchemas: webMcpBuildState.submissionSchemas,
     siteConfig: webMcpBuildState.siteConfig,
   });
-  await writeJsonTargets(`schemas/${slug}.schema.json`, contract);
+  await writeSsrJson(`schemas/${slug}.schema.json`, contract);
   const pageManifest = buildPageManifest({
     slug,
     pageConfig,
@@ -2342,6 +2353,7 @@ for (const { slug, out, depth } of targets) {
 console.log('\n[bake] All pages baked. OK\n');
 
 END_OF_FILE_CONTENT
+# SKIP: scripts/bake.mjs:Zone.Identifier is binary and cannot be embedded as text.
 echo "Creating scripts/generate-llms-txt.mjs..."
 cat << 'END_OF_FILE_CONTENT' > "scripts/generate-llms-txt.mjs"
 import fs from 'fs';
@@ -2873,7 +2885,7 @@ import { JsonPagesEngine } from '@olonjs/core';
 import type { JsonPagesConfig, LibraryImageEntry, ProjectState } from '@olonjs/core';
 import { normalizeBasePath, withBasePath } from '@olonjs/core';
 import { ComponentRegistry } from '@/lib/ComponentRegistry';
-import { SECTION_SCHEMAS, SECTION_SUBMISSION_SCHEMAS } from '@/lib/schemas';
+import { SECTION_SCHEMAS } from '@/lib/schemas';
 import { addSectionConfig } from '@/lib/addSectionConfig';
 import { getHydratedData } from '@/lib/draftStorage';
 import type { SiteConfig, ThemeConfig, MenuConfig, PageConfig } from '@/types';
@@ -3037,6 +3049,7 @@ function coerceSiteConfig(value: unknown): SiteConfig | null {
   }
   if (!isObjectRecord(input)) return null;
   if (!isObjectRecord(input.identity)) return null;
+  if (!Array.isArray(input.pages)) return null;
 
   return input as unknown as SiteConfig;
 }
@@ -3727,14 +3740,13 @@ function App() {
     basePath: APP_BASE_PATH,
     registry: ComponentRegistry as JsonPagesConfig['registry'],
     schemas: SECTION_SCHEMAS as unknown as JsonPagesConfig['schemas'],
-    submissionSchemas: SECTION_SUBMISSION_SCHEMAS as unknown as JsonPagesConfig['submissionSchemas'],
     pages,
     siteConfig,
     themeConfig,
     menuConfig,
     refDocuments,
-    iconRegistry: iconMap,
     themeCss: { tenant: resolvedTenantCss },
+    iconRegistry: iconMap,
     addSection: addSectionConfig,
     webmcp: {
       enabled: true,
@@ -3950,13 +3962,7 @@ function App() {
           </div>
         </div>
       ) : null}
-     {shouldRenderEngine ? (
-        isTenantEmpty ? (
-          <EmptyTenantView />
-        ) : (
-          <JsonPagesEngine config={config} />
-        )
-      ) : null}
+     {shouldRenderEngine ? (isTenantEmpty ? <EmptyTenantView /> : <JsonPagesEngine config={config} />) : null}
       {isCloudMode && (contentMode === 'error' || contentFallback?.reasonCode === 'CLOUD_REFRESH_FAILED') ? (
         <div
           role="status"
@@ -4032,6 +4038,7 @@ function App() {
 export default App;
 
 END_OF_FILE_CONTENT
+# SKIP: src/App.tsx:Zone.Identifier is binary and cannot be embedded as text.
 mkdir -p "src/components"
 echo "Creating src/components/ThemeProvider.tsx..."
 cat << 'END_OF_FILE_CONTENT' > "src/components/ThemeProvider.tsx"
@@ -10810,7 +10817,7 @@ END_OF_FILE_CONTENT
 echo "Creating src/runtime.ts..."
 cat << 'END_OF_FILE_CONTENT' > "src/runtime.ts"
 import type { JsonPagesConfig, MenuConfig, PageConfig, SiteConfig, ThemeConfig } from '@/types';
-import { SECTION_SCHEMAS, SECTION_SUBMISSION_SCHEMAS } from '@/lib/schemas';
+import { SECTION_SCHEMAS } from '@/lib/schemas';
 import { getFilePages } from '@/lib/getFilePages';
 import siteData from '@/data/config/site.json';
 import menuData from '@/data/config/menu.json';
@@ -10829,18 +10836,17 @@ export const refDocuments = {
 export function getWebMcpBuildState(): {
   pages: Record<string, PageConfig>;
   schemas: JsonPagesConfig['schemas'];
-  submissionSchemas: JsonPagesConfig['submissionSchemas'];
   siteConfig: SiteConfig;
 } {
   return {
     pages,
     schemas: SECTION_SCHEMAS as unknown as JsonPagesConfig['schemas'],
-    submissionSchemas: SECTION_SUBMISSION_SCHEMAS as unknown as JsonPagesConfig['submissionSchemas'],
     siteConfig,
   };
 }
 
 END_OF_FILE_CONTENT
+# SKIP: src/runtime.ts:Zone.Identifier is binary and cannot be embedded as text.
 echo "Creating src/types.ts..."
 cat << 'END_OF_FILE_CONTENT' > "src/types.ts"
 import type { EmptyTenantData, EmptyTenantSettings } from '@/components/empty-tenant';
@@ -10865,6 +10871,61 @@ declare module '@olonjs/core' {
 export * from '@olonjs/core';
 
 END_OF_FILE_CONTENT
+echo "Creating src/vercel.json..."
+cat << 'END_OF_FILE_CONTENT' > "src/vercel.json"
+{
+  "rewrites": [
+    {
+      "source": "/robots.txt",
+      "destination": "https://bat5elmxofxdroan.public.blob.vercel-storage.com/tenants/santa1/robots.txt"
+    },
+    {
+      "source": "/sitemap.xml",
+      "destination": "https://bat5elmxofxdroan.public.blob.vercel-storage.com/tenants/santa1/sitemap.xml"
+    },
+    {
+      "source": "/llms.txt",
+      "destination": "https://bat5elmxofxdroan.public.blob.vercel-storage.com/tenants/santa1/llms.txt"
+    },
+    {
+      "source": "/.well-known/agent-card.json",
+      "destination": "https://bat5elmxofxdroan.public.blob.vercel-storage.com/tenants/santa1/.well-known/agent-card.json"
+    },
+    {
+      "source": "/mcp-manifest.json",
+      "destination": "https://bat5elmxofxdroan.public.blob.vercel-storage.com/tenants/santa1/mcp-manifest.json"
+    },
+    {
+      "source": "/mcp-manifests/:path*.json",
+      "destination": "https://bat5elmxofxdroan.public.blob.vercel-storage.com/tenants/santa1/mcp-manifests/:path*.json"
+    },
+    {
+      "source": "/schemas/:path*.json",
+      "destination": "https://bat5elmxofxdroan.public.blob.vercel-storage.com/tenants/santa1/schemas/:path*.json"
+    },
+    {
+      "source": "/:path*.json",
+      "destination": "https://bat5elmxofxdroan.public.blob.vercel-storage.com/tenants/santa1/pages/:path*.json"
+    },
+    {
+      "source": "/(.*)",
+      "destination": "/index.html"
+    }
+  ],
+  "headers": [
+    {
+      "source": "/assets/(.*)",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "public, max-age=31536000, immutable"
+        }
+      ]
+    }
+  ]
+}
+END_OF_FILE_CONTENT
+# SKIP: src/vercel.json:Zone.Identifier is binary and cannot be embedded as text.
 echo "Creating src/vite-env.d.ts..."
 cat << 'END_OF_FILE_CONTENT' > "src/vite-env.d.ts"
 /// <reference types="vite/client" />

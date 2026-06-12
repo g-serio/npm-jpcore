@@ -38,15 +38,12 @@
       "taglinePrimary": "The modern framework for AI Native Websites.",
       "taglineSecondary": "Build products agents love.",
       "columns": [],
-      "socialLinks": [
-        {
-          "id": "soc-gh",
-          "name": "GitHub",
-          "href": "https://github.com/olonjs",
-          "icon": "github"
-        }
-      ],
-      "legalLinks": [],
+      "socialLinks": {
+        "$ref": "menu.json#/footerSocial"
+      },
+      "legalLinks": {
+        "$ref": "menu.json#/footerLegal"
+      },
       "copyrightSuffix": "OlonJS · v1.6 · Guido Serio",
       "logoMark": {
         "url": "/assets/images/1778097668305-olon-mark-mono-dark-128.png",
