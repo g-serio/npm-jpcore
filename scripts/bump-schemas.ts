@@ -18,8 +18,11 @@ import { zodToJsonSchema } from 'zod-to-json-schema';
 import type { ZodTypeAny } from 'zod';
 
 import {
+  CollectionDocumentSchema,
+  CollectionItemSchema,
   MenuConfigSchema,
   MenuItemSchema,
+  PageCollectionBindingSchema,
   PageContractSchema,
   PageMetaSchema,
   SectionSchema,
@@ -116,12 +119,36 @@ const resources: Resource[] = [
     ],
   },
   {
+    name: 'collection',
+    zod: CollectionDocumentSchema,
+    title: 'Olon Collection Document',
+    description:
+      'COP collection document for structured entities independent from pages. Collections are keyed by stable entity id and may be consumed by page sections through `$ref` or by dynamic routes through `collection:current`.',
+    definitions: { CollectionItem: CollectionItemSchema },
+    examples: [
+      {
+        dune: {
+          id: 'dune',
+          title: 'Dune',
+          author: 'Frank Herbert',
+          year: 1965,
+        },
+        neuromancer: {
+          id: 'neuromancer',
+          title: 'Neuromancer',
+          author: 'William Gibson',
+          year: 1984,
+        },
+      },
+    ],
+  },
+  {
     name: 'page',
     zod: PageContractSchema,
     title: 'Olon Page Contract',
     description:
-      'Full contract for a single Olon page: identifier, URL slug, SEO metadata, an ordered list of sections, and an opt-out for the site-level global header. Sections follow the generic Section open shape; concrete data is determined by the section `type` and validated against type-specific schemas published separately.',
-    definitions: { Section: SectionSchema, PageMeta: PageMetaSchema },
+      'Full contract for a single Olon page: identifier, URL slug, SEO metadata, optional COP collection binding, an ordered list of sections, and an opt-out for the site-level global header. Sections follow the generic Section open shape; concrete data is determined by the section `type` and validated against type-specific schemas published separately.',
+    definitions: { Section: SectionSchema, PageMeta: PageMetaSchema, PageCollectionBinding: PageCollectionBindingSchema },
     examples: [
       {
         id: 'home-page',
@@ -145,6 +172,26 @@ const resources: Resource[] = [
           },
         ],
       },
+      {
+        id: 'book-detail-page',
+        slug: 'libri/[slug]',
+        meta: {
+          title: 'Dettaglio libro nella collection',
+          description:
+            'Pagina dinamica che usa il Collection Protocol per risolvere il libro corrente dalla route.',
+        },
+        collection: {
+          source: 'libri',
+          paramKey: 'slug',
+        },
+        sections: [
+          {
+            id: 'book-detail',
+            type: 'book-detail',
+            data: { item: { $ref: 'collection:current' } },
+          },
+        ],
+      },
     ],
   },
   {
@@ -152,13 +199,14 @@ const resources: Resource[] = [
     zod: TenantManifestSchema,
     title: 'Olon Tenant Manifest',
     description:
-      'Top-level manifest for a complete Olon tenant. Bundles the four canonical contracts — design system, site shell, navigation, and the full list of pages — under one document, with the tenant\'s own identity. Each top-level field is a cross-file `$ref` to a separately-published canonical schema (relative to this manifest\'s `$id`), keeping the manifest a thin wrapper rather than an inlined duplicate.',
+      'Top-level manifest for a complete Olon tenant. Bundles the canonical contracts — design system, site shell, navigation, pages, and optional COP collections — under one document, with the tenant\'s own identity. Each top-level field is a cross-file `$ref` to a separately-published canonical schema (relative to this manifest\'s `$id`), keeping the manifest a thin wrapper rather than an inlined duplicate.',
     definitions: { SiteIdentity: SiteIdentitySchema },
     crossRefs: {
       'properties.design': 'design.schema.json',
       'properties.site': 'site.schema.json',
       'properties.menu': 'menu.schema.json',
       'properties.pages.items': 'page.schema.json',
+      'properties.collections.additionalProperties': 'collection.schema.json',
     },
     examples: [
       {
@@ -202,6 +250,16 @@ const resources: Resource[] = [
             sections: [],
           },
         ],
+        collections: {
+          libri: {
+            dune: {
+              id: 'dune',
+              title: 'Dune',
+              author: 'Frank Herbert',
+              year: 1965,
+            },
+          },
+        },
       },
     ],
   },

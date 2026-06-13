@@ -2,51 +2,6 @@
 	"folders": [
 		{
 			"path": "."
-		},
-		{
-			"path": "../temp/llms"
-		},
-		{
-			"path": "../jsonpages-platform"
-		},
-		{
-			"path": "C:/Users/gseri/Desktop/GEMINI/AISTUDIO/Dev/JPS/olon-agent"
-		},
-		{
-			"path": "../temp/YDEMO/santamamma26"
-		},
-		{
-			"path": "../temp/YDEMO/pose"
-		},
-		{
-			"path": "../temp/1.6"
-		},
-		{
-			"path": "../temp/YDEMO/gumlon"
-		},
-		{
-			"path": "../temp/olon.it"
-		},
-		{
-			"path": "../temp/YDEMO/Aether Eye"
-		},
-		{
-			"path": "../temp/LightAlpine"
-		},
-		{
-			"path": "../temp/procult"
-		},
-		{
-			"path": "../temp/design-md-radice"
-		},
-		{
-			"path": "../olonjs-pitch-deck"
-		},
-		{
-			"path": "../temp/YDEMO/santa1"
-		},
-		{
-			"path": "../cristinapiccolo"
 		}
 	]
 }

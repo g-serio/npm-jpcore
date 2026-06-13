@@ -8,6 +8,7 @@ import { JsonPagesEngine } from '@olonjs/core';
 import type { JsonPagesConfig, LibraryImageEntry, ProjectState } from '@olonjs/core';
 import { normalizeBasePath, withBasePath } from '@olonjs/core';
 import { ComponentRegistry } from '@/lib/ComponentRegistry';
+import { CollectionRegistry } from '@/lib/CollectionRegistry';
 import { SECTION_SCHEMAS } from '@/lib/schemas';
 import { addSectionConfig } from '@/lib/addSectionConfig';
 import { getHydratedData } from '@/lib/draftStorage';
@@ -18,6 +19,7 @@ import { startCloudSaveStream } from '@olonjs/core';
 import siteData from '@/data/config/site.json';
 import themeData from '@/data/config/theme.json';
 import menuData from '@/data/config/menu.json';
+import libriData from '@/data/collections/libri/libri.json';
 import { getFilePages } from '@/lib/getFilePages';
 import { DopaDrawer } from '@/components/save-drawer/DopaDrawer';
 import { EmptyTenantView } from '@/components/empty-tenant';
@@ -49,6 +51,9 @@ const TENANT_ID = 'alpha';
 
 const filePages = getFilePages();
 const fileSiteConfig = siteData as unknown as SiteConfig;
+const collections = {
+  libri: libriData as unknown as Record<string, unknown>,
+} satisfies NonNullable<JsonPagesConfig['collections']>;
 const MAX_UPLOAD_SIZE_BYTES = 5 * 1024 * 1024;
 const ASSET_UPLOAD_MAX_RETRIES = 2;
 const ASSET_UPLOAD_TIMEOUT_MS = 20_000;
@@ -86,6 +91,7 @@ type CachedCloudContent = {
   savedAt: number;
   siteConfig: unknown | null;
   pages: Record<string, unknown>;
+  collections?: JsonPagesConfig['collections'];
 };
 
 const CLOUD_CACHE_KEY = 'jp_cloud_content_cache_v1';
@@ -131,7 +137,7 @@ function asString(value: unknown, fallback: string): string {
 function normalizeRouteSlug(value: string): string {
   return value
     .toLowerCase()
-    .replace(/[^a-z0-9/_-]/g, '-')
+    .replace(/[^a-z0-9/_[\]-]/g, '-')
     .replace(/^\/+|\/+$/g, '') || 'home';
 }
 
@@ -157,6 +163,7 @@ function coercePageConfig(slug: string, value: unknown): PageConfig | null {
     slug: normalizedSlug,
     meta: { title, description },
     sections: input.sections as PageConfig['sections'],
+    ...(isObjectRecord(input.collection) ? { collection: input.collection as unknown as PageConfig['collection'] } : {}),
     ...(typeof input['global-header'] === 'boolean' ? { 'global-header': input['global-header'] } : {}),
   };
 }
@@ -298,7 +305,7 @@ function normalizeSlugForCache(slug: string): string {
     slug
       .trim()
       .toLowerCase()
-      .replace(/[^a-z0-9/_-]/g, '-')
+      .replace(/[^a-z0-9/_[\]-]/g, '-')
       .replace(/^\/+|\/+$/g, '') || 'home'
   );
 }
@@ -863,10 +870,12 @@ function App() {
     basePath: APP_BASE_PATH,
     registry: ComponentRegistry as JsonPagesConfig['registry'],
     schemas: SECTION_SCHEMAS as unknown as JsonPagesConfig['schemas'],
+    collectionSchemas: CollectionRegistry as unknown as JsonPagesConfig['collectionSchemas'],
     pages,
     siteConfig,
     themeConfig,
     menuConfig,
+    collections,
     refDocuments,
     themeCss: { tenant: resolvedTenantCss },
     iconRegistry: iconMap,
@@ -903,6 +912,7 @@ function App() {
             slug,
             page: state.page,
             siteConfig: state.site,
+            collections: state.collections,
           }),
         });
         const body = (await res.json().catch(() => ({}))) as { error?: string; code?: string };
@@ -916,6 +926,7 @@ function App() {
           keyFingerprint,
           savedAt: Date.now(),
           siteConfig: state.site ?? null,
+          collections: state.collections,
           pages: {
             ...(existing?.pages ?? {}),
             [normalizedSlug]: state.page,

@@ -45,6 +45,7 @@ function buildRuntimeRoutes(ctx: EngineRuntimeContext) {
     siteConfig: ctx.siteConfig,
     menuConfig: ctx.menuConfig,
     themeConfig: ctx.themeConfig,
+    collections: ctx.collections,
     refDocuments: ctx.refDocuments,
     tenantCss: ctx.tenantCss,
     adminCss: ctx.adminCss, // empty string at the Core level for runtime; ignored by ThemeLoader in tenant mode

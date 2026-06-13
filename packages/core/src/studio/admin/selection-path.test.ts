@@ -1,5 +1,4 @@
-import assert from 'node:assert/strict';
-import test from 'node:test';
+import { expect, test } from 'vitest';
 import { buildSelectionPath } from './selection-path';
 
 class FakeElement {
@@ -21,7 +20,7 @@ test('scalar field only returns single field segment', () => {
   const title = new FakeElement({ 'data-jp-field': 'title' }, section);
 
   const path = buildSelectionPath(title as unknown as HTMLElement, section as unknown as HTMLElement);
-  assert.deepEqual(path, [{ fieldKey: 'title' }]);
+  expect(path).toEqual([{ fieldKey: 'title' }]);
 });
 
 test('array item only returns array segment with item id', () => {
@@ -32,7 +31,7 @@ test('array item only returns array segment with item id', () => {
   );
 
   const path = buildSelectionPath(item as unknown as HTMLElement, section as unknown as HTMLElement);
-  assert.deepEqual(path, [{ fieldKey: 'menu', itemId: 'item-1' }]);
+  expect(path).toEqual([{ fieldKey: 'menu', itemId: 'item-1' }]);
 });
 
 test('array item + nested field returns root-to-leaf path', () => {
@@ -44,7 +43,7 @@ test('array item + nested field returns root-to-leaf path', () => {
   const label = new FakeElement({ 'data-jp-field': 'label' }, item);
 
   const path = buildSelectionPath(label as unknown as HTMLElement, section as unknown as HTMLElement);
-  assert.deepEqual(path, [
+  expect(path).toEqual([
     { fieldKey: 'menu', itemId: 'item-1' },
     { fieldKey: 'label' },
   ]);
@@ -58,7 +57,7 @@ test('interactive href field in item path stays deterministic', () => {
   );
 
   const path = buildSelectionPath(item as unknown as HTMLElement, section as unknown as HTMLElement);
-  assert.deepEqual(path, [
+  expect(path).toEqual([
     { fieldKey: 'ctas', itemId: 'cta-1' },
     { fieldKey: 'href' },
   ]);

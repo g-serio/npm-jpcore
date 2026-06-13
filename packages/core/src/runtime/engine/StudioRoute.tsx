@@ -6,7 +6,12 @@ import { StudioStage } from '../../studio/admin/StudioStage';
 import { appendDraftSection, reorderPageSections } from '../../studio/orchestration/section-ops';
 import { useStudioPersistence } from '../../studio/orchestration/useStudioPersistence';
 import { useStudioSelectionState } from '../../studio/orchestration/useStudioSelectionState';
-import { applyMenuRefBindingsToDraft, resolveRuntimeConfig } from '../../contract/config-resolver';
+import {
+  applyCollectionRefBindingsToDraft,
+  applyMenuRefBindingsToDraft,
+  resolveCollectionContext,
+  resolveRuntimeConfig,
+} from '../../contract/config-resolver';
 import type { JsonPagesConfig, SelectionPath } from '../../contract/types-engine';
 import type { MenuConfig, PageConfig, ProjectState, Section, SiteConfig } from '../../contract/kernel';
 import { StudioProvider } from '../../studio/StudioContext';
@@ -31,7 +36,7 @@ import {
 import {
   isRecord,
   normalizeSlugSegments,
-  resolvePageFromRegistry,
+  resolvePageMatchFromRegistry,
   resolveSlugFromPathname,
 } from './route-utils';
 
@@ -41,6 +46,7 @@ export interface StudioRouteProps {
   siteConfig: SiteConfig;
   menuConfig: MenuConfig;
   themeConfig: JsonPagesConfig['themeConfig'];
+  collections?: JsonPagesConfig['collections'];
   refDocuments?: JsonPagesConfig['refDocuments'];
   tenantCss: string;
   adminCss: string;
@@ -61,6 +67,7 @@ export const StudioRoute: React.FC<StudioRouteProps> = ({
   siteConfig,
   menuConfig,
   themeConfig,
+  collections,
   refDocuments,
   tenantCss,
   adminCss,
@@ -96,6 +103,27 @@ export const StudioRoute: React.FC<StudioRouteProps> = ({
       refDocuments?.['menu.json'];
     return cloneMenuConfig(refMenu ?? menuConfig);
   }, [cloneMenuConfig, menuConfig, refDocuments]);
+  const cloneCollectionsConfig = useCallback((value: unknown): JsonPagesConfig['collections'] => {
+    try {
+      return JSON.parse(JSON.stringify(value ?? {})) as JsonPagesConfig['collections'];
+    } catch {
+      return {};
+    }
+  }, []);
+  const getInitialCollectionsDraft = useCallback((): JsonPagesConfig['collections'] => {
+    const fromRefs: NonNullable<JsonPagesConfig['collections']> = {};
+    for (const [alias, value] of Object.entries(refDocuments ?? {})) {
+      const normalizedAlias = alias.replace(/\\/g, '/');
+      const match = normalizedAlias.match(/(?:^|\/)collections\/([^/]+)\/\1\.json$/);
+      if (match?.[1]) {
+        fromRefs[match[1]] = value as Record<string, unknown>;
+      }
+    }
+    return cloneCollectionsConfig({
+      ...fromRefs,
+      ...(collections ?? {}),
+    });
+  }, [cloneCollectionsConfig, collections, refDocuments]);
   const [globalDraft, setGlobalDraft] = useState<SiteConfig>(() => {
     try {
       const base = JSON.parse(JSON.stringify(siteConfig ?? {})) as SiteConfig;
@@ -107,6 +135,7 @@ export const StudioRoute: React.FC<StudioRouteProps> = ({
   });
   const [addSectionLibraryOpen, setAddSectionLibraryOpen] = useState(false);
   const [menuDraft, setMenuDraft] = useState<MenuConfig>(() => getInitialMenuDraft());
+  const [collectionsDraft, setCollectionsDraft] = useState<JsonPagesConfig['collections']>(() => getInitialCollectionsDraft());
   const [sidebarWidth, setSidebarWidth] = useState(400);
   const {
     activeSectionId,
@@ -119,21 +148,34 @@ export const StudioRoute: React.FC<StudioRouteProps> = ({
     setScrollToSectionId,
     setSelected,
   } = useStudioSelectionState();
+  const pageMatch = useMemo(
+    () => resolvePageMatchFromRegistry(pageRegistry, slug),
+    [pageRegistry, slug]
+  );
+  const draftRegistrySlug = pageMatch?.registrySlug ?? slug;
+  const persistenceSlug = draftRegistrySlug;
+  const collectionContext = useMemo(
+    () => pageMatch ? resolveCollectionContext(pageMatch.page, pageMatch.params, collectionsDraft) : null,
+    [collectionsDraft, pageMatch]
+  );
   const resolvedRuntime = useMemo(
     () =>
       resolveRuntimeConfig({
-        pages: draft ? { [slug]: draft } : {},
+        pages: draft ? { [draftRegistrySlug]: draft } : {},
         siteConfig: globalDraft,
         themeConfig,
         menuConfig: menuDraft,
+        collections: collectionsDraft,
+        collectionContext,
         refDocuments,
       }),
-    [draft, globalDraft, themeConfig, menuDraft, refDocuments, slug]
+    [draft, draftRegistrySlug, globalDraft, themeConfig, menuDraft, collectionsDraft, collectionContext, refDocuments]
   );
-  const resolvedDraft = draft ? resolvedRuntime.pages[slug] ?? draft : null;
+  const resolvedDraft = draft ? resolvedRuntime.pages[draftRegistrySlug] ?? draft : null;
   const draftRef = useRef<PageConfig | null>(draft);
   const globalDraftRef = useRef<SiteConfig>(globalDraft);
   const menuDraftRef = useRef<MenuConfig>(menuDraft);
+  const collectionsDraftRef = useRef<JsonPagesConfig['collections']>(collectionsDraft);
   const sidebarMin = 360;
   const sidebarMax = 920;
   const {
@@ -145,11 +187,12 @@ export const StudioRoute: React.FC<StudioRouteProps> = ({
     runHotSave,
     saveSuccessFeedback,
   } = useStudioPersistence({
-    slug,
+    slug: persistenceSlug,
     saveToFile,
     hotSave,
     authoredSiteConfig: siteConfig,
     themeConfig,
+    collections: collectionsDraft,
     refDocuments,
   });
 
@@ -164,6 +207,10 @@ export const StudioRoute: React.FC<StudioRouteProps> = ({
   useEffect(() => {
     menuDraftRef.current = menuDraft;
   }, [menuDraft]);
+
+  useEffect(() => {
+    collectionsDraftRef.current = collectionsDraft;
+  }, [collectionsDraft]);
 
   const handleResizeStart = useCallback((e: React.PointerEvent) => {
     e.preventDefault();
@@ -205,7 +252,7 @@ export const StudioRoute: React.FC<StudioRouteProps> = ({
     : [];
 
   useEffect(() => {
-    const data = resolvePageFromRegistry(pageRegistry, slug);
+    const data = resolvePageMatchFromRegistry(pageRegistry, slug)?.page;
     if (data) setDraft(JSON.parse(JSON.stringify(data)));
     clearSelection();
     setHasChanges(false);
@@ -214,6 +261,10 @@ export const StudioRoute: React.FC<StudioRouteProps> = ({
   useEffect(() => {
     setMenuDraft(getInitialMenuDraft());
   }, [getInitialMenuDraft]);
+
+  useEffect(() => {
+    setCollectionsDraft(getInitialCollectionsDraft());
+  }, [getInitialCollectionsDraft]);
 
   const getAuthoredGlobalSection = useCallback(
     (site: SiteConfig, sectionId: string): Section | null => {
@@ -265,7 +316,7 @@ export const StudioRoute: React.FC<StudioRouteProps> = ({
   );
 
   const handleResetToFile = useCallback(() => {
-    const data = resolvePageFromRegistry(pageRegistry, slug);
+    const data = resolvePageMatchFromRegistry(pageRegistry, slug)?.page;
     if (data) setDraft(JSON.parse(JSON.stringify(data)));
     clearSelection();
     setHasChanges(false);
@@ -292,6 +343,7 @@ export const StudioRoute: React.FC<StudioRouteProps> = ({
       const currentDraft = draftRef.current;
       const currentGlobalDraft = globalDraftRef.current;
       const currentMenuDraft = menuDraftRef.current;
+      const currentCollectionsDraft = collectionsDraftRef.current;
       if (!currentDraft) {
         throw new Error('Studio draft is not ready yet.');
       }
@@ -362,15 +414,23 @@ export const StudioRoute: React.FC<StudioRouteProps> = ({
         const currentData = isRecord(targetSection.data) ? targetSection.data : {};
         const nextData = resolveWebMcpMutationData(currentData, args);
         const parsedData = schema.parse(nextData) as Record<string, unknown>;
+        const collectionResult = applyCollectionRefBindingsToDraft(
+          targetSection.data,
+          parsedData,
+          currentCollectionsDraft,
+          collectionContext
+        );
 
         const nextDraft = {
           ...currentDraft,
           sections: currentDraft.sections.map((section) =>
-            section.id === args.sectionId ? ({ ...section, data: parsedData } as Section) : section
+            section.id === args.sectionId ? ({ ...section, data: collectionResult.normalizedData } as Section) : section
           ),
         };
         draftRef.current = nextDraft;
+        collectionsDraftRef.current = collectionResult.collectionsDraft;
         setDraft(nextDraft);
+        setCollectionsDraft(collectionResult.collectionsDraft);
       }
 
       setSelected({ id: args.sectionId, type: sectionTypeToUse, scope });
@@ -393,7 +453,7 @@ export const StudioRoute: React.FC<StudioRouteProps> = ({
         isError: false,
       };
     },
-    [applyGlobalSectionUpdate, getResolvedGlobalSection, requestInlineFlush, resolvedRuntime.siteConfig, schemas, slug]
+    [applyGlobalSectionUpdate, collectionContext, getResolvedGlobalSection, requestInlineFlush, resolvedRuntime.siteConfig, schemas, slug]
   );
 
   const executeWebMcpSave = useCallback(
@@ -402,27 +462,28 @@ export const StudioRoute: React.FC<StudioRouteProps> = ({
       const currentDraft = draftRef.current;
       const currentGlobalDraft = globalDraftRef.current;
       const currentMenuDraft = menuDraftRef.current;
+      const currentCollectionsDraft = collectionsDraftRef.current;
       if (!currentDraft) {
         throw new Error('Studio draft is not ready yet.');
       }
 
       if (showHotSave && hotSave) {
-        await runHotSave(currentDraft, currentGlobalDraft, currentMenuDraft, () => setHasChanges(false));
+        await runHotSave(currentDraft, currentGlobalDraft, currentMenuDraft, currentCollectionsDraft, () => setHasChanges(false));
       } else if (showLocalSave && saveToFile) {
-        await persistProjectState(currentDraft, currentGlobalDraft, currentMenuDraft, () => setHasChanges(false));
+        await persistProjectState(currentDraft, currentGlobalDraft, currentMenuDraft, currentCollectionsDraft, () => setHasChanges(false));
       } else if (showColdSave && coldSave) {
-        await coldSave(buildProjectState(currentDraft, currentGlobalDraft, currentMenuDraft), slug);
+        await coldSave(buildProjectState(currentDraft, currentGlobalDraft, currentMenuDraft, currentCollectionsDraft), persistenceSlug);
         setHasChanges(false);
       } else {
         throw new Error('No save mode is configured for this tenant.');
       }
 
       return {
-        content: [{ type: 'text', text: JSON.stringify({ ok: true, slug }) }],
+        content: [{ type: 'text', text: JSON.stringify({ ok: true, slug: persistenceSlug }) }],
         isError: false,
       };
     },
-    [showHotSave, hotSave, showLocalSave, saveToFile, showColdSave, coldSave, requestInlineFlush, runHotSave, persistProjectState, buildProjectState, slug]
+    [showHotSave, hotSave, showLocalSave, saveToFile, showColdSave, coldSave, requestInlineFlush, runHotSave, persistProjectState, buildProjectState, persistenceSlug]
   );
 
   const handleWebMcpToolCall = useCallback(
@@ -597,9 +658,18 @@ export const StudioRoute: React.FC<StudioRouteProps> = ({
       globalDraftRef.current = nextGlobalDraft;
       menuDraftRef.current = nextMenuDraft;
     } else {
-      const updatedSections = draft.sections.map((s) =>
-        s.id === selected.id ? ({ ...s, data: newData } as Section) : s
+      const authoredSection = draft.sections.find((s) => s.id === selected.id);
+      const collectionResult = applyCollectionRefBindingsToDraft(
+        authoredSection?.data,
+        newData,
+        collectionsDraft,
+        collectionContext
       );
+      const updatedSections = draft.sections.map((s) =>
+        s.id === selected.id ? ({ ...s, data: collectionResult.normalizedData } as Section) : s
+      );
+      setCollectionsDraft(collectionResult.collectionsDraft);
+      collectionsDraftRef.current = collectionResult.collectionsDraft;
       setDraft({ ...draft, sections: updatedSections });
     }
   };
@@ -620,13 +690,22 @@ export const StudioRoute: React.FC<StudioRouteProps> = ({
         globalDraftRef.current = nextGlobalDraft;
         menuDraftRef.current = nextMenuDraft;
       } else if (draft) {
-        const updatedSections = draft.sections.map((s) =>
-          s.id === sectionId ? ({ ...s, data: newData } as Section) : s
+        const authoredSection = draft.sections.find((s) => s.id === sectionId);
+        const collectionResult = applyCollectionRefBindingsToDraft(
+          authoredSection?.data,
+          newData,
+          collectionsDraft,
+          collectionContext
         );
+        const updatedSections = draft.sections.map((s) =>
+          s.id === sectionId ? ({ ...s, data: collectionResult.normalizedData } as Section) : s
+        );
+        setCollectionsDraft(collectionResult.collectionsDraft);
+        collectionsDraftRef.current = collectionResult.collectionsDraft;
         setDraft({ ...draft, sections: updatedSections });
       }
     },
-    [applyGlobalSectionUpdate, draft, globalDraft, menuDraft, resolvedRuntime.siteConfig]
+    [applyGlobalSectionUpdate, collectionContext, collectionsDraft, draft, globalDraft, menuDraft, resolvedRuntime.siteConfig]
   );
 
   const handleSaveToFile = async () => {
@@ -635,8 +714,9 @@ export const StudioRoute: React.FC<StudioRouteProps> = ({
     const currentDraft = draftRef.current;
     const currentGlobalDraft = globalDraftRef.current;
     const currentMenuDraft = menuDraftRef.current;
+    const currentCollectionsDraft = collectionsDraftRef.current;
     if (!currentDraft) return;
-    persistProjectState(currentDraft, currentGlobalDraft, currentMenuDraft, () => setHasChanges(false)).catch((err) => {
+    persistProjectState(currentDraft, currentGlobalDraft, currentMenuDraft, currentCollectionsDraft, () => setHasChanges(false)).catch((err) => {
       console.error('[JsonPages] saveToFile failed', err);
       const msg = err instanceof Error ? err.message : String(err);
       alert(`Save to file failed: ${msg}`);
@@ -649,8 +729,9 @@ export const StudioRoute: React.FC<StudioRouteProps> = ({
     const currentDraft = draftRef.current;
     const currentGlobalDraft = globalDraftRef.current;
     const currentMenuDraft = menuDraftRef.current;
+    const currentCollectionsDraft = collectionsDraftRef.current;
     if (!currentDraft) return;
-    runHotSave(currentDraft, currentGlobalDraft, currentMenuDraft, () => setHasChanges(false)).catch((err) => {
+    runHotSave(currentDraft, currentGlobalDraft, currentMenuDraft, currentCollectionsDraft, () => setHasChanges(false)).catch((err) => {
       console.error('[JsonPages] hotSave failed', err);
       const msg = err instanceof Error ? err.message : String(err);
       alert(`Hot save failed: ${msg}`);
@@ -663,8 +744,9 @@ export const StudioRoute: React.FC<StudioRouteProps> = ({
     const currentDraft = draftRef.current;
     const currentGlobalDraft = globalDraftRef.current;
     const currentMenuDraft = menuDraftRef.current;
+    const currentCollectionsDraft = collectionsDraftRef.current;
     if (!currentDraft) return;
-    coldSave(buildProjectState(currentDraft, currentGlobalDraft, currentMenuDraft), slug)
+    coldSave(buildProjectState(currentDraft, currentGlobalDraft, currentMenuDraft, currentCollectionsDraft), persistenceSlug)
       .then(() => setHasChanges(false))
       .catch((err) => {
         console.error('[JsonPages] coldSave failed', err);

@@ -1,8 +1,14 @@
+import { BookDetailSchema } from '@/components/book-detail';
+import { BooksListSchema } from '@/components/books-list';
 import { EmptyTenantSchema } from '@/components/empty-tenant';
+import { FooterSchema } from '@/components/footer';
 import { FormDemoSchema, FormDemoSubmissionSchema } from '@/components/form-demo';
 
 export const SECTION_SCHEMAS = {
+  'book-detail': BookDetailSchema,
+  'books-list': BooksListSchema,
   'empty-tenant': EmptyTenantSchema,
+  footer: FooterSchema,
   'form-demo': FormDemoSchema,
 } as const;
 
@@ -22,6 +28,7 @@ export type SectionType = keyof typeof SECTION_SCHEMAS;
 export {
   BaseSectionData,
   BaseArrayItem,
+  BaseCollectionItem,
   BaseSectionSettingsSchema,
   CtaSchema,
   ImageSelectionSchema,

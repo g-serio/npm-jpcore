@@ -1,0 +1,242 @@
+{
+  "il-nome-della-rosa": {
+    "id": "il-nome-della-rosa",
+    "title": "Il nome della rosa",
+    "author": "Umberto Eco",
+    "year": 1980,
+    "genre": "Romanzo storico",
+    "summary": "Un'indagine in un'abbazia medievale diventa una riflessione su conoscenza, potere e interpretazione."
+  },
+  "se-questo-e-un-uomo": {
+    "id": "se-questo-e-un-uomo",
+    "title": "Se questo e un uomo",
+    "author": "Primo Levi",
+    "year": 1947,
+    "genre": "Memoria",
+    "summary": "La testimonianza essenziale di Levi sull'esperienza del lager e sulla dignita umana."
+  },
+  "le-citta-invisibili": {
+    "id": "le-citta-invisibili",
+    "title": "Le citta invisibili",
+    "author": "Italo Calvino",
+    "year": 1972,
+    "genre": "Letteratura fantastica",
+    "summary": "Marco Polo racconta a Kublai Khan citta immaginarie che parlano di memoria, desiderio e linguaggio."
+  },
+  "il-gattopardo": {
+    "id": "il-gattopardo",
+    "title": "Il Gattopardo",
+    "author": "Giuseppe Tomasi di Lampedusa",
+    "year": 1958,
+    "genre": "Romanzo storico",
+    "summary": "Il tramonto dell'aristocrazia siciliana durante l'unificazione italiana."
+  },
+  "la-coscienza-di-zeno": {
+    "id": "la-coscienza-di-zeno",
+    "title": "La coscienza di Zeno",
+    "author": "Italo Svevo",
+    "year": 1923,
+    "genre": "Romanzo psicologico",
+    "summary": "Un diario ironico e nevrotico attraversa memoria, terapia e autoinganno."
+  },
+  "i-promessi-sposi": {
+    "id": "i-promessi-sposi",
+    "title": "I promessi sposi",
+    "author": "Alessandro Manzoni",
+    "year": 1842,
+    "genre": "Classico",
+    "summary": "La vicenda di Renzo e Lucia dentro carestia, guerra, peste e provvidenza."
+  },
+  "il-barone-rampante": {
+    "id": "il-barone-rampante",
+    "title": "Il barone rampante",
+    "author": "Italo Calvino",
+    "year": 1957,
+    "genre": "Romanzo filosofico",
+    "summary": "Cosimo sceglie di vivere sugli alberi e trasforma la distanza in una forma di liberta."
+  },
+  "gomorra": {
+    "id": "gomorra",
+    "title": "Gomorra",
+    "author": "Roberto Saviano",
+    "year": 2006,
+    "genre": "Inchiesta",
+    "summary": "Un reportage narrativo sulle economie e le violenze del sistema camorristico."
+  },
+  "oceano-mare": {
+    "id": "oceano-mare",
+    "title": "Oceano mare",
+    "author": "Alessandro Baricco",
+    "year": 1993,
+    "genre": "Romanzo letterario",
+    "summary": "Storie diverse si incontrano in una locanda sul mare, tra cura, naufragio e mistero."
+  },
+  "lessico-famigliare": {
+    "id": "lessico-famigliare",
+    "title": "Lessico famigliare",
+    "author": "Natalia Ginzburg",
+    "year": 1963,
+    "genre": "Memoria narrativa",
+    "summary": "Una famiglia prende forma attraverso parole, tic linguistici e memoria civile."
+  },
+  "cent-anni-di-solitudine": {
+    "id": "cent-anni-di-solitudine",
+    "title": "Cent'anni di solitudine",
+    "author": "Gabriel Garcia Marquez",
+    "year": 1967,
+    "genre": "Realismo magico",
+    "summary": "La saga dei Buendia e di Macondo intreccia mito, storia e destino."
+  },
+  "1984": {
+    "id": "1984",
+    "title": "1984",
+    "author": "George Orwell",
+    "year": 1949,
+    "genre": "Distopia",
+    "summary": "Un regime totalitario controlla linguaggio, memoria e pensiero."
+  },
+  "fahrenheit-451": {
+    "id": "fahrenheit-451",
+    "title": "Fahrenheit 451",
+    "author": "Ray Bradbury",
+    "year": 1953,
+    "genre": "Distopia",
+    "summary": "In un futuro dove i libri bruciano, leggere diventa un atto di resistenza."
+  },
+  "dune": {
+    "id": "dune",
+    "title": "Dune",
+    "author": "Frank Herbert",
+    "year": 1965,
+    "genre": "Fantascienza",
+    "summary": "Politica, ecologia e messianismo si scontrano sul pianeta desertico Arrakis."
+  },
+  "neuromancer": {
+    "id": "neuromancer",
+    "title": "Neuromancer",
+    "author": "William Gibson",
+    "year": 1984,
+    "genre": "Cyberpunk",
+    "summary": "Un hacker decaduto viene trascinato in un colpo che attraversa cyberspazio e intelligenze artificiali."
+  },
+  "il-signore-degli-anelli": {
+    "id": "il-signore-degli-anelli",
+    "title": "Il Signore degli Anelli",
+    "author": "J. R. R. Tolkien",
+    "year": 1954,
+    "genre": "Fantasy",
+    "summary": "La Compagnia affronta il potere dell'Anello in una delle grandi epopee moderne."
+  },
+  "harry-potter-e-la-pietra-filosofale": {
+    "id": "harry-potter-e-la-pietra-filosofale",
+    "title": "Harry Potter e la pietra filosofale",
+    "author": "J. K. Rowling",
+    "year": 1997,
+    "genre": "Fantasy",
+    "summary": "Un ragazzo scopre il mondo magico e il proprio posto in una storia piu grande."
+  },
+  "orgoglio-e-pregiudizio": {
+    "id": "orgoglio-e-pregiudizio",
+    "title": "Orgoglio e pregiudizio",
+    "author": "Jane Austen",
+    "year": 1813,
+    "genre": "Classico",
+    "summary": "Elizabeth Bennet e Mr. Darcy si misurano con classe, carattere e giudizio sociale."
+  },
+  "moby-dick": {
+    "id": "moby-dick",
+    "title": "Moby Dick",
+    "author": "Herman Melville",
+    "year": 1851,
+    "genre": "Avventura",
+    "summary": "La caccia alla balena bianca diventa ossessione metafisica e viaggio nell'abisso."
+  },
+  "delitto-e-castigo": {
+    "id": "delitto-e-castigo",
+    "title": "Delitto e castigo",
+    "author": "Fedor Dostoevskij",
+    "year": 1866,
+    "genre": "Romanzo psicologico",
+    "summary": "Raskolnikov attraversa colpa, febbre morale e possibilita di redenzione."
+  },
+  "anna-karenina": {
+    "id": "anna-karenina",
+    "title": "Anna Karenina",
+    "author": "Lev Tolstoj",
+    "year": 1877,
+    "genre": "Classico",
+    "summary": "Una storia d'amore e rovina dentro la societa russa dell'Ottocento."
+  },
+  "il-maestro-e-margherita": {
+    "id": "il-maestro-e-margherita",
+    "title": "Il maestro e Margherita",
+    "author": "Michail Bulgakov",
+    "year": 1967,
+    "genre": "Satira fantastica",
+    "summary": "Il diavolo visita Mosca in un romanzo visionario su arte, censura e amore."
+  },
+  "la-strada": {
+    "id": "la-strada",
+    "title": "La strada",
+    "author": "Cormac McCarthy",
+    "year": 2006,
+    "genre": "Post-apocalittico",
+    "summary": "Padre e figlio attraversano un mondo bruciato portando con se una fragile idea di bene."
+  },
+  "cloud-atlas": {
+    "id": "cloud-atlas",
+    "title": "Cloud Atlas",
+    "author": "David Mitchell",
+    "year": 2004,
+    "genre": "Romanzo corale",
+    "summary": "Sei storie in epoche diverse compongono una meditazione su potere, memoria e reincorrenza."
+  },
+  "kafka-sulla-spiaggia": {
+    "id": "kafka-sulla-spiaggia",
+    "title": "Kafka sulla spiaggia",
+    "author": "Haruki Murakami",
+    "year": 2002,
+    "genre": "Surrealismo",
+    "summary": "Fuga, destino e sogno si intrecciano in un romanzo sospeso tra reale e mitico."
+  },
+  "americanah": {
+    "id": "americanah",
+    "title": "Americanah",
+    "author": "Chimamanda Ngozi Adichie",
+    "year": 2013,
+    "genre": "Romanzo contemporaneo",
+    "summary": "Migrazione, razza e identita raccontate attraverso una storia d'amore tra Nigeria e Stati Uniti."
+  },
+  "la-casa-degli-spiriti": {
+    "id": "la-casa-degli-spiriti",
+    "title": "La casa degli spiriti",
+    "author": "Isabel Allende",
+    "year": 1982,
+    "genre": "Saga familiare",
+    "summary": "La storia della famiglia Trueba intreccia politica, memoria e realismo magico."
+  },
+  "beloved": {
+    "id": "beloved",
+    "title": "Beloved",
+    "author": "Toni Morrison",
+    "year": 1987,
+    "genre": "Romanzo storico",
+    "summary": "Il trauma della schiavitu ritorna come presenza viva nella casa di Sethe."
+  },
+  "la-breve-favolosa-vita-di-oscar-wao": {
+    "id": "la-breve-favolosa-vita-di-oscar-wao",
+    "title": "La breve favolosa vita di Oscar Wao",
+    "author": "Junot Diaz",
+    "year": 2007,
+    "genre": "Romanzo contemporaneo",
+    "summary": "Famiglia, diaspora dominicana e cultura pop si intrecciano nella storia di Oscar."
+  },
+  "le-correzioni": {
+    "id": "le-correzioni",
+    "title": "Le correzioni",
+    "author": "Jonathan Franzen",
+    "year": 2001,
+    "genre": "Romanzo familiare",
+    "summary": "Una famiglia americana tenta di ritrovarsi mentre ciascuno affronta le proprie fratture."
+  }
+}

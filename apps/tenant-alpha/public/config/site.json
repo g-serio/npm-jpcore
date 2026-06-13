@@ -41,13 +41,11 @@
     "type": "footer",
     "data": {
       "brandText": "OlonJS",
+      "description": "AI-native content infrastructure for deterministic, sovereign, git-backed sites.",
       "copyright": "© 2026 OlonJS · v1.5 · Guido Serio",
-      "links": [
-        {
-          "label": "GitHub",
-          "href": "https://github.com/olonjs/core"
-        }
-      ],
+      "links": {
+        "$ref": "../config/menu.json#/footer"
+      },
       "designSystemHref": ""
     },
     "settings": {

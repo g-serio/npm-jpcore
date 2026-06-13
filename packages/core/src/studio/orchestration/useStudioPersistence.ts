@@ -10,6 +10,7 @@ interface UseStudioPersistenceArgs {
   hotSave?: (state: ProjectState, slug: string) => Promise<void>;
   authoredSiteConfig: SiteConfig;
   themeConfig: JsonPagesConfig['themeConfig'];
+  collections?: JsonPagesConfig['collections'];
   refDocuments?: JsonPagesConfig['refDocuments'];
 }
 
@@ -19,6 +20,7 @@ export function useStudioPersistence({
   hotSave,
   authoredSiteConfig,
   themeConfig,
+  collections,
   refDocuments,
 }: UseStudioPersistenceArgs) {
   const [saveSuccessFeedback, setSaveSuccessFeedback] = useState(false);
@@ -53,7 +55,8 @@ export function useStudioPersistence({
     (
       nextDraft: PageConfig,
       nextGlobalDraft: SiteConfig,
-      nextMenuDraft: MenuConfig
+      nextMenuDraft: MenuConfig,
+      nextCollectionsDraft: JsonPagesConfig['collections'] = collections
     ): ProjectState => {
       const normalizedGlobal = applySiteMenuRefBindingsToDraft(
         authoredSiteConfig,
@@ -65,16 +68,20 @@ export function useStudioPersistence({
         siteConfig: normalizedGlobal.site,
         themeConfig,
         menuConfig: normalizedGlobal.menuDraft,
+        collections: nextCollectionsDraft,
         refDocuments,
       });
+      const hasCollections =
+        nextCollectionsDraft != null && Object.keys(nextCollectionsDraft).length > 0;
       return {
         page: nextDraft,
         site: normalizedGlobal.site,
         menu: normalizedGlobal.menuDraft,
         theme: resolvedSaveRuntime.themeConfig,
+        ...(hasCollections ? { collections: nextCollectionsDraft } : {}),
       };
     },
-    [authoredSiteConfig, slug, themeConfig, refDocuments]
+    [authoredSiteConfig, collections, slug, themeConfig, refDocuments]
   );
 
   const persistProjectState = useCallback(
@@ -82,13 +89,14 @@ export function useStudioPersistence({
       nextDraft: PageConfig,
       nextGlobalDraft: SiteConfig,
       nextMenuDraft: MenuConfig,
+      nextCollectionsDraft?: JsonPagesConfig['collections'],
       onPersisted?: () => void
     ) => {
       if (!saveToFile) {
         throw new Error('saveToFile is not configured for this tenant.');
       }
 
-      await saveToFile(buildProjectState(nextDraft, nextGlobalDraft, nextMenuDraft), slug);
+      await saveToFile(buildProjectState(nextDraft, nextGlobalDraft, nextMenuDraft, nextCollectionsDraft), slug);
       onPersisted?.();
       setSaveSuccessFeedback(true);
       if (typeof window !== 'undefined') {
@@ -103,13 +111,14 @@ export function useStudioPersistence({
       nextDraft: PageConfig,
       nextGlobalDraft: SiteConfig,
       nextMenuDraft: MenuConfig,
+      nextCollectionsDraft?: JsonPagesConfig['collections'],
       onPersisted?: () => void
     ) => {
       if (!hotSave) return;
 
       setHotSaveInProgress(true);
       try {
-        await hotSave(buildProjectState(nextDraft, nextGlobalDraft, nextMenuDraft), slug);
+        await hotSave(buildProjectState(nextDraft, nextGlobalDraft, nextMenuDraft, nextCollectionsDraft), slug);
         onPersisted?.();
         setHotSaveSuccessFeedback(true);
         if (typeof window !== 'undefined') {

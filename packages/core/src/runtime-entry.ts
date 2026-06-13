@@ -31,6 +31,7 @@ export type {
 
 // ── Config resolution (used by SSG entry) ────────────────────────
 export { resolveRuntimeConfig } from './contract/config-resolver';
+export { resolvePublicPageDocument } from './runtime/engine/public-page-document';
 
 // ── Utility ──────────────────────────────────────────────────────
 // cn() is the className merge helper used by every tenant ui/* component.
@@ -44,11 +45,16 @@ export { cn } from './lib/utils';
 // Without this re-export the augmentation has no anchor and
 // JsonPagesConfig.PageConfig.sections falls back to FallbackSection.
 export type {
+  CollectionDocument,
+  CollectionItem,
+  CollectionItemRegistry,
+  CollectionType,
   SectionDataRegistry,
   SectionSettingsRegistry,
   BaseSection,
   SectionType,
   MenuItem,
+  PageCollectionBinding,
   PageConfig,
   SiteConfig,
   ThemeConfig,

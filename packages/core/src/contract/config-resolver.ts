@@ -8,6 +8,8 @@ interface RuntimeResolutionInput {
   siteConfig: SiteConfig;
   themeConfig: ThemeConfig;
   menuConfig: MenuConfig;
+  collections?: JsonPagesConfig['collections'];
+  collectionContext?: CollectionResolutionContext | null;
   refDocuments?: JsonPagesConfig['refDocuments'];
 }
 
@@ -22,11 +24,25 @@ interface ResolveContext {
   documents: Map<string, unknown>;
   cache: Map<string, unknown>;
   stack: string[];
+  collectionContext?: CollectionResolutionContext | null;
+}
+
+export interface CollectionResolutionContext {
+  source: string;
+  paramKey: string;
+  paramValue: string;
+  currentItem: unknown;
 }
 
 export interface MenuRefBinding {
   fieldKey: string;
   path: string[];
+}
+
+export interface CollectionRefBinding {
+  fieldKey: string;
+  source: string;
+  itemId?: string;
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -129,6 +145,7 @@ function buildDocuments({
   siteConfig,
   themeConfig,
   menuConfig,
+  collections,
   refDocuments,
 }: RuntimeResolutionInput): Map<string, unknown> {
   const documents = new Map<string, unknown>();
@@ -146,6 +163,15 @@ function buildDocuments({
     registerDocumentAliases(documents, [`pages/${safeSlug}.json`, `src/data/pages/${safeSlug}.json`], page);
   }
 
+  for (const [slug, collection] of Object.entries(collections ?? {})) {
+    const safeSlug = slug.replace(/^\/+|\/+$/g, '');
+    if (!safeSlug) continue;
+    registerDocumentAliases(documents, [
+      `collections/${safeSlug}/${safeSlug}.json`,
+      `src/data/collections/${safeSlug}/${safeSlug}.json`,
+    ], collection);
+  }
+
   return documents;
 }
 
@@ -154,6 +180,17 @@ function resolveRefTarget(
   currentDocumentPath: string,
   context: ResolveContext
 ): { value: unknown; documentPath: string } | null {
+  if (ref.trim() === 'collection:current') {
+    const currentItem = context.collectionContext?.currentItem;
+    if (currentItem === undefined) return null;
+    const source = context.collectionContext?.source ?? 'current';
+    const paramValue = context.collectionContext?.paramValue ?? 'current';
+    return {
+      value: currentItem,
+      documentPath: `collections/${source}/${source}.json`,
+    };
+  }
+
   const [rawDocumentPath, rawPointer = ''] = ref.split('#');
   const pointer = rawPointer ? `/${rawPointer.replace(/^\//, '')}` : '';
 
@@ -235,12 +272,45 @@ function resolveNode(
   );
 }
 
-function resolveDocument<T>(value: T, entryPath: string, documents: Map<string, unknown>): T {
+function resolveDocument(
+  value: unknown,
+  entryPath: string,
+  documents: Map<string, unknown>,
+  collectionContext?: CollectionResolutionContext | null
+): unknown {
   return resolveNode(value, entryPath, {
     documents,
     cache: new Map<string, unknown>(),
     stack: [],
-  }) as T;
+    collectionContext,
+  });
+}
+
+export function resolveCollectionContext(
+  page: PageConfig,
+  params: Record<string, string | undefined>,
+  collections?: JsonPagesConfig['collections']
+): CollectionResolutionContext | null {
+  const binding = page.collection;
+  if (!binding) return null;
+
+  const source = String(binding.source);
+  const paramKey = binding.paramKey;
+  const paramValue = params[paramKey];
+  if (!paramValue) return null;
+
+  const collection = collections?.[source];
+  if (!isRecord(collection)) return null;
+
+  const currentItem = collection[paramValue];
+  if (currentItem === undefined) return null;
+
+  return {
+    source,
+    paramKey,
+    paramValue,
+    currentItem,
+  };
 }
 
 function isMenuItemShape(value: unknown): value is MenuItem {
@@ -307,6 +377,83 @@ export function applyMenuRefBindingsToDraft(
   }
 
   return { normalizedData, menuDraft: nextMenuDraft };
+}
+
+function parseCollectionRef(value: unknown, collectionContext?: CollectionResolutionContext | null): Omit<CollectionRefBinding, 'fieldKey'> | null {
+  if (!isRefObject(value)) return null;
+  const rawRef = value.$ref.trim();
+  if (rawRef === 'collection:current') {
+    if (!collectionContext) return null;
+    return {
+      source: collectionContext.source,
+      itemId: collectionContext.paramValue,
+    };
+  }
+
+  const [rawDocPath, rawPointer = ''] = rawRef.split('#');
+  const normalizedPath = normalizePath(rawDocPath);
+  const match = normalizedPath.match(/(?:^|\/)collections\/([^/]+)\/\1\.json$/);
+  if (!match?.[1]) return null;
+
+  const pointer = rawPointer.replace(/^\//, '');
+  const itemId = pointer ? decodePointerSegment(pointer.split('/')[0]) : undefined;
+  return {
+    source: match[1],
+    ...(itemId ? { itemId } : {}),
+  };
+}
+
+export function getCollectionRefBindings(
+  sectionData: unknown,
+  collectionContext?: CollectionResolutionContext | null
+): CollectionRefBinding[] {
+  if (!isRecord(sectionData)) return [];
+  return Object.entries(sectionData)
+    .map(([fieldKey, value]) => {
+      const binding = parseCollectionRef(value, collectionContext);
+      return binding ? { fieldKey, ...binding } : null;
+    })
+    .filter((binding): binding is CollectionRefBinding => binding != null);
+}
+
+export function applyCollectionRefBindingsToDraft(
+  authoredSectionData: unknown,
+  nextData: Record<string, unknown>,
+  collectionsDraft: JsonPagesConfig['collections'] | undefined,
+  collectionContext?: CollectionResolutionContext | null
+): { normalizedData: Record<string, unknown>; collectionsDraft: JsonPagesConfig['collections'] } {
+  const bindings = getCollectionRefBindings(authoredSectionData, collectionContext);
+  if (bindings.length === 0) {
+    return { normalizedData: nextData, collectionsDraft };
+  }
+
+  const authoredData = isRecord(authoredSectionData) ? authoredSectionData : {};
+  const normalizedData: Record<string, unknown> = { ...nextData };
+  const nextCollectionsDraft = cloneUnknown(collectionsDraft ?? {}) as NonNullable<JsonPagesConfig['collections']>;
+
+  for (const binding of bindings) {
+    if (authoredData[binding.fieldKey] !== undefined) {
+      normalizedData[binding.fieldKey] = authoredData[binding.fieldKey];
+    }
+
+    const resolvedValue = nextData[binding.fieldKey];
+    if (binding.itemId) {
+      const sourceCollection = isRecord(nextCollectionsDraft[binding.source])
+        ? nextCollectionsDraft[binding.source]
+        : {};
+      nextCollectionsDraft[binding.source] = {
+        ...sourceCollection,
+        [binding.itemId]: resolvedValue,
+      };
+      continue;
+    }
+
+    if (isRecord(resolvedValue)) {
+      nextCollectionsDraft[binding.source] = resolvedValue;
+    }
+  }
+
+  return { normalizedData, collectionsDraft: nextCollectionsDraft };
 }
 
 function applySectionDataMenuRefBindings(
@@ -387,11 +534,16 @@ export function resolveRuntimeConfig(input: RuntimeResolutionInput): RuntimeReso
     pages: Object.fromEntries(
       Object.entries(input.pages).map(([slug, page]) => [
         slug,
-        resolveDocument(page, `pages/${slug.replace(/^\/+|\/+$/g, '') || 'home'}.json`, documents),
+        resolveDocument(
+          page,
+          `pages/${slug.replace(/^\/+|\/+$/g, '') || 'home'}.json`,
+          documents,
+          input.collectionContext
+        ),
       ])
     ) as Record<string, PageConfig>,
-    siteConfig: resolveDocument(input.siteConfig, 'config/site.json', documents),
-    themeConfig: resolveDocument(input.themeConfig, 'config/theme.json', documents),
-    menuConfig: resolveDocument(input.menuConfig, 'config/menu.json', documents),
+    siteConfig: resolveDocument(input.siteConfig, 'config/site.json', documents) as SiteConfig,
+    themeConfig: resolveDocument(input.themeConfig, 'config/theme.json', documents) as ThemeConfig,
+    menuConfig: resolveDocument(input.menuConfig, 'config/menu.json', documents) as MenuConfig,
   };
 }

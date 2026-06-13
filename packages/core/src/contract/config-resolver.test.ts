@@ -1,8 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import {
+  applyCollectionRefBindingsToDraft,
   applyMenuRefBindingsToDraft,
   applySiteMenuRefBindingsToDraft,
   getMenuRefBindings,
+  resolveCollectionContext,
   resolveSectionMenuItems,
   resolveRuntimeConfig,
 } from './config-resolver';
@@ -135,5 +137,274 @@ describe('config-resolver menu refs', () => {
     expect(resolveSectionMenuItems(footerSection, [{ label: 'Home', href: '/' }])).toEqual([
       { label: 'Privacy', href: '/privacy' },
     ]);
+  });
+});
+
+describe('config-resolver collection refs', () => {
+  const siteConfig: SiteConfig = {
+    identity: { title: 'Test' },
+    footer: {
+      id: 'global-footer',
+      type: 'footer',
+      data: {},
+    },
+  };
+  const menuConfig: MenuConfig = {};
+
+  it('resolves page section fields from registered collection documents', () => {
+    const resolved = resolveRuntimeConfig({
+      pages: {
+        libri: {
+          id: 'libri-page',
+          slug: 'libri',
+          meta: {
+            title: 'Catalogo libri',
+            description: 'Catalogo libri usato per validare le collection.',
+          },
+          sections: [
+            {
+              id: 'books-list',
+              type: 'books-list',
+              data: {
+                title: 'Libri',
+                items: { $ref: '../collections/libri/libri.json' },
+              },
+            },
+          ],
+        },
+      },
+      siteConfig,
+      themeConfig,
+      menuConfig,
+      collections: {
+        libri: {
+          neuromancer: {
+            id: 'neuromancer',
+            title: 'Neuromancer',
+            author: 'William Gibson',
+          },
+        },
+      },
+    });
+
+    expect(resolved.pages.libri.sections[0].data).toEqual({
+      title: 'Libri',
+      items: {
+        neuromancer: {
+          id: 'neuromancer',
+          title: 'Neuromancer',
+          author: 'William Gibson',
+        },
+      },
+    });
+  });
+
+  it('keeps explicit refDocuments aliases available alongside collections', () => {
+    const resolved = resolveRuntimeConfig({
+      pages: {
+        libri: {
+          id: 'libri-page',
+          slug: 'libri',
+          meta: {
+            title: 'Catalogo libri',
+            description: 'Catalogo libri usato per validare le collection.',
+          },
+          sections: [
+            {
+              id: 'books-list',
+              type: 'books-list',
+              data: {
+                items: { $ref: 'custom/books.json#/featured' },
+              },
+            },
+          ],
+        },
+      },
+      siteConfig,
+      themeConfig,
+      menuConfig,
+      collections: {
+        libri: {},
+      },
+      refDocuments: {
+        'custom/books.json': {
+          featured: [
+            {
+              id: 'dune',
+              title: 'Dune',
+            },
+          ],
+        },
+      },
+    });
+
+    expect(resolved.pages.libri.sections[0].data).toEqual({
+      items: [
+        {
+          id: 'dune',
+          title: 'Dune',
+        },
+      ],
+    });
+  });
+
+  it('builds collection route context from page collection binding and route params', () => {
+    const page = {
+      id: 'book-detail-page',
+      slug: 'libri/[slug]',
+      meta: {
+        title: 'Dettaglio libro',
+        description: 'Pagina dettaglio usata per validare collection current.',
+      },
+      collection: {
+        source: 'libri',
+        paramKey: 'slug',
+      },
+      sections: [],
+    };
+
+    const context = resolveCollectionContext(page, { slug: 'dune' }, {
+      libri: {
+        dune: {
+          id: 'dune',
+          title: 'Dune',
+        },
+      },
+    });
+
+    expect(context).toEqual({
+      source: 'libri',
+      paramKey: 'slug',
+      paramValue: 'dune',
+      currentItem: {
+        id: 'dune',
+        title: 'Dune',
+      },
+    });
+  });
+
+  it('resolves collection:current to the active collection entity', () => {
+    const page = {
+      id: 'book-detail-page',
+      slug: 'libri/[slug]',
+      meta: {
+        title: 'Dettaglio libro',
+        description: 'Pagina dettaglio usata per validare collection current.',
+      },
+      collection: {
+        source: 'libri',
+        paramKey: 'slug',
+      },
+      sections: [
+        {
+          id: 'book-detail',
+          type: 'book-detail',
+          data: {
+            item: { $ref: 'collection:current' },
+          },
+        },
+      ],
+    };
+    const collections = {
+      libri: {
+        dune: {
+          id: 'dune',
+          title: 'Dune',
+          author: 'Frank Herbert',
+        },
+      },
+    };
+    const collectionContext = resolveCollectionContext(page, { slug: 'dune' }, collections);
+
+    const resolved = resolveRuntimeConfig({
+      pages: {
+        'libri/[slug]': page,
+      },
+      siteConfig,
+      themeConfig,
+      menuConfig,
+      collections,
+      collectionContext,
+    });
+
+    expect(resolved.pages['libri/[slug]'].sections[0].data).toEqual({
+      item: {
+        id: 'dune',
+        title: 'Dune',
+        author: 'Frank Herbert',
+      },
+    });
+  });
+
+  it('preserves collection:current authored refs and writes edited entity data into collection draft', () => {
+    const result = applyCollectionRefBindingsToDraft(
+      {
+        item: { $ref: 'collection:current' },
+      },
+      {
+        item: {
+          id: 'dune',
+          title: 'Dune Messiah',
+        },
+      },
+      {
+        libri: {
+          dune: {
+            id: 'dune',
+            title: 'Dune',
+          },
+        },
+      },
+      {
+        source: 'libri',
+        paramKey: 'slug',
+        paramValue: 'dune',
+        currentItem: {
+          id: 'dune',
+          title: 'Dune',
+        },
+      }
+    );
+
+    expect(result.normalizedData).toEqual({
+      item: { $ref: 'collection:current' },
+    });
+    expect(result.collectionsDraft).toEqual({
+      libri: {
+        dune: {
+          id: 'dune',
+          title: 'Dune Messiah',
+        },
+      },
+    });
+  });
+
+  it('preserves collection document refs and writes edited collection data into collection draft', () => {
+    const result = applyCollectionRefBindingsToDraft(
+      {
+        items: { $ref: '../collections/libri/libri.json' },
+      },
+      {
+        items: {
+          dune: {
+            id: 'dune',
+            title: 'Dune',
+          },
+        },
+      },
+      {},
+    );
+
+    expect(result.normalizedData).toEqual({
+      items: { $ref: '../collections/libri/libri.json' },
+    });
+    expect(result.collectionsDraft).toEqual({
+      libri: {
+        dune: {
+          id: 'dune',
+          title: 'Dune',
+        },
+      },
+    });
   });
 });

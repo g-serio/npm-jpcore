@@ -13,6 +13,7 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ASSETS_IMAGES_DIR = path.resolve(__dirname, 'public', 'assets', 'images');
 const DATA_CONFIG_DIR = path.resolve(__dirname, 'src', 'data', 'config');
 const DATA_PAGES_DIR = path.resolve(__dirname, 'src', 'data', 'pages');
+const DATA_COLLECTIONS_DIR = path.resolve(__dirname, 'src', 'data', 'collections');
 const IMAGE_EXT = new Set(['.jpg', '.jpeg', '.png', '.gif', '.webp', '.svg', '.avif']);
 const IMAGE_MIMES = new Set([
   'image/jpeg', 'image/png', 'image/webp', 'image/gif', 'image/svg+xml', 'image/avif',
@@ -47,6 +48,20 @@ function sendJsonFile(res, filePath) {
   } catch (e) {
     sendJson(res, 500, { error: e?.message || 'Read failed' });
   }
+}
+
+function safeDataSlugPath(rootDir, rawSlug, fallback) {
+  const slug = String(rawSlug || fallback)
+    .replace(/\\/g, '/')
+    .replace(/^\/+|\/+$/g, '');
+  const segments = slug
+    .split('/')
+    .map((segment) => segment.replace(/[^a-zA-Z0-9_[\]-]/g, '_'))
+    .filter(Boolean);
+  const candidate = path.resolve(rootDir, `${segments.join(path.sep) || fallback}.json`);
+  const isInsideRoot = candidate.startsWith(`${rootDir}${path.sep}`) || candidate === rootDir;
+  if (!isInsideRoot) throw new Error('Invalid data path');
+  return candidate;
 }
 
 function isTenantPageJsonRequest(req, pathname) {
@@ -106,15 +121,23 @@ export default defineConfig({
             const pageManifestMatch = pathname.match(/^\/mcp-manifests\/(.+)\.json$/i);
             if (pageManifestMatch && req.method === 'GET') {
               const slug = normalizeManifestSlug(pageManifestMatch[1]);
-              const pageConfig = buildState.pages[slug];
-              if (!pageConfig) {
+              const resolved = core.resolvePublicPageDocument({
+                slug,
+                pages: buildState.pages,
+                siteConfig: buildState.siteConfig,
+                themeConfig: buildState.themeConfig,
+                menuConfig: buildState.menuConfig,
+                collections: buildState.collections,
+                refDocuments: buildState.refDocuments,
+              });
+              if (!resolved) {
                 sendJson(res, 404, { error: 'Page manifest not found' });
                 return true;
               }
 
               sendJson(res, 200, buildPageManifest({
                 slug,
-                pageConfig,
+                pageConfig: resolved.page,
                 schemas: buildState.schemas,
                 submissionSchemas: buildState.submissionSchemas,
                 siteConfig: buildState.siteConfig,
@@ -125,15 +148,23 @@ export default defineConfig({
             const schemaMatch = pathname.match(/^\/schemas\/(.+)\.schema\.json$/i);
             if (schemaMatch && req.method === 'GET') {
               const slug = normalizeManifestSlug(schemaMatch[1]);
-              const pageConfig = buildState.pages[slug];
-              if (!pageConfig) {
+              const resolved = core.resolvePublicPageDocument({
+                slug,
+                pages: buildState.pages,
+                siteConfig: buildState.siteConfig,
+                themeConfig: buildState.themeConfig,
+                menuConfig: buildState.menuConfig,
+                collections: buildState.collections,
+                refDocuments: buildState.refDocuments,
+              });
+              if (!resolved) {
                 sendJson(res, 404, { error: 'Schema contract not found' });
                 return true;
               }
 
               sendJson(res, 200, buildPageContract({
                 slug,
-                pageConfig,
+                pageConfig: resolved.page,
                 schemas: buildState.schemas,
                 submissionSchemas: buildState.submissionSchemas,
                 siteConfig: buildState.siteConfig,
@@ -174,13 +205,31 @@ export default defineConfig({
               .replace(/^pages\//i, '')
               .replace(/\.json$/i, '')
               .replace(/^\/+|\/+$/g, '');
-            const candidate = path.resolve(DATA_PAGES_DIR, `${slug}.json`);
-            const isInsidePagesDir = candidate.startsWith(`${DATA_PAGES_DIR}${path.sep}`) || candidate === DATA_PAGES_DIR;
-            if (!slug || !isInsidePagesDir || !fs.existsSync(candidate) || !fs.statSync(candidate).isFile()) {
+            if (!slug) {
               sendJson(res, 404, { error: 'Page JSON not found' });
               return;
             }
-            sendJsonFile(res, candidate);
+            void (async () => {
+              const core = await loadWebMcpBuilders();
+              const runtime = await server.ssrLoadModule('/src/runtime.ts');
+              const buildState = runtime.getWebMcpBuildState();
+              const resolved = core.resolvePublicPageDocument({
+                slug,
+                pages: buildState.pages,
+                siteConfig: buildState.siteConfig,
+                themeConfig: buildState.themeConfig,
+                menuConfig: buildState.menuConfig,
+                collections: buildState.collections,
+                refDocuments: buildState.refDocuments,
+              });
+              if (!resolved) {
+                sendJson(res, 404, { error: 'Page JSON not found' });
+                return;
+              }
+              sendJson(res, 200, resolved.page);
+            })().catch((error) => {
+              sendJson(res, 500, { error: error?.message || 'Page JSON resolution failed' });
+            });
             return;
           }
           if (req.method === 'GET' && req.url === '/api/list-assets') {
@@ -199,12 +248,23 @@ export default defineConfig({
                 if (!projectState || typeof slug !== 'string') { sendJson(res, 400, { error: 'Missing projectState or slug' }); return; }
                 if (!fs.existsSync(DATA_CONFIG_DIR)) fs.mkdirSync(DATA_CONFIG_DIR, { recursive: true });
                 if (!fs.existsSync(DATA_PAGES_DIR)) fs.mkdirSync(DATA_PAGES_DIR, { recursive: true });
+                if (!fs.existsSync(DATA_COLLECTIONS_DIR)) fs.mkdirSync(DATA_COLLECTIONS_DIR, { recursive: true });
                 if (projectState.site != null) fs.writeFileSync(path.join(DATA_CONFIG_DIR, 'site.json'), JSON.stringify(projectState.site, null, 2), 'utf8');
                 if (projectState.menu != null) fs.writeFileSync(path.join(DATA_CONFIG_DIR, 'menu.json'), JSON.stringify(projectState.menu, null, 2), 'utf8');
                 if (projectState.theme != null) fs.writeFileSync(path.join(DATA_CONFIG_DIR, 'theme.json'), JSON.stringify(projectState.theme, null, 2), 'utf8');
                 if (projectState.page != null) {
-                  const safeSlug = (slug.replace(/[^a-zA-Z0-9-_]/g, '_') || 'page');
-                  fs.writeFileSync(path.join(DATA_PAGES_DIR, `${safeSlug}.json`), JSON.stringify(projectState.page, null, 2), 'utf8');
+                  const pagePath = safeDataSlugPath(DATA_PAGES_DIR, slug, 'page');
+                  fs.mkdirSync(path.dirname(pagePath), { recursive: true });
+                  fs.writeFileSync(pagePath, JSON.stringify(projectState.page, null, 2), 'utf8');
+                }
+                if (projectState.collections && typeof projectState.collections === 'object') {
+                  for (const [source, collection] of Object.entries(projectState.collections)) {
+                    const sourceSlug = String(source).replace(/[^a-zA-Z0-9-_]/g, '_');
+                    if (!sourceSlug) continue;
+                    const collectionDir = path.join(DATA_COLLECTIONS_DIR, sourceSlug);
+                    fs.mkdirSync(collectionDir, { recursive: true });
+                    fs.writeFileSync(path.join(collectionDir, `${sourceSlug}.json`), JSON.stringify(collection, null, 2), 'utf8');
+                  }
                 }
                 sendJson(res, 200, { ok: true });
               } catch (e) { sendJson(res, 500, { error: e?.message || 'Save to file failed' }); }

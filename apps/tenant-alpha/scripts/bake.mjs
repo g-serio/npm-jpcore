@@ -11,7 +11,7 @@ import { build } from 'vite';
 import path from 'path';
 import { fileURLToPath, pathToFileURL } from 'url';
 import fs from 'fs/promises';
-import { webmcp } from '@olonjs/core';
+import { resolvePageMatchFromRegistry, resolvePublicPageDocument, webmcp } from '@olonjs/core';
 
 const {
   buildPageContract,
@@ -24,6 +24,7 @@ const {
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const root = path.resolve(__dirname, '..');
 const pagesDir = path.resolve(root, 'src/data/pages');
+const collectionsDir = path.resolve(root, 'src/data/collections');
 const publicDir = path.resolve(root, 'public');
 const distDir = path.resolve(root, 'dist');
 const distSsrDir = path.resolve(root, 'dist-ssr');
@@ -64,6 +65,42 @@ function toCanonicalSlug(relativeJsonPath) {
   return slug;
 }
 
+async function readJsonFile(filePath) {
+  const raw = await fs.readFile(filePath, 'utf-8');
+  return JSON.parse(raw);
+}
+
+async function expandCollectionTarget(slug, pageFilePath) {
+  if (!/\[[^\]]+\]/.test(slug)) return [slug];
+
+  let pageConfig;
+  try {
+    pageConfig = await readJsonFile(pageFilePath);
+  } catch {
+    return [slug];
+  }
+
+  const binding = pageConfig?.collection;
+  if (!binding || typeof binding.source !== 'string' || typeof binding.paramKey !== 'string') {
+    return [slug];
+  }
+
+  const token = `[${binding.paramKey}]`;
+  if (!slug.includes(token)) return [slug];
+
+  const collectionPath = path.resolve(collectionsDir, binding.source, `${binding.source}.json`);
+  let collection;
+  try {
+    collection = await readJsonFile(collectionPath);
+  } catch {
+    return [slug];
+  }
+
+  if (!collection || typeof collection !== 'object' || Array.isArray(collection)) return [slug];
+  const itemIds = Object.keys(collection).sort((a, b) => a.localeCompare(b));
+  return itemIds.length > 0 ? itemIds.map((itemId) => slug.replace(token, itemId)) : [slug];
+}
+
 async function listJsonFilesRecursive(dir) {
   const items = await fs.readdir(dir, { withFileTypes: true });
   const files = [];
@@ -86,7 +123,14 @@ async function discoverTargets() {
     files = [];
   }
 
-  const rawSlugs = files.map((fullPath) => toCanonicalSlug(path.relative(pagesDir, fullPath)));
+  const rawSlugs = (
+    await Promise.all(
+      files.map(async (fullPath) => {
+        const slug = toCanonicalSlug(path.relative(pagesDir, fullPath));
+        return expandCollectionTarget(slug, fullPath);
+      })
+    )
+  ).flat();
   const slugs = Array.from(new Set(rawSlugs)).sort((a, b) => a.localeCompare(b));
 
   return slugs.map((slug) => {
@@ -144,15 +188,25 @@ const remoteStylesheetTags = getRemoteStylesheets()
 const webMcpBuildState = getWebMcpBuildState();
 
 for (const { slug } of targets) {
-  const pageConfig = webMcpBuildState.pages[slug];
+  const pageConfig = resolvePageMatchFromRegistry(webMcpBuildState.pages, slug)?.page;
   if (!pageConfig) continue;
+  const resolvedPageDocument = resolvePublicPageDocument({
+    slug,
+    pages: webMcpBuildState.pages,
+    siteConfig: webMcpBuildState.siteConfig,
+    themeConfig: webMcpBuildState.themeConfig,
+    menuConfig: webMcpBuildState.menuConfig,
+    collections: webMcpBuildState.collections,
+    refDocuments: webMcpBuildState.refDocuments,
+  });
+  const publicPageConfig = resolvedPageDocument?.page ?? pageConfig;
   
-  // Export the raw JSON data for the agentic web (so readResource works on SSG)
-  await writeJsonTargets(`pages/${slug}.json`, pageConfig);
+  // Export the resolved public JSON data for the agentic web (so readResource matches runtime).
+  await writeJsonTargets(`pages/${slug}.json`, publicPageConfig);
 
   const contract = buildPageContract({
     slug,
-    pageConfig,
+    pageConfig: publicPageConfig,
     schemas: webMcpBuildState.schemas,
     submissionSchemas: webMcpBuildState.submissionSchemas,
     siteConfig: webMcpBuildState.siteConfig,
@@ -160,7 +214,7 @@ for (const { slug } of targets) {
   await writeSsrJson(`schemas/${slug}.schema.json`, contract);
   const pageManifest = buildPageManifest({
     slug,
-    pageConfig,
+    pageConfig: publicPageConfig,
     schemas: webMcpBuildState.schemas,
     siteConfig: webMcpBuildState.siteConfig,
   });

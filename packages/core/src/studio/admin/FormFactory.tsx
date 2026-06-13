@@ -92,6 +92,12 @@ const humanizeLabel = (label: string): string =>
     .trim()
     .replace(/\b\w/g, (char) => char.toUpperCase());
 
+const getCollectionRefItemCount = (value: unknown): number => {
+  if (Array.isArray(value)) return value.length;
+  if (value != null && typeof value === 'object') return Object.keys(value).length;
+  return 0;
+};
+
 export const FormFactory: React.FC<FormFactoryProps> = ({ schema, data, onChange, keys, expandedItemPath, onSidebarExpandedItemChange }) => {
   const shape = schema.shape;
   const fieldKeys = keys != null
@@ -113,6 +119,32 @@ export const FormFactory: React.FC<FormFactoryProps> = ({ schema, data, onChange
 
         // Editorial fields are edited directly on Stage and not in Inspector form.
         if (uiHint === 'ui:editorial-markdown') return null;
+
+        if (uiHint === 'ui:collection-ref') {
+          const isFocusedField = fieldKeyMatches(effectiveFocusedFieldKey, key);
+          const itemCount = getCollectionRefItemCount(value);
+          return (
+            <div
+              key={key}
+              className={`rounded-lg border border-zinc-800 bg-zinc-900/30 p-4 transition-opacity duration-200 ${fadeWhenUnfocused(inItemScope, isFocusedField)}`}
+              {...(isFocusedField ? { 'data-jp-focused-field': key } : {})}
+            >
+              <div className="flex items-center justify-between gap-3">
+                <div className="min-w-0">
+                  <p className="text-[11px] font-semibold tracking-[0.04em] text-zinc-300">
+                    {humanizeLabel(key)}
+                  </p>
+                  <p className="mt-1 text-[11px] leading-relaxed text-zinc-500">
+                    Externally bound collection. The page keeps its reference; entity data is owned by the collection document.
+                  </p>
+                </div>
+                <span className="shrink-0 rounded-full border border-zinc-700 px-2 py-1 text-[10px] font-semibold text-zinc-400">
+                  {itemCount} items
+                </span>
+              </div>
+            </div>
+          );
+        }
 
         // 0. IMAGE PICKER: object value but single widget (no nested form)
         if (uiHint === 'ui:image-picker' && effectiveSchema instanceof z.ZodObject) {

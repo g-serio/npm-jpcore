@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo } from 'react';
 import { useLocation } from 'react-router-dom';
-import { resolveRuntimeConfig } from '../../contract/config-resolver';
+import { resolveCollectionContext, resolveRuntimeConfig } from '../../contract/config-resolver';
 import type { JsonPagesConfig } from '../../contract/types-engine';
 import type { MenuConfig, PageConfig, SiteConfig } from '../../contract/kernel';
 import { StudioProvider } from '../../studio/StudioContext';
@@ -14,7 +14,7 @@ import {
   syncWebMcpJsonLd,
 } from './head-sync';
 import {
-  resolvePageFromRegistry,
+  resolvePageMatchFromRegistry,
   resolveSlugFromPathname,
 } from './route-utils';
 
@@ -23,6 +23,7 @@ export interface VisitorRouteProps {
   siteConfig: SiteConfig;
   menuConfig: MenuConfig;
   themeConfig: JsonPagesConfig['themeConfig'];
+  collections?: JsonPagesConfig['collections'];
   refDocuments?: JsonPagesConfig['refDocuments'];
   tenantCss: string;
   adminCss: string;
@@ -34,6 +35,7 @@ export const VisitorRoute: React.FC<VisitorRouteProps> = ({
   siteConfig,
   menuConfig,
   themeConfig,
+  collections,
   refDocuments,
   tenantCss,
   adminCss,
@@ -41,18 +43,28 @@ export const VisitorRoute: React.FC<VisitorRouteProps> = ({
 }) => {
   const location = useLocation();
   const slug = resolveSlugFromPathname(location.pathname);
+  const pageMatch = useMemo(
+    () => resolvePageMatchFromRegistry(pageRegistry, slug),
+    [pageRegistry, slug]
+  );
+  const collectionContext = useMemo(
+    () => pageMatch ? resolveCollectionContext(pageMatch.page, pageMatch.params, collections) : null,
+    [collections, pageMatch]
+  );
   const resolvedRuntime = useMemo(
     () =>
       resolveRuntimeConfig({
-        pages: pageRegistry,
+        pages: pageMatch ? { [pageMatch.registrySlug]: pageMatch.page } : {},
         siteConfig,
         themeConfig,
         menuConfig,
+        collections,
+        collectionContext,
         refDocuments,
       }),
-    [pageRegistry, siteConfig, themeConfig, menuConfig, refDocuments]
+    [pageMatch, siteConfig, themeConfig, menuConfig, collections, collectionContext, refDocuments]
   );
-  const pageConfig = resolvePageFromRegistry(resolvedRuntime.pages, slug);
+  const pageConfig = pageMatch ? resolvedRuntime.pages[pageMatch.registrySlug] : undefined;
 
   useEffect(() => {
     try {

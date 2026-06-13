@@ -65,6 +65,24 @@ export const SectionSchema = z
   })
   .describe('A page section: a self-contained, agent-addressable unit of content. The contract treats `data` and `settings` as open records; concrete shapes live in section-type schemas.');
 
+export const CollectionItemSchema = z
+  .object({
+    id: z.string().describe('Stable collection item identifier. Must match the item key in its parent collection document and is used for routing, React keys, and agent addressing.'),
+  })
+  .catchall(z.unknown())
+  .describe('Base shape for a collection entity. Tenant-specific fields are allowed as additional properties and are validated by the tenant collection schema.');
+
+export const CollectionDocumentSchema = z
+  .record(z.string(), CollectionItemSchema)
+  .describe('COP collection document: a keyed record of entities independent from pages. Keys are stable entity identifiers; values must include the same stable `id` field.');
+
+export const PageCollectionBindingSchema = z
+  .object({
+    source: z.string().regex(/^[a-z0-9-]+$/).describe('Collection source key, matching an entry in the tenant `collections` map and its collection document path.'),
+    paramKey: z.string().regex(/^[a-zA-Z_][a-zA-Z0-9_]*$/).describe('Dynamic route parameter name used to select the active collection entity (for example `slug` in `libri/[slug]`).'),
+  })
+  .describe('Binds a dynamic page route to a collection source. At runtime, the route parameter selects `collection:current` for sections on this page.');
+
 export const SiteIdentitySchema = z
   .object({
     title: z.string().describe('Human-readable site name. Used in page titles, social previews, and the default header brand.'),
@@ -101,9 +119,10 @@ export const PageContractSchema = z
       .describe('Stable page identifier. Convention: kebab-case ending in `-page` (e.g. `home-page`, `docs-getting-started-page`).'),
     slug: z
       .string()
-      .regex(/^[a-z0-9-/]+$/)
-      .describe('URL path segment(s). Kebab-case; slashes allowed for nested routes (e.g. `docs/getting-started`).'),
+      .regex(/^[a-z0-9-/[\]]+$/)
+      .describe('URL path segment(s). Kebab-case; slashes allowed for nested routes. Dynamic COP routes use bracketed params (e.g. `libri/[slug]`).'),
     meta: PageMetaSchema,
+    collection: PageCollectionBindingSchema.optional(),
     sections: z
       .array(SectionSchema)
       .describe('Ordered list of page sections rendered top-to-bottom. Each section follows the open Section shape; concrete data is determined by the section `type`.'),
@@ -132,7 +151,8 @@ export const TenantManifestSchema = z
     site: z.object({}).passthrough(),
     menu: z.object({}).passthrough(),
     pages: z.array(z.object({}).passthrough()),
+    collections: z.record(z.string(), z.object({}).passthrough()).optional(),
   })
   .describe(
-    'Top-level Olon tenant manifest. Bundles a tenant\'s complete public contract: brand identity, design system tokens, site shell, navigation, and full page list. Each top-level field references a separately-published canonical schema; this manifest is the entry point for agents discovering or validating a complete Olon tenant.',
+    'Top-level Olon tenant manifest. Bundles a tenant\'s complete public contract: brand identity, design system tokens, site shell, navigation, full page list, and optional COP collections. Each top-level field references a separately-published canonical schema; this manifest is the entry point for agents discovering or validating a complete Olon tenant.',
   );

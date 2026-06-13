@@ -1,5 +1,4 @@
-import assert from 'node:assert/strict';
-import test from 'node:test';
+import { expect, test } from 'vitest';
 
 import type { ThemeConfig } from '../../contract/kernel';
 import { buildThemeVariableMap, themeManager } from './theme-manager';
@@ -69,18 +68,12 @@ test('buildThemeVariableMap exports dynamic variables and semantic aliases', () 
 
   const vars = buildThemeVariableMap(theme);
 
-  assert.equal(vars['--theme-colors-primary'], '#111111');
-  assert.equal(vars['--theme-colors-pi'], '#314159');
-  assert.equal(
-    vars['--theme-typography-font-family-display'],
-    'Bricolage Grotesque, sans-serif'
-  );
-  assert.equal(vars['--theme-primary'], 'var(--theme-colors-primary)');
-  assert.equal(
-    vars['--theme-font-display'],
-    'var(--theme-typography-font-family-display)'
-  );
-  assert.equal(vars['--theme-radius-lg'], 'var(--theme-border-radius-lg)');
+  expect(vars['--theme-colors-primary']).toBe('#111111');
+  expect(vars['--theme-colors-pi']).toBe('#314159');
+  expect(vars['--theme-typography-font-family-display']).toBe('Bricolage Grotesque, sans-serif');
+  expect(vars['--theme-primary']).toBe('var(--theme-colors-primary)');
+  expect(vars['--theme-font-display']).toBe('var(--theme-typography-font-family-display)');
+  expect(vars['--theme-radius-lg']).toBe('var(--theme-border-radius-lg)');
 });
 
 test('buildThemeVariableMap skips optional aliases when source token is missing', () => {
@@ -94,8 +87,8 @@ test('buildThemeVariableMap skips optional aliases when source token is missing'
 
   const vars = buildThemeVariableMap(theme);
 
-  assert.equal(vars['--theme-typography-font-family-display'], undefined);
-  assert.equal(vars['--theme-font-display'], undefined);
+  expect(vars['--theme-typography-font-family-display']).toBeUndefined();
+  expect(vars['--theme-font-display']).toBeUndefined();
 });
 
 test('themeManager.setTheme removes stale dynamic tokens before applying next theme', () => {
@@ -116,18 +109,12 @@ test('themeManager.setTheme removes stale dynamic tokens before applying next th
         },
       })
     );
-    assert.equal(fakeStyle.getPropertyValue('--theme-colors-pi'), '#314159');
-    assert.equal(
-      fakeStyle.getPropertyValue('--theme-font-display'),
-      'var(--theme-typography-font-family-display)'
-    );
+    expect(fakeStyle.getPropertyValue('--theme-colors-pi')).toBe('#314159');
+    expect(fakeStyle.getPropertyValue('--theme-font-display')).toBe('var(--theme-typography-font-family-display)');
 
     themeManager.setTheme(createTheme());
-    assert.equal(fakeStyle.getPropertyValue('--theme-colors-pi'), '');
-    assert.equal(
-      fakeStyle.getPropertyValue('--theme-font-display'),
-      'var(--theme-typography-font-family-display)'
-    );
+    expect(fakeStyle.getPropertyValue('--theme-colors-pi')).toBe('');
+    expect(fakeStyle.getPropertyValue('--theme-font-display')).toBe('var(--theme-typography-font-family-display)');
   } finally {
     if (previousDocument === undefined) {
       Reflect.deleteProperty(globalThis, 'document');

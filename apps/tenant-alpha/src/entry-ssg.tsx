@@ -1,11 +1,18 @@
 import { renderToString } from 'react-dom/server';
 import { StaticRouter } from 'react-router-dom/server';
-import { ConfigProvider, PageRenderer, StudioProvider, resolveRuntimeConfig } from '@olonjs/core';
+import {
+  ConfigProvider,
+  PageRenderer,
+  StudioProvider,
+  contract,
+  resolvePageMatchFromRegistry,
+  resolveRuntimeConfig,
+} from '@olonjs/core';
 import type { JsonPagesConfig, PageConfig, SiteConfig, ThemeConfig } from '@/types';
 import { ThemeProvider } from '@/components/ThemeProvider';
 import { ComponentRegistry } from '@/lib/ComponentRegistry';
 import { SECTION_SCHEMAS } from '@/lib/schemas';
-import { menuConfig, pages, refDocuments, siteConfig, themeConfig } from '@/runtime';
+import { collections, menuConfig, pages, refDocuments, siteConfig, themeConfig } from '@/runtime';
 import tenantCss from '@/index.css?inline';
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -20,10 +27,16 @@ function getSortedSlugs(): string[] {
   return Object.keys(pages).sort((a, b) => a.localeCompare(b));
 }
 
-function resolvePage(slug: string): { slug: string; page: PageConfig } {
+function resolvePage(slug: string): { slug: string; registrySlug: string; page: PageConfig; params: Record<string, string> } {
   const normalized = normalizeSlug(slug);
-  if (normalized && pages[normalized]) {
-    return { slug: normalized, page: pages[normalized] };
+  const pageMatch = resolvePageMatchFromRegistry(pages, normalized);
+  if (pageMatch) {
+    return {
+      slug: normalized || pageMatch.registrySlug,
+      registrySlug: pageMatch.registrySlug,
+      page: pageMatch.page,
+      params: pageMatch.params,
+    };
   }
 
   const slugs = getSortedSlugs();
@@ -33,7 +46,7 @@ function resolvePage(slug: string): { slug: string; page: PageConfig } {
 
   const home = slugs.find((item) => item === 'home');
   const fallbackSlug = home ?? slugs[0];
-  return { slug: fallbackSlug, page: pages[fallbackSlug] };
+  return { slug: fallbackSlug, registrySlug: fallbackSlug, page: pages[fallbackSlug], params: {} };
 }
 
 function flattenThemeTokens(
@@ -121,14 +134,17 @@ function resolveTenantId(): string {
 export function render(slug: string): string {
   const resolved = resolvePage(slug);
   const location = resolved.slug === 'home' ? '/' : `/${resolved.slug}`;
+  const collectionContext = contract.resolveCollectionContext(resolved.page, resolved.params, collections);
   const resolvedRuntime = resolveRuntimeConfig({
-    pages,
+    pages: { [resolved.registrySlug]: resolved.page },
     siteConfig,
     themeConfig,
     menuConfig,
+    collections,
+    collectionContext,
     refDocuments,
   });
-  const resolvedPage = resolvedRuntime.pages[resolved.slug] ?? resolved.page;
+  const resolvedPage = resolvedRuntime.pages[resolved.registrySlug] ?? resolved.page;
 
   return renderToString(
     <StaticRouter location={location}>
@@ -178,11 +194,19 @@ export function getPageMeta(slug: string): { title: string; description: string 
 export function getWebMcpBuildState(): {
   pages: Record<string, PageConfig>;
   schemas: JsonPagesConfig['schemas'];
+  collections: JsonPagesConfig['collections'];
   siteConfig: SiteConfig;
+  themeConfig: ThemeConfig;
+  menuConfig: JsonPagesConfig['menuConfig'];
+  refDocuments: JsonPagesConfig['refDocuments'];
 } {
   return {
     pages,
     schemas: SECTION_SCHEMAS as unknown as JsonPagesConfig['schemas'],
+    collections,
     siteConfig,
+    themeConfig,
+    menuConfig,
+    refDocuments,
   };
 }

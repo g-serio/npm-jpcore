@@ -11,3 +11,11 @@ OlonJS tenant alpha — form smoke test
 - **[Home](/)** (`home`)
   OlonJS tenant alpha — form smoke test
   *Contract:* `/schemas/home.schema.json` | *Manifest:* `/mcp-manifests/home.json`
+
+- **[Libri](/libri)** (`libri`)
+  Catalogo libri dimostrativo alimentato da COP collections.
+  *Contract:* `/schemas/libri.schema.json` | *Manifest:* `/mcp-manifests/libri.json`
+
+- **[Dettaglio libro](/libri/[slug])** (`libri/[slug]`)
+  Pagina dinamica dettaglio libro alimentata dalla collection libri.
+  *Contract:* `/schemas/libri/[slug].schema.json` | *Manifest:* `/mcp-manifests/libri/[slug].json`

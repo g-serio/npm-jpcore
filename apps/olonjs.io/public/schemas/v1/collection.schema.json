@@ -1,0 +1,42 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://olon.js.org/schemas/v1/collection.schema.json",
+  "title": "Olon Collection Document",
+  "description": "COP collection document: a keyed record of entities independent from pages. Keys are stable entity identifiers; values must include the same stable `id` field.",
+  "type": "object",
+  "additionalProperties": {
+    "$ref": "#/definitions/CollectionItem"
+  },
+  "definitions": {
+    "CollectionItem": {
+      "description": "Base shape for a collection entity. Tenant-specific fields are allowed as additional properties and are validated by the tenant collection schema.",
+      "type": "object",
+      "required": [
+        "id"
+      ],
+      "properties": {
+        "id": {
+          "description": "Stable collection item identifier. Must match the item key in its parent collection document and is used for routing, React keys, and agent addressing.",
+          "type": "string"
+        }
+      },
+      "additionalProperties": {}
+    }
+  },
+  "examples": [
+    {
+      "dune": {
+        "title": "Dune",
+        "author": "Frank Herbert",
+        "id": "dune",
+        "year": 1965
+      },
+      "neuromancer": {
+        "title": "Neuromancer",
+        "author": "William Gibson",
+        "id": "neuromancer",
+        "year": 1984
+      }
+    }
+  ]
+}

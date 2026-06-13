@@ -73,6 +73,12 @@ describe('webmcp contracts', () => {
           required: ['sectionId'],
         }),
       }),
+      expect.objectContaining({
+        name: 'save',
+        inputSchema: expect.objectContaining({
+          type: 'object',
+        }),
+      }),
     ]);
   });
 
@@ -97,7 +103,10 @@ describe('webmcp contracts', () => {
 
     expect(manifest.slug).toBe('design-system');
     expect(manifest.contractHref).toBe('/schemas/design-system.schema.json');
-    expect(manifest.tools).toEqual([expect.objectContaining({ name: 'update-section' })]);
+    expect(manifest.tools).toEqual([
+      expect.objectContaining({ name: 'update-section' }),
+      expect.objectContaining({ name: 'save' }),
+    ]);
     expect(manifest.transport).toMatchObject({
       kind: 'window-message',
       requestType: 'olonjs:webmcp:tool-call',

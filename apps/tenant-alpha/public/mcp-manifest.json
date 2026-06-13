@@ -1,7 +1,7 @@
 {
   "version": "1.0.0",
   "kind": "olonjs-mcp-manifest-index",
-  "generatedAt": "2026-06-11T13:06:02.484Z",
+  "generatedAt": "2026-06-13T08:45:53.276Z",
   "pages": [
     {
       "slug": "home",
@@ -12,6 +12,28 @@
       "sectionTypes": [
         "footer",
         "form-demo"
+      ]
+    },
+    {
+      "slug": "libri",
+      "title": "Libri",
+      "description": "Catalogo libri dimostrativo alimentato da COP collections.",
+      "manifestHref": "/mcp-manifests/libri.json",
+      "contractHref": "/schemas/libri.schema.json",
+      "sectionTypes": [
+        "footer",
+        "books-list"
+      ]
+    },
+    {
+      "slug": "libri/[slug]",
+      "title": "Dettaglio libro",
+      "description": "Pagina dinamica dettaglio libro alimentata dalla collection libri.",
+      "manifestHref": "/mcp-manifests/libri/[slug].json",
+      "contractHref": "/schemas/libri/[slug].schema.json",
+      "sectionTypes": [
+        "footer",
+        "book-detail"
       ]
     }
   ]

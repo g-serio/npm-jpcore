@@ -9,6 +9,8 @@ export interface BaseSectionSettings {
 export interface SectionDataRegistry {}
 export interface SectionSettingsRegistry {}
 
+export interface CollectionItemRegistry {}
+
 export interface BaseSection<K extends keyof SectionDataRegistry> {
   id: string;
   type: K;
@@ -34,6 +36,14 @@ export type Section =
 
 export type SectionType = keyof SectionDataRegistry extends never ? string : keyof SectionDataRegistry;
 
+export interface CollectionItem {
+  id: string;
+}
+
+export type CollectionType = keyof CollectionItemRegistry extends never ? string : keyof CollectionItemRegistry;
+
+export type CollectionDocument<TItem = CollectionItem> = Record<string, TItem>;
+
 export interface MenuItem {
   label: string;
   href: string;
@@ -53,11 +63,17 @@ export interface PageMeta {
   description: string;
 }
 
+export interface PageCollectionBinding {
+  source: CollectionType;
+  paramKey: string;
+}
+
 export interface PageConfig {
   id: string;
   slug: string;
   meta: PageMeta;
   sections: Section[];
+  collection?: PageCollectionBinding;
   /** When `false`, Core does not render the global header from `site.json` for this page. Omitted = default (show if configured). */
   'global-header'?: boolean;
 }
@@ -121,6 +137,7 @@ export interface ProjectState {
   site: SiteConfig;
   menu: MenuConfig;
   theme: ThemeConfig;
+  collections?: Record<string, CollectionDocument<unknown>>;
 }
 
 export interface PageRendererProps {

@@ -3,7 +3,7 @@
  */
 import type React from 'react';
 import type { LucideIcon } from 'lucide-react';
-import type { MenuConfig, PageConfig, ProjectState, SiteConfig, ThemeConfig } from './kernel';
+import type { CollectionDocument, MenuConfig, PageConfig, ProjectState, SiteConfig, ThemeConfig } from './kernel';
 
 export interface SelectionPathSegment {
   fieldKey: string;
@@ -64,11 +64,13 @@ export interface WebMcpConfig {
   namespace?: string;
 }
 
+type SchemaLike = { parse: (v: unknown) => unknown; shape?: Record<string, unknown> };
+
 export interface JsonPagesConfig {
   tenantId: string;
   basePath?: string;
   registry: Record<string, React.ComponentType<unknown>>;
-  schemas: Record<string, { parse: (v: unknown) => unknown; shape?: Record<string, unknown> }>;
+  schemas: Record<string, SchemaLike>;
   /**
    * Optional registry of Zod submission schemas for sections that can be filled
    * by external agents (e.g. MCP-connected AI clients).
@@ -90,11 +92,13 @@ export interface JsonPagesConfig {
    * See `docs/decisions/ADR-0002-form-submission-schemas.md` for rationale,
    * tenant convention, and the full emission contract.
    */
-  submissionSchemas?: Record<string, { parse: (v: unknown) => unknown; shape?: Record<string, unknown> }>;
+  submissionSchemas?: Record<string, SchemaLike>;
+  collectionSchemas?: Record<string, SchemaLike>;
   pages: Record<string, PageConfig>;
   siteConfig: SiteConfig;
   themeConfig: ThemeConfig;
   menuConfig: MenuConfig;
+  collections?: Record<string, CollectionDocument<unknown>>;
   refDocuments?: Record<string, unknown>;
   persistence?: Partial<PersistenceConfig>;
   themeCss: ThemeCssConfig;

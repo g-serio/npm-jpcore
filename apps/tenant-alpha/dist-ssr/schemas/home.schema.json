@@ -25,6 +25,69 @@
     }
   ],
   "sectionSchemas": {
+    "footer": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "anchorId": {
+          "type": "string",
+          "description": "ui:text"
+        },
+        "brandText": {
+          "type": "string",
+          "description": "ui:text"
+        },
+        "description": {
+          "type": "string",
+          "description": "ui:textarea"
+        },
+        "copyright": {
+          "type": "string",
+          "description": "ui:text"
+        },
+        "links": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string"
+              },
+              "label": {
+                "type": "string",
+                "description": "ui:text"
+              },
+              "href": {
+                "type": "string",
+                "description": "ui:text"
+              },
+              "external": {
+                "type": "boolean"
+              }
+            },
+            "additionalProperties": false,
+            "required": [
+              "id",
+              "label",
+              "href"
+            ]
+          },
+          "description": "ui:list",
+          "default": []
+        },
+        "designSystemHref": {
+          "type": "string",
+          "description": "ui:text"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "brandText",
+        "copyright"
+      ]
+    },
     "form-demo": {
       "type": "object",
       "properties": {

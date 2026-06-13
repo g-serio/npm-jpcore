@@ -24,6 +24,10 @@ export const BaseArrayItem = z.object({
   id: z.string().optional(),
 });
 
+export const BaseCollectionItem = z.object({
+  id: z.string(),
+});
+
 export const BaseSectionSettingsSchema = z.object({
   paddingTop: z.enum(['none', 'sm', 'md', 'lg', 'xl', '2xl']).default('md').describe('ui:select'),
   paddingBottom: z.enum(['none', 'sm', 'md', 'lg', 'xl', '2xl']).default('md').describe('ui:select'),
