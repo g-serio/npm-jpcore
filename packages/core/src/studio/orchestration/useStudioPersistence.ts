@@ -1,5 +1,8 @@
 import { useCallback, useState } from 'react';
-import { applySiteMenuRefBindingsToDraft, resolveRuntimeConfig } from '../../contract/config-resolver';
+import {
+  applySiteMenuRefBindingsToDraft,
+  resolveRuntimeConfig,
+} from '../../contract/config-resolver';
 import type { MenuConfig, PageConfig, ProjectState, SiteConfig } from '../../contract/kernel';
 import type { JsonPagesConfig } from '../../contract/types-engine';
 import { STUDIO_EVENTS } from '../events';
@@ -11,6 +14,7 @@ interface UseStudioPersistenceArgs {
   authoredSiteConfig: SiteConfig;
   themeConfig: JsonPagesConfig['themeConfig'];
   collections?: JsonPagesConfig['collections'];
+  collectionSchemas?: JsonPagesConfig['collectionSchemas'];
   refDocuments?: JsonPagesConfig['refDocuments'];
 }
 
@@ -21,6 +25,7 @@ export function useStudioPersistence({
   authoredSiteConfig,
   themeConfig,
   collections,
+  collectionSchemas,
   refDocuments,
 }: UseStudioPersistenceArgs) {
   const [saveSuccessFeedback, setSaveSuccessFeedback] = useState(false);
@@ -69,19 +74,20 @@ export function useStudioPersistence({
         themeConfig,
         menuConfig: normalizedGlobal.menuDraft,
         collections: nextCollectionsDraft,
+        collectionSchemas,
         refDocuments,
       });
       const hasCollections =
-        nextCollectionsDraft != null && Object.keys(nextCollectionsDraft).length > 0;
+        Object.keys(resolvedSaveRuntime.collections).length > 0;
       return {
         page: nextDraft,
         site: normalizedGlobal.site,
         menu: normalizedGlobal.menuDraft,
         theme: resolvedSaveRuntime.themeConfig,
-        ...(hasCollections ? { collections: nextCollectionsDraft } : {}),
+        ...(hasCollections ? { collections: resolvedSaveRuntime.collections } : {}),
       };
     },
-    [authoredSiteConfig, collections, slug, themeConfig, refDocuments]
+    [authoredSiteConfig, collections, collectionSchemas, slug, themeConfig, refDocuments]
   );
 
   const persistProjectState = useCallback(

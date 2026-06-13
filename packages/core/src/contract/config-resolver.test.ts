@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { z } from 'zod';
 import {
   applyCollectionRefBindingsToDraft,
   applyMenuRefBindingsToDraft,
@@ -7,6 +8,7 @@ import {
   resolveCollectionContext,
   resolveSectionMenuItems,
   resolveRuntimeConfig,
+  validateCollectionDocuments,
 } from './config-resolver';
 import type { MenuConfig, Section, SiteConfig, ThemeConfig } from './kernel';
 
@@ -141,6 +143,14 @@ describe('config-resolver menu refs', () => {
 });
 
 describe('config-resolver collection refs', () => {
+  const looseCollectionSchema = z.record(z.unknown());
+  const bookCollectionSchema = z.record(
+    z.object({
+      id: z.string(),
+      title: z.string(),
+      author: z.string(),
+    })
+  );
   const siteConfig: SiteConfig = {
     identity: { title: 'Test' },
     footer: {
@@ -185,6 +195,9 @@ describe('config-resolver collection refs', () => {
           },
         },
       },
+      collectionSchemas: {
+        libri: looseCollectionSchema,
+      },
     });
 
     expect(resolved.pages.libri.sections[0].data).toEqual({
@@ -225,6 +238,9 @@ describe('config-resolver collection refs', () => {
       menuConfig,
       collections: {
         libri: {},
+      },
+      collectionSchemas: {
+        libri: looseCollectionSchema,
       },
       refDocuments: {
         'custom/books.json': {
@@ -324,6 +340,9 @@ describe('config-resolver collection refs', () => {
       themeConfig,
       menuConfig,
       collections,
+      collectionSchemas: {
+        libri: looseCollectionSchema,
+      },
       collectionContext,
     });
 
@@ -334,6 +353,113 @@ describe('config-resolver collection refs', () => {
         author: 'Frank Herbert',
       },
     });
+  });
+
+  it('resolves collection:current from the parsed collection document, not the raw item', () => {
+    const page = {
+      id: 'book-detail-page',
+      slug: 'libri/[slug]',
+      meta: {
+        title: 'Dettaglio libro',
+        description: 'Pagina dettaglio usata per validare collection current.',
+      },
+      collection: {
+        source: 'libri',
+        paramKey: 'slug',
+      },
+      sections: [
+        {
+          id: 'book-detail',
+          type: 'book-detail',
+          data: {
+            item: { $ref: 'collection:current' },
+          },
+        },
+      ],
+    };
+    const collections = {
+      libri: {
+        dune: {
+          id: 'dune',
+          title: 'Dune',
+          draftOnly: true,
+        },
+      },
+    };
+    const collectionContext = resolveCollectionContext(page, { slug: 'dune' }, collections);
+
+    const resolved = resolveRuntimeConfig({
+      pages: {
+        'libri/[slug]': page,
+      },
+      siteConfig,
+      themeConfig,
+      menuConfig,
+      collections,
+      collectionSchemas: {
+        libri: z.record(
+          z.object({
+            id: z.string(),
+            title: z.string(),
+            author: z.string().default('Unknown'),
+          })
+        ),
+      },
+      collectionContext,
+    });
+
+    expect(resolved.pages['libri/[slug]'].sections[0].data).toEqual({
+      item: {
+        id: 'dune',
+        title: 'Dune',
+        author: 'Unknown',
+      },
+    });
+    expect(resolved.collectionContext?.currentItem).toEqual({
+      id: 'dune',
+      title: 'Dune',
+      author: 'Unknown',
+    });
+  });
+
+  it('fails before resolving section props when a registered collection is invalid', () => {
+    expect(() =>
+      resolveRuntimeConfig({
+        pages: {
+          libri: {
+            id: 'libri-page',
+            slug: 'libri',
+            meta: {
+              title: 'Catalogo libri',
+              description: 'Catalogo libri usato per validare le collection.',
+            },
+            sections: [
+              {
+                id: 'books-list',
+                type: 'books-list',
+                data: {
+                  items: { $ref: '../collections/libri/libri.json' },
+                },
+              },
+            ],
+          },
+        },
+        siteConfig,
+        themeConfig,
+        menuConfig,
+        collections: {
+          libri: {
+            dune: {
+              id: 'dune',
+              title: 'Dune',
+            },
+          },
+        },
+        collectionSchemas: {
+          libri: bookCollectionSchema,
+        },
+      })
+    ).toThrow('[JsonPages] Invalid collection "libri"');
   });
 
   it('preserves collection:current authored refs and writes edited entity data into collection draft', () => {
@@ -363,6 +489,9 @@ describe('config-resolver collection refs', () => {
           id: 'dune',
           title: 'Dune',
         },
+      },
+      {
+        libri: looseCollectionSchema,
       }
     );
 
@@ -393,6 +522,10 @@ describe('config-resolver collection refs', () => {
         },
       },
       {},
+      undefined,
+      {
+        libri: looseCollectionSchema,
+      }
     );
 
     expect(result.normalizedData).toEqual({
@@ -406,5 +539,100 @@ describe('config-resolver collection refs', () => {
         },
       },
     });
+  });
+
+  it('rejects collection draft edits that violate the collection schema', () => {
+    expect(() =>
+      applyCollectionRefBindingsToDraft(
+        {
+          item: { $ref: 'collection:current' },
+        },
+        {
+          item: {
+            id: 'dune',
+            title: 'Dune Messiah',
+          },
+        },
+        {
+          libri: {
+            dune: {
+              id: 'dune',
+              title: 'Dune',
+              author: 'Frank Herbert',
+            },
+          },
+        },
+        {
+          source: 'libri',
+          paramKey: 'slug',
+          paramValue: 'dune',
+          currentItem: {
+            id: 'dune',
+            title: 'Dune',
+            author: 'Frank Herbert',
+          },
+        },
+        {
+          libri: bookCollectionSchema,
+        }
+      )
+    ).toThrow('[JsonPages] Invalid collection "libri"');
+  });
+});
+
+describe('config-resolver collection validation', () => {
+  const bookCollectionSchema = z.record(
+    z.object({
+      id: z.string(),
+      title: z.string(),
+      author: z.string(),
+    })
+  );
+
+  it('returns parsed collection documents when source schemas accept them', () => {
+    const collections = {
+      libri: {
+        dune: {
+          id: 'dune',
+          title: 'Dune',
+          author: 'Frank Herbert',
+        },
+      },
+    };
+
+    expect(
+      validateCollectionDocuments(collections, {
+        libri: bookCollectionSchema,
+      })
+    ).toEqual(collections);
+  });
+
+  it('fails explicitly when a collection has no matching schema', () => {
+    expect(() =>
+      validateCollectionDocuments(
+        {
+          libri: {},
+        },
+        {}
+      )
+    ).toThrow('[JsonPages] Missing collection schema for "libri".');
+  });
+
+  it('fails explicitly with the collection source when a document is invalid', () => {
+    expect(() =>
+      validateCollectionDocuments(
+        {
+          libri: {
+            dune: {
+              id: 'dune',
+              title: 'Dune',
+            },
+          },
+        },
+        {
+          libri: bookCollectionSchema,
+        }
+      )
+    ).toThrow('[JsonPages] Invalid collection "libri"');
   });
 });

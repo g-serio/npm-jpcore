@@ -47,6 +47,7 @@ export interface StudioRouteProps {
   menuConfig: MenuConfig;
   themeConfig: JsonPagesConfig['themeConfig'];
   collections?: JsonPagesConfig['collections'];
+  collectionSchemas?: JsonPagesConfig['collectionSchemas'];
   refDocuments?: JsonPagesConfig['refDocuments'];
   tenantCss: string;
   adminCss: string;
@@ -68,6 +69,7 @@ export const StudioRoute: React.FC<StudioRouteProps> = ({
   menuConfig,
   themeConfig,
   collections,
+  collectionSchemas,
   refDocuments,
   tenantCss,
   adminCss,
@@ -166,12 +168,14 @@ export const StudioRoute: React.FC<StudioRouteProps> = ({
         themeConfig,
         menuConfig: menuDraft,
         collections: collectionsDraft,
+        collectionSchemas,
         collectionContext,
         refDocuments,
       }),
-    [draft, draftRegistrySlug, globalDraft, themeConfig, menuDraft, collectionsDraft, collectionContext, refDocuments]
+    [draft, draftRegistrySlug, globalDraft, themeConfig, menuDraft, collectionsDraft, collectionSchemas, collectionContext, refDocuments]
   );
   const resolvedDraft = draft ? resolvedRuntime.pages[draftRegistrySlug] ?? draft : null;
+  const resolvedCollectionContext = resolvedRuntime.collectionContext;
   const draftRef = useRef<PageConfig | null>(draft);
   const globalDraftRef = useRef<SiteConfig>(globalDraft);
   const menuDraftRef = useRef<MenuConfig>(menuDraft);
@@ -193,8 +197,18 @@ export const StudioRoute: React.FC<StudioRouteProps> = ({
     authoredSiteConfig: siteConfig,
     themeConfig,
     collections: collectionsDraft,
+    collectionSchemas,
     refDocuments,
   });
+
+  const commitCollectionsDraft = useCallback(
+    (nextCollectionsDraft: JsonPagesConfig['collections']) => {
+      collectionsDraftRef.current = nextCollectionsDraft;
+      setCollectionsDraft(nextCollectionsDraft);
+      return nextCollectionsDraft;
+    },
+    []
+  );
 
   useEffect(() => {
     draftRef.current = draft;
@@ -418,7 +432,8 @@ export const StudioRoute: React.FC<StudioRouteProps> = ({
           targetSection.data,
           parsedData,
           currentCollectionsDraft,
-          collectionContext
+          resolvedCollectionContext,
+          collectionSchemas
         );
 
         const nextDraft = {
@@ -427,10 +442,9 @@ export const StudioRoute: React.FC<StudioRouteProps> = ({
             section.id === args.sectionId ? ({ ...section, data: collectionResult.normalizedData } as Section) : section
           ),
         };
+        commitCollectionsDraft(collectionResult.collectionsDraft);
         draftRef.current = nextDraft;
-        collectionsDraftRef.current = collectionResult.collectionsDraft;
         setDraft(nextDraft);
-        setCollectionsDraft(collectionResult.collectionsDraft);
       }
 
       setSelected({ id: args.sectionId, type: sectionTypeToUse, scope });
@@ -453,7 +467,7 @@ export const StudioRoute: React.FC<StudioRouteProps> = ({
         isError: false,
       };
     },
-    [applyGlobalSectionUpdate, collectionContext, getResolvedGlobalSection, requestInlineFlush, resolvedRuntime.siteConfig, schemas, slug]
+    [applyGlobalSectionUpdate, collectionSchemas, commitCollectionsDraft, getResolvedGlobalSection, requestInlineFlush, resolvedCollectionContext, resolvedRuntime.siteConfig, schemas, slug]
   );
 
   const executeWebMcpSave = useCallback(
@@ -644,7 +658,6 @@ export const StudioRoute: React.FC<StudioRouteProps> = ({
 
   const handleUpdate = (newData: Record<string, unknown>) => {
     if (!selected || !draft) return;
-    setHasChanges(true);
     if (selected.scope === 'global') {
       const { nextGlobalDraft, nextMenuDraft } = applyGlobalSectionUpdate(
         selected.id,
@@ -657,26 +670,27 @@ export const StudioRoute: React.FC<StudioRouteProps> = ({
       setMenuDraft(nextMenuDraft);
       globalDraftRef.current = nextGlobalDraft;
       menuDraftRef.current = nextMenuDraft;
+      setHasChanges(true);
     } else {
       const authoredSection = draft.sections.find((s) => s.id === selected.id);
       const collectionResult = applyCollectionRefBindingsToDraft(
         authoredSection?.data,
         newData,
         collectionsDraft,
-        collectionContext
+        resolvedCollectionContext,
+        collectionSchemas
       );
       const updatedSections = draft.sections.map((s) =>
         s.id === selected.id ? ({ ...s, data: collectionResult.normalizedData } as Section) : s
       );
-      setCollectionsDraft(collectionResult.collectionsDraft);
-      collectionsDraftRef.current = collectionResult.collectionsDraft;
+      commitCollectionsDraft(collectionResult.collectionsDraft);
       setDraft({ ...draft, sections: updatedSections });
+      setHasChanges(true);
     }
   };
 
   const handleUpdateSection = useCallback(
     (sectionId: string, scope: 'global' | 'local', _sectionType: string, newData: Record<string, unknown>) => {
-      setHasChanges(true);
       if (scope === 'global') {
         const { nextGlobalDraft, nextMenuDraft } = applyGlobalSectionUpdate(
           sectionId,
@@ -689,23 +703,25 @@ export const StudioRoute: React.FC<StudioRouteProps> = ({
         setMenuDraft(nextMenuDraft);
         globalDraftRef.current = nextGlobalDraft;
         menuDraftRef.current = nextMenuDraft;
+        setHasChanges(true);
       } else if (draft) {
         const authoredSection = draft.sections.find((s) => s.id === sectionId);
         const collectionResult = applyCollectionRefBindingsToDraft(
           authoredSection?.data,
           newData,
           collectionsDraft,
-          collectionContext
+          resolvedCollectionContext,
+          collectionSchemas
         );
         const updatedSections = draft.sections.map((s) =>
           s.id === sectionId ? ({ ...s, data: collectionResult.normalizedData } as Section) : s
         );
-        setCollectionsDraft(collectionResult.collectionsDraft);
-        collectionsDraftRef.current = collectionResult.collectionsDraft;
+        commitCollectionsDraft(collectionResult.collectionsDraft);
         setDraft({ ...draft, sections: updatedSections });
+        setHasChanges(true);
       }
     },
-    [applyGlobalSectionUpdate, collectionContext, collectionsDraft, draft, globalDraft, menuDraft, resolvedRuntime.siteConfig]
+    [applyGlobalSectionUpdate, collectionSchemas, collectionsDraft, commitCollectionsDraft, draft, globalDraft, menuDraft, resolvedCollectionContext, resolvedRuntime.siteConfig]
   );
 
   const handleSaveToFile = async () => {

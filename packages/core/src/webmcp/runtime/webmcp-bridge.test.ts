@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
+import { z } from 'zod';
 import { applyCollectionRefBindingsToDraft } from '../../contract/config-resolver';
 import {
   applyValueAtSelectionPath,
@@ -9,6 +10,17 @@ import {
 } from './webmcp-bridge';
 
 describe('webmcp runtime bridge', () => {
+  const bookCollectionSchemas = {
+    libri: z.record(
+      z.object({
+        id: z.string(),
+        title: z.string(),
+        author: z.string(),
+        summary: z.string().optional(),
+      })
+    ),
+  };
+
   it('builds deterministic tool names', () => {
     expect(buildWebMcpToolName()).toBe('update-section');
   });
@@ -82,15 +94,21 @@ describe('webmcp runtime bridge', () => {
       value: updatedCollection,
     });
 
-    const result = applyCollectionRefBindingsToDraft(authoredData, nextData, {
-      libri: {
-        dune: {
-          id: 'dune',
-          title: 'Dune',
-          author: 'Frank Herbert',
+    const result = applyCollectionRefBindingsToDraft(
+      authoredData,
+      nextData,
+      {
+        libri: {
+          dune: {
+            id: 'dune',
+            title: 'Dune',
+            author: 'Frank Herbert',
+          },
         },
       },
-    });
+      undefined,
+      bookCollectionSchemas
+    );
 
     expect(result.normalizedData.items).toEqual({ $ref: '../collections/libri/libri.json' });
     expect(result.collectionsDraft?.libri).toEqual(updatedCollection);
@@ -136,7 +154,8 @@ describe('webmcp runtime bridge', () => {
           title: 'Dune',
           author: 'Frank Herbert',
         },
-      }
+      },
+      bookCollectionSchemas
     );
 
     expect(result.normalizedData.item).toEqual({ $ref: 'collection:current' });

@@ -197,6 +197,7 @@ for (const { slug } of targets) {
     themeConfig: webMcpBuildState.themeConfig,
     menuConfig: webMcpBuildState.menuConfig,
     collections: webMcpBuildState.collections,
+    collectionSchemas: webMcpBuildState.collectionSchemas,
     refDocuments: webMcpBuildState.refDocuments,
   });
   const publicPageConfig = resolvedPageDocument?.page ?? pageConfig;

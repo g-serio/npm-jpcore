@@ -47,6 +47,7 @@ export interface EngineRuntimeContext {
   menuConfig: JsonPagesConfig['menuConfig'];
   themeConfig: JsonPagesConfig['themeConfig'];
   collections?: JsonPagesConfig['collections'];
+  collectionSchemas?: JsonPagesConfig['collectionSchemas'];
   refDocuments?: JsonPagesConfig['refDocuments'];
   addSectionConfig: JsonPagesConfig['addSection'];
   addableSectionTypes: string[];
@@ -110,6 +111,7 @@ export function JsonPagesEngineCore({ config, routesBuilder, adminCss = '' }: Js
     themeConfig,
     menuConfig,
     collections,
+    collectionSchemas,
     refDocuments,
     themeCss,
     addSection: addSectionConfig,
@@ -145,9 +147,10 @@ export function JsonPagesEngineCore({ config, routesBuilder, adminCss = '' }: Js
         themeConfig,
         menuConfig,
         collections,
+        collectionSchemas,
         refDocuments,
       }),
-    [pageRegistry, siteConfig, themeConfig, menuConfig, collections, refDocuments]
+    [pageRegistry, siteConfig, themeConfig, menuConfig, collections, collectionSchemas, refDocuments]
   );
 
   const [isReady, setIsReady] = useState(false);
@@ -177,6 +180,7 @@ export function JsonPagesEngineCore({ config, routesBuilder, adminCss = '' }: Js
     menuConfig,
     themeConfig: baseResolvedRuntime.themeConfig,
     collections,
+    collectionSchemas,
     refDocuments,
     addSectionConfig,
     addableSectionTypes,
@@ -206,6 +210,7 @@ export function JsonPagesEngineCore({ config, routesBuilder, adminCss = '' }: Js
     baseResolvedRuntime.themeConfig,
     menuConfig,
     collections,
+    collectionSchemas,
     pageRegistry,
     persistence.coldSave,
     persistence.hotSave,

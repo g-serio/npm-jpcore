@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { z } from 'zod';
 import { resolvePublicPageDocument } from './public-page-document';
 import type { MenuConfig, PageConfig, SiteConfig, ThemeConfig } from '../../contract/kernel';
 
@@ -78,6 +79,15 @@ const collections = {
     },
   },
 };
+const collectionSchemas = {
+  libri: z.record(
+    z.object({
+      id: z.string(),
+      title: z.string(),
+      author: z.string(),
+    })
+  ),
+};
 
 describe('resolvePublicPageDocument', () => {
   it('resolves collection document refs for a direct page slug', () => {
@@ -88,6 +98,7 @@ describe('resolvePublicPageDocument', () => {
       themeConfig,
       menuConfig,
       collections,
+      collectionSchemas,
     });
 
     expect(resolved?.pageMatch.registrySlug).toBe('libri');
@@ -106,6 +117,7 @@ describe('resolvePublicPageDocument', () => {
       themeConfig,
       menuConfig,
       collections,
+      collectionSchemas,
     });
 
     expect(resolved?.pageMatch.registrySlug).toBe('libri/[slug]');
@@ -121,6 +133,47 @@ describe('resolvePublicPageDocument', () => {
     });
   });
 
+  it('returns collection:current from the parsed collection document', () => {
+    const resolved = resolvePublicPageDocument({
+      slug: 'libri/dune',
+      pages,
+      siteConfig,
+      themeConfig,
+      menuConfig,
+      collections: {
+        libri: {
+          dune: {
+            id: 'dune',
+            title: 'Dune',
+            draftOnly: true,
+          },
+        },
+      },
+      collectionSchemas: {
+        libri: z.record(
+          z.object({
+            id: z.string(),
+            title: z.string(),
+            author: z.string().default('Unknown'),
+          })
+        ),
+      },
+    });
+
+    expect(resolved?.collectionContext?.currentItem).toEqual({
+      id: 'dune',
+      title: 'Dune',
+      author: 'Unknown',
+    });
+    expect(resolved?.page.sections[0].data).toEqual({
+      item: {
+        id: 'dune',
+        title: 'Dune',
+        author: 'Unknown',
+      },
+    });
+  });
+
   it('returns null when no direct or dynamic page matches', () => {
     expect(resolvePublicPageDocument({
       slug: 'missing',
@@ -129,6 +182,7 @@ describe('resolvePublicPageDocument', () => {
       themeConfig,
       menuConfig,
       collections,
+      collectionSchemas,
     })).toBeNull();
   });
 });

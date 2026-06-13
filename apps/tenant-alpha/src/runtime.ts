@@ -14,6 +14,7 @@ export const pages = getFilePages();
 export const collections = {
   libri: libriData as unknown as Record<string, unknown>,
 } satisfies NonNullable<JsonPagesConfig['collections']>;
+export const collectionSchemas = CollectionRegistry as unknown as JsonPagesConfig['collectionSchemas'];
 export const refDocuments = {
   'menu.json': menuConfig,
   'config/menu.json': menuConfig,
@@ -33,7 +34,7 @@ export function getWebMcpBuildState(): {
   return {
     pages,
     schemas: SECTION_SCHEMAS as unknown as JsonPagesConfig['schemas'],
-    collectionSchemas: CollectionRegistry as unknown as JsonPagesConfig['collectionSchemas'],
+    collectionSchemas,
     collections,
     siteConfig,
     themeConfig,

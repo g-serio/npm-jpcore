@@ -14,7 +14,7 @@
         "item": {
           "$ref": "collection:current"
         },
-        "backLabel": "Torna ai libri"
+        "backLabel": "← Torna ai libri"
       }
     }
   ],

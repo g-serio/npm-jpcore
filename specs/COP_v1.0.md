@@ -156,9 +156,13 @@ export type CollectionType = keyof typeof CollectionRegistry;
 
 The engine uses `CollectionRegistry` to:
 
-- validate a collection document at `$ref` resolution time
+- validate a collection document at the Core resolver boundary, before any `$ref` resolution
 - expose collection schemas to the Form Factory for editing
 - resolve `CollectionType` keys in page and site bindings
+
+Every active `collections[source]` entry must have a matching
+`collectionSchemas[source]` entry. A missing schema is a contract error, not an
+implicit opt-out.
 
 ---
 
@@ -273,18 +277,31 @@ The engine:
 
 ### 11.10 JEB Integration
 
-`JsonPagesConfig` is extended with a `collections` field:
+`JsonPagesConfig` is extended with `collections` and `collectionSchemas` fields:
 
 ```typescript
 export interface JsonPagesConfig {
   // ... existing fields ...
   collections?: Record<string, unknown>;
+  collectionSchemas?: Record<string, { parse(value: unknown): unknown }>;
 }
 ```
 
-`collections` provides the resolved collection documents at bootstrap, analogous to `refDocuments`. The engine validates each entry against `CollectionRegistry` before making it available to `$ref` resolution.
+`collections` provides the resolved collection documents at bootstrap, analogous to `refDocuments`. `collectionSchemas` provides the matching collection document schemas, keyed by the same source names.
+
+The Core resolver validates each `collections[source]` entry against `collectionSchemas[source]` before registering that collection as a document available to `$ref` resolution. The parsed schema output is the document that enters the resolver.
+
+Validation is fail-fast:
+
+- if a collection is present without a matching schema, resolution fails with an explicit error naming the source
+- if a collection does not satisfy its schema, resolution fails with an explicit error naming the source
+- Core must not silently skip invalid collections
+- Core must not fall back to unresolved `$ref` behavior for invalid collection data
+- Core must not downgrade invalid collection data to warning-only behavior
 
 Resolution precedence follows JEB §10.3: active mutable drafts from Studio take precedence over bootstrap inputs.
+
+Studio and WebMCP mutations that update a collection-bound field must validate the resulting collection draft against the same `collectionSchemas[source]` before accepting the draft or saving it. Invalid edits are rejected; the page document must keep the authored `$ref` binding and the invalid collection state must not become the persisted source of truth.
 
 ---
 
@@ -297,11 +314,14 @@ When generating or auditing a tenant with collections, ensure:
 3. every entity schema extends `BaseCollectionItem` with a required `id`
 4. both an entity schema and a collection schema (`z.record`) are exported
 5. `CollectionRegistry` registers every active collection
-6. capsule `schema.ts` files do not import or inline collection entity schemas
-7. capsule `types.ts` imports entity types from `src/collections/{slug}`
-8. binding fields in page documents use `$ref` rather than inlined entity data
-9. Studio persists entity edits into the collection document, not the page document
-10. dynamic route pages declare a `collection` binding in `PageConfig`
+6. every active `collections[source]` has a matching `collectionSchemas[source]`
+7. invalid or schema-less collection documents fail before `$ref` resolution
+8. capsule `schema.ts` files do not import or inline collection entity schemas
+9. capsule `types.ts` imports entity types from `src/collections/{slug}`
+10. binding fields in page documents use `$ref` rather than inlined entity data
+11. Studio persists entity edits into the collection document, not the page document
+12. Studio and WebMCP reject edits that make the collection document invalid
+13. dynamic route pages declare a `collection` binding in `PageConfig`
 
 ---
 

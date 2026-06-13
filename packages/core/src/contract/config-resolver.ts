@@ -2,6 +2,7 @@ import type { JsonPagesConfig } from './types-engine';
 import type { MenuConfig, MenuItem, PageConfig, Section, SiteConfig, ThemeConfig } from './kernel';
 
 export type RefDocuments = NonNullable<JsonPagesConfig['refDocuments']>;
+type CollectionDocuments = NonNullable<JsonPagesConfig['collections']>;
 
 interface RuntimeResolutionInput {
   pages: Record<string, PageConfig>;
@@ -9,6 +10,7 @@ interface RuntimeResolutionInput {
   themeConfig: ThemeConfig;
   menuConfig: MenuConfig;
   collections?: JsonPagesConfig['collections'];
+  collectionSchemas?: JsonPagesConfig['collectionSchemas'];
   collectionContext?: CollectionResolutionContext | null;
   refDocuments?: JsonPagesConfig['refDocuments'];
 }
@@ -18,6 +20,8 @@ interface RuntimeResolutionResult {
   siteConfig: SiteConfig;
   themeConfig: ThemeConfig;
   menuConfig: MenuConfig;
+  collections: CollectionDocuments;
+  collectionContext: CollectionResolutionContext | null;
 }
 
 interface ResolveContext {
@@ -138,6 +142,44 @@ function registerDocumentAliases(documents: Map<string, unknown>, aliases: strin
     if (!normalized) continue;
     documents.set(normalized, value);
   }
+}
+
+export function validateCollectionDocuments(
+  collections?: JsonPagesConfig['collections'],
+  collectionSchemas?: JsonPagesConfig['collectionSchemas']
+): CollectionDocuments {
+  const validatedCollections: CollectionDocuments = {};
+
+  for (const [source, collection] of Object.entries(collections ?? {})) {
+    const schema = collectionSchemas?.[source];
+    if (!schema) {
+      throw new Error(`[JsonPages] Missing collection schema for "${source}".`);
+    }
+
+    try {
+      validatedCollections[source] = schema.parse(collection) as CollectionDocuments[string];
+    } catch (error) {
+      const detail = error instanceof Error && error.message ? `: ${error.message}` : '';
+      throw new Error(`[JsonPages] Invalid collection "${source}"${detail}`);
+    }
+  }
+
+  return validatedCollections;
+}
+
+function rebaseCollectionContext(
+  collectionContext: CollectionResolutionContext | null | undefined,
+  collections: CollectionDocuments
+): CollectionResolutionContext | null {
+  if (!collectionContext) return null;
+  const collection = collections[collectionContext.source];
+  if (!isRecord(collection)) return null;
+  const currentItem = collection[collectionContext.paramValue];
+  if (currentItem === undefined) return null;
+  return {
+    ...collectionContext,
+    currentItem,
+  };
 }
 
 function buildDocuments({
@@ -420,7 +462,8 @@ export function applyCollectionRefBindingsToDraft(
   authoredSectionData: unknown,
   nextData: Record<string, unknown>,
   collectionsDraft: JsonPagesConfig['collections'] | undefined,
-  collectionContext?: CollectionResolutionContext | null
+  collectionContext?: CollectionResolutionContext | null,
+  collectionSchemas?: JsonPagesConfig['collectionSchemas']
 ): { normalizedData: Record<string, unknown>; collectionsDraft: JsonPagesConfig['collections'] } {
   const bindings = getCollectionRefBindings(authoredSectionData, collectionContext);
   if (bindings.length === 0) {
@@ -453,7 +496,10 @@ export function applyCollectionRefBindingsToDraft(
     }
   }
 
-  return { normalizedData, collectionsDraft: nextCollectionsDraft };
+  return {
+    normalizedData,
+    collectionsDraft: validateCollectionDocuments(nextCollectionsDraft, collectionSchemas),
+  };
 }
 
 function applySectionDataMenuRefBindings(
@@ -528,7 +574,12 @@ export function resolveSectionMenuItems(section: Section, fallbackMain: MenuItem
 }
 
 export function resolveRuntimeConfig(input: RuntimeResolutionInput): RuntimeResolutionResult {
-  const documents = buildDocuments(input);
+  const collections = validateCollectionDocuments(input.collections, input.collectionSchemas);
+  const collectionContext = rebaseCollectionContext(input.collectionContext, collections);
+  const documents = buildDocuments({
+    ...input,
+    collections,
+  });
 
   return {
     pages: Object.fromEntries(
@@ -538,12 +589,14 @@ export function resolveRuntimeConfig(input: RuntimeResolutionInput): RuntimeReso
           page,
           `pages/${slug.replace(/^\/+|\/+$/g, '') || 'home'}.json`,
           documents,
-          input.collectionContext
+          collectionContext
         ),
       ])
     ) as Record<string, PageConfig>,
     siteConfig: resolveDocument(input.siteConfig, 'config/site.json', documents) as SiteConfig,
     themeConfig: resolveDocument(input.themeConfig, 'config/theme.json', documents) as ThemeConfig,
     menuConfig: resolveDocument(input.menuConfig, 'config/menu.json', documents) as MenuConfig,
+    collections,
+    collectionContext,
   };
 }

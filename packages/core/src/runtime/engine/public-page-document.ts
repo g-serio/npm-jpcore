@@ -14,6 +14,7 @@ export interface ResolvePublicPageDocumentInput {
   themeConfig: JsonPagesConfig['themeConfig'];
   menuConfig: MenuConfig;
   collections?: JsonPagesConfig['collections'];
+  collectionSchemas?: JsonPagesConfig['collectionSchemas'];
   refDocuments?: JsonPagesConfig['refDocuments'];
 }
 
@@ -43,6 +44,7 @@ export function resolvePublicPageDocument(
     themeConfig: input.themeConfig,
     menuConfig: input.menuConfig,
     collections: input.collections,
+    collectionSchemas: input.collectionSchemas,
     collectionContext,
     refDocuments: input.refDocuments,
   });
@@ -57,6 +59,6 @@ export function resolvePublicPageDocument(
     themeConfig: resolvedRuntime.themeConfig,
     menuConfig: resolvedRuntime.menuConfig,
     pageMatch,
-    collectionContext,
+    collectionContext: resolvedRuntime.collectionContext,
   };
 }

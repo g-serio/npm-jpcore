@@ -24,6 +24,7 @@ export interface VisitorRouteProps {
   menuConfig: MenuConfig;
   themeConfig: JsonPagesConfig['themeConfig'];
   collections?: JsonPagesConfig['collections'];
+  collectionSchemas?: JsonPagesConfig['collectionSchemas'];
   refDocuments?: JsonPagesConfig['refDocuments'];
   tenantCss: string;
   adminCss: string;
@@ -36,6 +37,7 @@ export const VisitorRoute: React.FC<VisitorRouteProps> = ({
   menuConfig,
   themeConfig,
   collections,
+  collectionSchemas,
   refDocuments,
   tenantCss,
   adminCss,
@@ -59,10 +61,11 @@ export const VisitorRoute: React.FC<VisitorRouteProps> = ({
         themeConfig,
         menuConfig,
         collections,
+        collectionSchemas,
         collectionContext,
         refDocuments,
       }),
-    [pageMatch, siteConfig, themeConfig, menuConfig, collections, collectionContext, refDocuments]
+    [pageMatch, siteConfig, themeConfig, menuConfig, collections, collectionSchemas, collectionContext, refDocuments]
   );
   const pageConfig = pageMatch ? resolvedRuntime.pages[pageMatch.registrySlug] : undefined;
 

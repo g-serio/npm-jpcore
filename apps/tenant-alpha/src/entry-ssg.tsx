@@ -12,7 +12,7 @@ import type { JsonPagesConfig, PageConfig, SiteConfig, ThemeConfig } from '@/typ
 import { ThemeProvider } from '@/components/ThemeProvider';
 import { ComponentRegistry } from '@/lib/ComponentRegistry';
 import { SECTION_SCHEMAS } from '@/lib/schemas';
-import { collections, menuConfig, pages, refDocuments, siteConfig, themeConfig } from '@/runtime';
+import { collectionSchemas, collections, menuConfig, pages, refDocuments, siteConfig, themeConfig } from '@/runtime';
 import tenantCss from '@/index.css?inline';
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -141,6 +141,7 @@ export function render(slug: string): string {
     themeConfig,
     menuConfig,
     collections,
+    collectionSchemas,
     collectionContext,
     refDocuments,
   });
@@ -195,6 +196,7 @@ export function getWebMcpBuildState(): {
   pages: Record<string, PageConfig>;
   schemas: JsonPagesConfig['schemas'];
   collections: JsonPagesConfig['collections'];
+  collectionSchemas: JsonPagesConfig['collectionSchemas'];
   siteConfig: SiteConfig;
   themeConfig: ThemeConfig;
   menuConfig: JsonPagesConfig['menuConfig'];
@@ -204,6 +206,7 @@ export function getWebMcpBuildState(): {
     pages,
     schemas: SECTION_SCHEMAS as unknown as JsonPagesConfig['schemas'],
     collections,
+    collectionSchemas,
     siteConfig,
     themeConfig,
     menuConfig,
