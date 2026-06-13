@@ -19,7 +19,7 @@ import { startCloudSaveStream } from '@olonjs/core';
 import siteData from '@/data/config/site.json';
 import themeData from '@/data/config/theme.json';
 import menuData from '@/data/config/menu.json';
-import libriData from '@/data/collections/libri/libri.json';
+import { getFileCollections } from '@/lib/getFileCollections';
 import { getFilePages } from '@/lib/getFilePages';
 import { DopaDrawer } from '@/components/save-drawer/DopaDrawer';
 import { EmptyTenantView } from '@/components/empty-tenant';
@@ -51,9 +51,7 @@ const TENANT_ID = 'alpha';
 
 const filePages = getFilePages();
 const fileSiteConfig = siteData as unknown as SiteConfig;
-const collections = {
-  libri: libriData as unknown as Record<string, unknown>,
-} satisfies NonNullable<JsonPagesConfig['collections']>;
+const collections = getFileCollections();
 const MAX_UPLOAD_SIZE_BYTES = 5 * 1024 * 1024;
 const ASSET_UPLOAD_MAX_RETRIES = 2;
 const ASSET_UPLOAD_TIMEOUT_MS = 20_000;

@@ -13,7 +13,7 @@
         "anchorId": "catalogo-libri",
         "eyebrow": "Collection demo",
         "title": "Libri",
-        "description": "Una pagina collection con 30 titoli, paginazione lato componente e link alle schede dinamiche.",
+        "description": "Una pagina collection con titoli, paginazione lato componente e filtro autore.",
         "items": {
           "$ref": "../collections/libri/libri.json"
         },

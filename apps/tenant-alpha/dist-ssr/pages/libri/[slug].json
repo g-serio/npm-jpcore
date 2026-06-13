@@ -5,10 +5,6 @@
     "title": "Dettaglio libro",
     "description": "Pagina dinamica dettaglio libro alimentata dalla collection libri."
   },
-  "collection": {
-    "source": "libri",
-    "paramKey": "slug"
-  },
   "sections": [
     {
       "id": "book-detail-1",
@@ -18,9 +14,13 @@
         "item": {
           "$ref": "collection:current"
         },
-        "backLabel": "Torna ai libri"
+        "backLabel": "← Torna ai libri"
       }
     }
   ],
+  "collection": {
+    "source": "libri",
+    "paramKey": "slug"
+  },
   "global-header": false
 }

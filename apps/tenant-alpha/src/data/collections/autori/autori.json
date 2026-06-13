@@ -1,0 +1,118 @@
+{
+  "george-orwell": {
+    "id": "george-orwell",
+    "name": "George Orwell"
+  },
+  "umberto-eco": {
+    "id": "umberto-eco",
+    "name": "Umberto Eco"
+  },
+  "primo-levi": {
+    "id": "primo-levi",
+    "name": "Primo Levi"
+  },
+  "italo-calvino": {
+    "id": "italo-calvino",
+    "name": "Italo Calvino"
+  },
+  "giuseppe-tomasi-di-lampedusa": {
+    "id": "giuseppe-tomasi-di-lampedusa",
+    "name": "Giuseppe Tomasi di Lampedusa"
+  },
+  "italo-svevo": {
+    "id": "italo-svevo",
+    "name": "Italo Svevo"
+  },
+  "alessandro-manzoni": {
+    "id": "alessandro-manzoni",
+    "name": "Alessandro Manzoni"
+  },
+  "roberto-saviano": {
+    "id": "roberto-saviano",
+    "name": "Roberto Saviano"
+  },
+  "alessandro-baricco": {
+    "id": "alessandro-baricco",
+    "name": "Alessandro Baricco"
+  },
+  "natalia-ginzburg": {
+    "id": "natalia-ginzburg",
+    "name": "Natalia Ginzburg"
+  },
+  "gabriel-garcia-marquez": {
+    "id": "gabriel-garcia-marquez",
+    "name": "Gabriel Garcia Marquez"
+  },
+  "ray-bradbury": {
+    "id": "ray-bradbury",
+    "name": "Ray Bradbury"
+  },
+  "frank-herbert": {
+    "id": "frank-herbert",
+    "name": "Frank Herbert"
+  },
+  "william-gibson": {
+    "id": "william-gibson",
+    "name": "William Gibson"
+  },
+  "j-r-r-tolkien": {
+    "id": "j-r-r-tolkien",
+    "name": "J. R. R. Tolkien"
+  },
+  "j-k-rowling": {
+    "id": "j-k-rowling",
+    "name": "J. K. Rowling"
+  },
+  "jane-austen": {
+    "id": "jane-austen",
+    "name": "Jane Austen"
+  },
+  "herman-melville": {
+    "id": "herman-melville",
+    "name": "Herman Melville"
+  },
+  "fedor-dostoevskij": {
+    "id": "fedor-dostoevskij",
+    "name": "Fedor Dostoevskij"
+  },
+  "lev-tolstoj": {
+    "id": "lev-tolstoj",
+    "name": "Lev Tolstoj"
+  },
+  "michail-bulgakov": {
+    "id": "michail-bulgakov",
+    "name": "Michail Bulgakov"
+  },
+  "cormac-mccarthy": {
+    "id": "cormac-mccarthy",
+    "name": "Cormac McCarthy"
+  },
+  "david-mitchell": {
+    "id": "david-mitchell",
+    "name": "David Mitchell"
+  },
+  "haruki-murakami": {
+    "id": "haruki-murakami",
+    "name": "Haruki Murakami"
+  },
+  "chimamanda-ngozi-adichie": {
+    "id": "chimamanda-ngozi-adichie",
+    "name": "Chimamanda Ngozi Adichie"
+  },
+  "isabel-allende": {
+    "id": "isabel-allende",
+    "name": "Isabel Allende"
+  },
+  "toni-morrison": {
+    "id": "toni-morrison",
+    "name": "Toni Morrison"
+  },
+  "junot-diaz": {
+    "id": "junot-diaz",
+    "name": "Junot Diaz"
+  },
+  "jonathan-franzen": {
+    "id": "jonathan-franzen",
+    "name": "Jonathan Franzen"
+  }
+}

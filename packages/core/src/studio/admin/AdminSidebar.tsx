@@ -24,6 +24,7 @@ import { useConfig } from '../../runtime/config/ConfigContext';
 import { cn } from '../../lib/utils';
 import { FormFactory } from './FormFactory';
 import type { PageConfig, Section } from '../../contract/kernel';
+import type { JsonPagesConfig } from '../../contract/types-engine';
 import { Layers, ChevronUp, GripVertical, Settings, Trash2, AlertCircle, X, Plus, Save } from 'lucide-react';
 import { Button } from '../ui/button';
 import { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider } from '../ui/tooltip';
@@ -55,6 +56,8 @@ interface AdminSidebarProps {
   pageData: PageConfig | { sections: Section[] };
   /** All sections (header + page sections + footer) for resolving modal section data. */
   allSectionsData?: Section[];
+  collections?: JsonPagesConfig['collections'];
+  collectionSource?: string;
   onUpdate: (newData: Record<string, unknown>) => void;
   /** Update a section by id/scope (e.g. from settings modal). When provided with allSectionsData, gear opens modal. */
   onUpdateSection?: OnUpdateSection;
@@ -247,6 +250,8 @@ export const AdminSidebar: React.FC<AdminSidebarProps> = ({
   selectedSection,
   pageData,
   allSectionsData = [],
+  collections,
+  collectionSource,
   onUpdate,
   onUpdateSection,
   onClose,
@@ -720,6 +725,8 @@ export const AdminSidebar: React.FC<AdminSidebarProps> = ({
               <FormFactory
                 schema={formSchema}
                 data={data}
+                collections={collections}
+                collectionSource={collectionSource}
                 onChange={(newData) => onUpdate(newData)}
                 keys={contentKeys}
                 expandedItemPath={effectiveExpandedItemPath}
@@ -897,6 +904,8 @@ export const AdminSidebar: React.FC<AdminSidebarProps> = ({
                 <FormFactory
                   schema={schema!}
                   data={data}
+                  collections={collections}
+                  collectionSource={collectionSource}
                   onChange={(newData) => {
                     const merged = { ...(modalSection.data as Record<string, unknown>), ...newData };
                     onUpdateSection(settingsModalSectionId, scope, sectionType, merged);

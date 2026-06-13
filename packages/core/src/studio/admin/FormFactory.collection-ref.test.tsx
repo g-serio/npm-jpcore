@@ -12,6 +12,11 @@ const bookSchema = z.object({
   summary: z.string().describe('ui:textarea'),
 });
 
+const authorSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+});
+
 const collectionRecordSchema = z.object({
   items: z.record(z.string(), bookSchema).describe('ui:collection-ref'),
 });
@@ -20,13 +25,27 @@ const collectionItemSchema = z.object({
   item: bookSchema.describe('ui:collection-ref'),
 });
 
+const relatedBookSchema = z.object({
+  id: z.string().describe('ui:text'),
+  title: z.string().describe('ui:text'),
+  author: z.union([authorSchema, z.object({ $ref: z.string() })]).describe('ui:collection-ref:autori'),
+});
+
+const relatedCollectionRecordSchema = z.object({
+  items: z.record(z.string(), relatedBookSchema).describe('ui:collection-ref:libri'),
+});
+
 const StatefulFormFactory = ({
   schema,
   initialData,
+  collections,
+  collectionSource,
   onChange,
 }: {
   schema: z.ZodObject<z.ZodRawShape>;
   initialData: Record<string, unknown>;
+  collections?: Record<string, Record<string, unknown>>;
+  collectionSource?: string;
   onChange: (next: Record<string, unknown>) => void;
 }) => {
   const [data, setData] = useState(initialData);
@@ -35,6 +54,8 @@ const StatefulFormFactory = ({
     <FormFactory
       schema={schema}
       data={data}
+      collections={collections}
+      collectionSource={collectionSource}
       onChange={(next) => {
         setData(next);
         onChange(next);
@@ -99,5 +120,50 @@ describe('FormFactory ui:collection-ref', () => {
     const lastChange = onChange.mock.calls[onChange.mock.calls.length - 1]?.[0];
     expect(lastChange.item.summary).toBe('Politics, ecology, and prophecy.');
     expect(lastChange.item.title).toBe('Dune');
+  });
+
+  it('renders nested collection relations as selectors that emit authored refs', async () => {
+    const user = userEvent.setup();
+    const onChange = vi.fn();
+    const data = {
+      items: {
+        dune: {
+          id: 'dune',
+          title: 'Dune',
+          author: {
+            id: 'frank-herbert',
+            name: 'Frank Herbert',
+          },
+        },
+      },
+    };
+
+    render(
+      <StatefulFormFactory
+        schema={relatedCollectionRecordSchema}
+        initialData={data}
+        collections={{
+          autori: {
+            'frank-herbert': {
+              id: 'frank-herbert',
+              name: 'Frank Herbert',
+            },
+            'ursula-k-le-guin': {
+              id: 'ursula-k-le-guin',
+              name: 'Ursula K. Le Guin',
+            },
+          },
+        }}
+        onChange={onChange}
+      />
+    );
+
+    await user.click(screen.getByRole('button', { name: 'Dune' }));
+    await user.selectOptions(screen.getByLabelText('Author'), 'ursula-k-le-guin');
+
+    const lastChange = onChange.mock.calls[onChange.mock.calls.length - 1]?.[0];
+    expect(lastChange.items.dune.author).toEqual({
+      $ref: '../autori/autori.json#/ursula-k-le-guin',
+    });
   });
 });

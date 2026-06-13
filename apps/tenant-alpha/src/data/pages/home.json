@@ -1,22 +1,23 @@
 {
-  "id": "home-page",
+  "id": "libri-page",
   "slug": "home",
   "meta": {
-    "title": "Home",
-    "description": "OlonJS tenant alpha — form smoke test"
+    "title": "Libri",
+    "description": "Catalogo libri dimostrativo alimentato da COP collections."
   },
   "sections": [
     {
-      "id": "form-demo-1",
-      "type": "form-demo",
+      "id": "books-list-1",
+      "type": "books-list",
       "data": {
-        "anchorId": "form-demo",
-        "title": "Contattaci",
-        "description": "Compila il modulo e ti risponderemo al più presto.",
-        "recipientEmail": "test@olonjs.io",
-        "submitLabel": "Invia",
-        "successMessage": "Richiesta inviata con successo.",
-        "icon": "mail"
+        "anchorId": "catalogo-libri",
+        "eyebrow": "Collection demo",
+        "title": "Libri",
+        "description": "Una pagina collection con 30 titoli, paginazione lato componente e link alle schede dinamiche.",
+        "items": {
+          "$ref": "../collections/libri/libri.json"
+        },
+        "pageSize": 10
       }
     }
   ],

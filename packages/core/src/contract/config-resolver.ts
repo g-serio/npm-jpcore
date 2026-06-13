@@ -394,6 +394,28 @@ function writeValueAtPath(target: unknown, path: string[], value: unknown): unkn
   };
 }
 
+function preserveAuthoredRefs(authoredValue: unknown, nextValue: unknown): unknown {
+  if (isRefObject(nextValue)) return cloneUnknown(nextValue);
+  if (isRefObject(authoredValue)) return cloneUnknown(authoredValue);
+
+  if (Array.isArray(nextValue)) {
+    const authoredArray = Array.isArray(authoredValue) ? authoredValue : [];
+    return nextValue.map((item, index) => preserveAuthoredRefs(authoredArray[index], item));
+  }
+
+  if (isPlainObject(nextValue)) {
+    const authoredRecord = isRecord(authoredValue) ? authoredValue : {};
+    return Object.fromEntries(
+      Object.entries(nextValue).map(([key, item]) => [
+        key,
+        preserveAuthoredRefs(authoredRecord[key], item),
+      ])
+    );
+  }
+
+  return nextValue;
+}
+
 export function applyMenuRefBindingsToDraft(
   authoredSectionData: unknown,
   nextData: Record<string, unknown>,
@@ -484,15 +506,19 @@ export function applyCollectionRefBindingsToDraft(
       const sourceCollection = isRecord(nextCollectionsDraft[binding.source])
         ? nextCollectionsDraft[binding.source]
         : {};
+      const authoredItem = sourceCollection[binding.itemId];
       nextCollectionsDraft[binding.source] = {
         ...sourceCollection,
-        [binding.itemId]: resolvedValue,
+        [binding.itemId]: preserveAuthoredRefs(authoredItem, resolvedValue),
       };
       continue;
     }
 
     if (isRecord(resolvedValue)) {
-      nextCollectionsDraft[binding.source] = resolvedValue;
+      nextCollectionsDraft[binding.source] = preserveAuthoredRefs(
+        nextCollectionsDraft[binding.source],
+        resolvedValue
+      ) as CollectionDocuments[string];
     }
   }
 

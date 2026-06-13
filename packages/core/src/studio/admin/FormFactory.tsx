@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { InputWidgets, WidgetType } from './InputRegistry';
 import { Plus, Trash2, ChevronDown, ChevronUp, ArrowUp, ArrowDown } from 'lucide-react';
 import { BaseWidgetProps } from '../../lib/shared-types';
+import type { JsonPagesConfig } from '../../contract/types-engine';
 
 /**
  * 🛠️ HELPER: Generates a default value based on the Zod schema.
@@ -65,6 +66,8 @@ interface FormFactoryProps {
   schema: z.ZodObject<z.ZodRawShape>;
   data: Record<string, unknown>;
   onChange: (newData: Record<string, unknown>) => void;
+  collections?: JsonPagesConfig['collections'];
+  collectionSource?: string;
   /** When set, only render fields whose key is in this array (e.g. Content vs Settings tabs). */
   keys?: string[] | null;
   /** Root-to-leaf path for deep focus (e.g. silos -> blocks). First segment applies to this level. */
@@ -114,7 +117,40 @@ const getRecordItemLabel = (key: string, item: Record<string, unknown>, index: n
   return label ?? `Item #${index + 1} (${key})`;
 };
 
-export const FormFactory: React.FC<FormFactoryProps> = ({ schema, data, onChange, keys, expandedItemPath, onSidebarExpandedItemChange }) => {
+const getCollectionRefSource = (uiHint: string): string | null => {
+  const [, , source] = uiHint.split(':');
+  return source?.trim() || null;
+};
+
+const getRelationSelectedId = (value: unknown): string => {
+  if (isRecord(value) && typeof value.id === 'string') return value.id;
+  if (isRecord(value) && typeof value.$ref === 'string') {
+    const pointer = value.$ref.split('#')[1]?.replace(/^\//, '') ?? '';
+    return pointer.split('/')[0] ?? '';
+  }
+  return '';
+};
+
+const buildCollectionItemRef = (
+  targetSource: string,
+  itemId: string,
+  currentCollectionSource?: string
+): { $ref: string } => ({
+  $ref: currentCollectionSource
+    ? `../${targetSource}/${targetSource}.json#/${itemId}`
+    : `../collections/${targetSource}/${targetSource}.json#/${itemId}`,
+});
+
+export const FormFactory: React.FC<FormFactoryProps> = ({
+  schema,
+  data,
+  onChange,
+  collections,
+  collectionSource,
+  keys,
+  expandedItemPath,
+  onSidebarExpandedItemChange,
+}) => {
   const shape = schema.shape;
   const fieldKeys = keys != null
     ? Object.keys(shape).filter((k) => keys.includes(k))
@@ -136,8 +172,59 @@ export const FormFactory: React.FC<FormFactoryProps> = ({ schema, data, onChange
         // Editorial fields are edited directly on Stage and not in Inspector form.
         if (uiHint === 'ui:editorial-markdown') return null;
 
-        if (uiHint === 'ui:collection-ref') {
+        if (uiHint.startsWith('ui:collection-ref')) {
           const isFocusedField = fieldKeyMatches(effectiveFocusedFieldKey, key);
+          const relationSource = getCollectionRefSource(uiHint);
+          if (
+            relationSource &&
+            !(effectiveSchema instanceof z.ZodRecord) &&
+            !(effectiveSchema instanceof z.ZodObject)
+          ) {
+            const relationCollection = isRecord(collections?.[relationSource])
+              ? (collections?.[relationSource] as Record<string, unknown>)
+              : {};
+            const relationEntries = Object.entries(relationCollection).filter(([, item]) => isRecord(item));
+            const selectedId = getRelationSelectedId(value);
+            const selectId = `collection-ref-${key}`;
+
+            return (
+              <div
+                key={key}
+                className={`grid w-full gap-2 mb-4 transition-opacity duration-200 ${fadeWhenUnfocused(inItemScope, isFocusedField)}`}
+                {...(isFocusedField ? { 'data-jp-focused-field': key } : {})}
+              >
+                <label htmlFor={selectId} className="text-[11px] font-semibold tracking-[0.02em] text-zinc-300">
+                  {humanizeLabel(key)}
+                </label>
+                <select
+                  id={selectId}
+                  className="h-9 rounded-md border border-zinc-700 bg-zinc-900/50 px-3 text-[13px] text-zinc-100 focus:outline-none focus:ring-2 focus:ring-blue-600"
+                  value={selectedId}
+                  onChange={(event) => {
+                    const itemId = event.target.value;
+                    if (!itemId) return;
+                    onChange({
+                      ...data,
+                      [key]: buildCollectionItemRef(relationSource, itemId, collectionSource),
+                    });
+                  }}
+                >
+                  <option value="" disabled>
+                    Select...
+                  </option>
+                  {relationEntries.map(([recordKey, item], index) => {
+                    const itemRecord = item as Record<string, unknown>;
+                    const itemId = typeof itemRecord.id === 'string' ? itemRecord.id : recordKey;
+                    return (
+                      <option key={itemId} value={itemId}>
+                        {getRecordItemLabel(recordKey, itemRecord, index)}
+                      </option>
+                    );
+                  })}
+                </select>
+              </div>
+            );
+          }
           const itemCount = getCollectionRefItemCount(value, effectiveSchema);
           const recordValue = isRecord(value) ? value : {};
           const openItemIdFromPath = fieldKeyMatches(firstSeg?.fieldKey, key) ? firstSeg?.itemId : undefined;
@@ -188,6 +275,8 @@ export const FormFactory: React.FC<FormFactoryProps> = ({ schema, data, onChange
                           <FormFactory
                             schema={itemSchema}
                             data={itemRecord}
+                            collections={collections}
+                            collectionSource={relationSource ?? collectionSource}
                             expandedItemPath={isExpandedItem ? pathTail : undefined}
                             onChange={(val) => {
                               onChange({
@@ -213,6 +302,8 @@ export const FormFactory: React.FC<FormFactoryProps> = ({ schema, data, onChange
                   <FormFactory
                     schema={effectiveSchema}
                     data={recordValue}
+                    collections={collections}
+                    collectionSource={relationSource ?? collectionSource}
                     expandedItemPath={pathTail}
                     onChange={(val) => onChange({ ...data, [key]: val })}
                   />
@@ -260,6 +351,8 @@ export const FormFactory: React.FC<FormFactoryProps> = ({ schema, data, onChange
               <FormFactory 
                 schema={effectiveSchema} 
                 data={objectData} 
+                collections={collections}
+                collectionSource={collectionSource}
                 onChange={(val) => onChange({ ...data, [key]: val })}
                 expandedItemPath={expandedItemPath && fieldKeyMatches(firstSeg?.fieldKey, key) ? expandedItemPath.slice(1) : undefined}
               />
@@ -350,6 +443,8 @@ export const FormFactory: React.FC<FormFactoryProps> = ({ schema, data, onChange
                         <FormFactory 
                           schema={itemSchema} 
                           data={itemRecord || {}}
+                          collections={collections}
+                          collectionSource={collectionSource}
                           expandedItemPath={pathTail}
                           onChange={(val) => {
                             const newItems = [...items];

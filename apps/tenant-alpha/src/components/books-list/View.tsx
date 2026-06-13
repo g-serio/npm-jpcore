@@ -1,4 +1,5 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import { useLocation } from 'react-router-dom';
 import type { Libro } from '@/collections/libri';
 import type { BooksListData } from './types';
 
@@ -10,14 +11,50 @@ function toBooks(items: BooksListData['items']): Libro[] {
   return Object.values(items ?? {}).sort((a, b) => a.title.localeCompare(b.title));
 }
 
+function getAuthorName(author: Libro['author']): string {
+  if (typeof author === 'object' && author !== null && 'name' in author) {
+    return String(author.name);
+  }
+  return 'Autore';
+}
+
+function getAuthorId(author: Libro['author']): string | null {
+  if (typeof author === 'object' && author !== null && 'id' in author && typeof author.id === 'string') {
+    return author.id;
+  }
+  if (typeof author === 'object' && author !== null && '$ref' in author && typeof author.$ref === 'string') {
+    const pointer = author.$ref.split('#')[1]?.replace(/^\//, '') ?? '';
+    return pointer.split('/')[0] || null;
+  }
+  return null;
+}
+
+function getAuthorFilterFromPath(pathname: string): string | null {
+  const match = pathname.match(/^\/authors\/([^/]+)\/libri\/?$/);
+  return match?.[1] ? decodeURIComponent(match[1]) : null;
+}
+
 export function BooksListView({ data }: BooksListViewProps) {
+  const location = useLocation();
+  const authorFilter = useMemo(() => {
+    const queryAuthor = new URLSearchParams(location.search).get('author');
+    return queryAuthor || getAuthorFilterFromPath(location.pathname);
+  }, [location.pathname, location.search]);
   const books = useMemo(() => toBooks(data.items), [data.items]);
+  const filteredBooks = useMemo(
+    () => authorFilter ? books.filter((book) => getAuthorId(book.author) === authorFilter) : books,
+    [authorFilter, books]
+  );
   const pageSize = Math.max(1, Math.floor(data.pageSize || 10));
-  const totalPages = Math.max(1, Math.ceil(books.length / pageSize));
+  const totalPages = Math.max(1, Math.ceil(filteredBooks.length / pageSize));
   const [page, setPage] = useState(1);
   const currentPage = Math.min(page, totalPages);
   const startIndex = (currentPage - 1) * pageSize;
-  const visibleBooks = books.slice(startIndex, startIndex + pageSize);
+  const visibleBooks = filteredBooks.slice(startIndex, startIndex + pageSize);
+
+  useEffect(() => {
+    setPage(1);
+  }, [authorFilter]);
 
   return (
     <main className="min-h-screen bg-background text-foreground px-6 py-16">
@@ -48,6 +85,11 @@ export function BooksListView({ data }: BooksListViewProps) {
         </div>
 
         <div data-jp-field="items" className="grid gap-4">
+          {authorFilter && (
+            <p className="text-sm text-muted-foreground">
+              Filtro autore: {authorFilter} · {filteredBooks.length} libri
+            </p>
+          )}
           {visibleBooks.map((book) => (
             <article
               key={book.id}
@@ -59,7 +101,7 @@ export function BooksListView({ data }: BooksListViewProps) {
                 <div>
                   <h2 className="text-xl font-semibold">{book.title}</h2>
                   <p className="mt-1 text-sm text-muted-foreground">
-                    {book.author} · {book.year} · {book.genre}
+                    {getAuthorName(book.author)} · {book.year} · {book.genre}
                   </p>
                   <p className="mt-3 max-w-3xl text-sm leading-6 text-muted-foreground">
                     {book.summary}
@@ -86,7 +128,7 @@ export function BooksListView({ data }: BooksListViewProps) {
             Precedente
           </button>
           <span className="text-muted-foreground">
-            Pagina {currentPage} di {totalPages} · {books.length} libri
+            Pagina {currentPage} di {totalPages} · {filteredBooks.length} libri
           </span>
           <button
             type="button"

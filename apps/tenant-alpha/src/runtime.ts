@@ -1,19 +1,17 @@
 import type { JsonPagesConfig, MenuConfig, PageConfig, SiteConfig, ThemeConfig } from '@/types';
 import { CollectionRegistry } from '@/lib/CollectionRegistry';
 import { SECTION_SCHEMAS } from '@/lib/schemas';
+import { getFileCollections } from '@/lib/getFileCollections';
 import { getFilePages } from '@/lib/getFilePages';
 import siteData from '@/data/config/site.json';
 import menuData from '@/data/config/menu.json';
 import themeData from '@/data/config/theme.json';
-import libriData from '@/data/collections/libri/libri.json';
 
 export const siteConfig = siteData as unknown as SiteConfig;
 export const themeConfig = themeData as unknown as ThemeConfig;
 export const menuConfig = menuData as unknown as MenuConfig;
 export const pages = getFilePages();
-export const collections = {
-  libri: libriData as unknown as Record<string, unknown>,
-} satisfies NonNullable<JsonPagesConfig['collections']>;
+export const collections = getFileCollections();
 export const collectionSchemas = CollectionRegistry as unknown as JsonPagesConfig['collectionSchemas'];
 export const refDocuments = {
   'menu.json': menuConfig,

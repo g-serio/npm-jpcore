@@ -1,3 +1,4 @@
+import { AuthorsListSchema } from '@/components/authors-list';
 import { BookDetailSchema } from '@/components/book-detail';
 import { BooksListSchema } from '@/components/books-list';
 import { EmptyTenantSchema } from '@/components/empty-tenant';
@@ -5,6 +6,7 @@ import { FooterSchema } from '@/components/footer';
 import { FormDemoSchema, FormDemoSubmissionSchema } from '@/components/form-demo';
 
 export const SECTION_SCHEMAS = {
+  'authors-list': AuthorsListSchema,
   'book-detail': BookDetailSchema,
   'books-list': BooksListSchema,
   'empty-tenant': EmptyTenantSchema,

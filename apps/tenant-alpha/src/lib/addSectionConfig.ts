@@ -1,8 +1,9 @@
 import type { AddSectionConfig } from '@olonjs/core';
 
-const addableSectionTypes = ['book-detail', 'books-list', 'empty-tenant', 'footer', 'form-demo'] as const;
+const addableSectionTypes = ['authors-list', 'book-detail', 'books-list', 'empty-tenant', 'footer', 'form-demo'] as const;
 
 const sectionTypeLabels: Record<string, string> = {
+  'authors-list': 'Authors List',
   'book-detail': 'Book Detail',
   'books-list': 'Books List',
   'empty-tenant': 'Empty Tenant',
@@ -12,6 +13,13 @@ const sectionTypeLabels: Record<string, string> = {
 
 function getDefaultSectionData(type: string): Record<string, unknown> {
   switch (type) {
+    case 'authors-list':
+      return {
+        eyebrow: 'Collection demo',
+        title: 'Authors',
+        description: 'Authors loaded from the autori collection.',
+        items: { $ref: '../collections/autori/autori.json' },
+      };
     case 'book-detail':
       return {
         item: { $ref: 'collection:current' },

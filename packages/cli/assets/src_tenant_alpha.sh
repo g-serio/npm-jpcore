@@ -1817,7 +1817,7 @@ cat << 'END_OF_FILE_CONTENT' > "package.json"
     "@tiptap/extension-link": "^2.11.5",
     "@tiptap/react": "^2.11.5",
     "@tiptap/starter-kit": "^2.11.5",
-    "@olonjs/core": "^1.1.10",
+    "@olonjs/core": "^1.1.11",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "lucide-react": "^0.474.0",
@@ -2131,7 +2131,7 @@ import { build } from 'vite';
 import path from 'path';
 import { fileURLToPath, pathToFileURL } from 'url';
 import fs from 'fs/promises';
-import { webmcp } from '@olonjs/core';
+import { resolvePageMatchFromRegistry, resolvePublicPageDocument, webmcp } from '@olonjs/core';
 
 const {
   buildPageContract,
@@ -2144,6 +2144,7 @@ const {
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const root = path.resolve(__dirname, '..');
 const pagesDir = path.resolve(root, 'src/data/pages');
+const collectionsDir = path.resolve(root, 'src/data/collections');
 const publicDir = path.resolve(root, 'public');
 const distDir = path.resolve(root, 'dist');
 const distSsrDir = path.resolve(root, 'dist-ssr');
@@ -2184,6 +2185,42 @@ function toCanonicalSlug(relativeJsonPath) {
   return slug;
 }
 
+async function readJsonFile(filePath) {
+  const raw = await fs.readFile(filePath, 'utf-8');
+  return JSON.parse(raw);
+}
+
+async function expandCollectionTarget(slug, pageFilePath) {
+  if (!/\[[^\]]+\]/.test(slug)) return [slug];
+
+  let pageConfig;
+  try {
+    pageConfig = await readJsonFile(pageFilePath);
+  } catch {
+    return [slug];
+  }
+
+  const binding = pageConfig?.collection;
+  if (!binding || typeof binding.source !== 'string' || typeof binding.paramKey !== 'string') {
+    return [slug];
+  }
+
+  const token = `[${binding.paramKey}]`;
+  if (!slug.includes(token)) return [slug];
+
+  const collectionPath = path.resolve(collectionsDir, binding.source, `${binding.source}.json`);
+  let collection;
+  try {
+    collection = await readJsonFile(collectionPath);
+  } catch {
+    return [slug];
+  }
+
+  if (!collection || typeof collection !== 'object' || Array.isArray(collection)) return [slug];
+  const itemIds = Object.keys(collection).sort((a, b) => a.localeCompare(b));
+  return itemIds.length > 0 ? itemIds.map((itemId) => slug.replace(token, itemId)) : [slug];
+}
+
 async function listJsonFilesRecursive(dir) {
   const items = await fs.readdir(dir, { withFileTypes: true });
   const files = [];
@@ -2206,7 +2243,14 @@ async function discoverTargets() {
     files = [];
   }
 
-  const rawSlugs = files.map((fullPath) => toCanonicalSlug(path.relative(pagesDir, fullPath)));
+  const rawSlugs = (
+    await Promise.all(
+      files.map(async (fullPath) => {
+        const slug = toCanonicalSlug(path.relative(pagesDir, fullPath));
+        return expandCollectionTarget(slug, fullPath);
+      })
+    )
+  ).flat();
   const slugs = Array.from(new Set(rawSlugs)).sort((a, b) => a.localeCompare(b));
 
   return slugs.map((slug) => {
@@ -2264,15 +2308,26 @@ const remoteStylesheetTags = getRemoteStylesheets()
 const webMcpBuildState = getWebMcpBuildState();
 
 for (const { slug } of targets) {
-  const pageConfig = webMcpBuildState.pages[slug];
+  const pageConfig = resolvePageMatchFromRegistry(webMcpBuildState.pages, slug)?.page;
   if (!pageConfig) continue;
+  const resolvedPageDocument = resolvePublicPageDocument({
+    slug,
+    pages: webMcpBuildState.pages,
+    siteConfig: webMcpBuildState.siteConfig,
+    themeConfig: webMcpBuildState.themeConfig,
+    menuConfig: webMcpBuildState.menuConfig,
+    collections: webMcpBuildState.collections,
+    collectionSchemas: webMcpBuildState.collectionSchemas,
+    refDocuments: webMcpBuildState.refDocuments,
+  });
+  const publicPageConfig = resolvedPageDocument?.page ?? pageConfig;
   
-  // Export the raw JSON data for the agentic web (so readResource works on SSG)
-  await writeJsonTargets(`pages/${slug}.json`, pageConfig);
+  // Export the resolved public JSON data for the agentic web (so readResource matches runtime).
+  await writeJsonTargets(`pages/${slug}.json`, publicPageConfig);
 
   const contract = buildPageContract({
     slug,
-    pageConfig,
+    pageConfig: publicPageConfig,
     schemas: webMcpBuildState.schemas,
     submissionSchemas: webMcpBuildState.submissionSchemas,
     siteConfig: webMcpBuildState.siteConfig,
@@ -2280,7 +2335,7 @@ for (const { slug } of targets) {
   await writeSsrJson(`schemas/${slug}.schema.json`, contract);
   const pageManifest = buildPageManifest({
     slug,
-    pageConfig,
+    pageConfig: publicPageConfig,
     schemas: webMcpBuildState.schemas,
     siteConfig: webMcpBuildState.siteConfig,
   });
@@ -2549,6 +2604,8 @@ const __dirname = path.dirname(__filename);
 const rootDir = path.resolve(__dirname, '..');
 const sourceDir = path.join(rootDir, 'src', 'data', 'pages');
 const targetDir = path.join(rootDir, 'public', 'pages');
+const sourceCollectionsDir = path.join(rootDir, 'src', 'data', 'collections');
+const targetCollectionsDir = path.join(rootDir, 'public', 'collections');
 const sourceSiteConfigPath = path.join(rootDir, 'src', 'data', 'config', 'site.json');
 const targetConfigDir = path.join(rootDir, 'public', 'config');
 const targetSiteConfigPath = path.join(targetConfigDir, 'site.json');
@@ -2562,12 +2619,18 @@ fs.rmSync(targetDir, { recursive: true, force: true });
 fs.mkdirSync(targetDir, { recursive: true });
 fs.cpSync(sourceDir, targetDir, { recursive: true });
 
+fs.rmSync(targetCollectionsDir, { recursive: true, force: true });
+if (fs.existsSync(sourceCollectionsDir)) {
+  fs.mkdirSync(targetCollectionsDir, { recursive: true });
+  fs.cpSync(sourceCollectionsDir, targetCollectionsDir, { recursive: true });
+}
+
 if (fs.existsSync(sourceSiteConfigPath)) {
   fs.mkdirSync(targetConfigDir, { recursive: true });
   fs.cpSync(sourceSiteConfigPath, targetSiteConfigPath);
 }
 
-console.log('[sync-pages-to-public] Synced pages to public/pages and site config to public/config/site.json');
+console.log('[sync-pages-to-public] Synced pages, collections, and site config to public/');
 
 END_OF_FILE_CONTENT
 echo "Creating scripts/webmcp-feature-check.mjs..."
@@ -2885,6 +2948,7 @@ import { JsonPagesEngine } from '@olonjs/core';
 import type { JsonPagesConfig, LibraryImageEntry, ProjectState } from '@olonjs/core';
 import { normalizeBasePath, withBasePath } from '@olonjs/core';
 import { ComponentRegistry } from '@/lib/ComponentRegistry';
+import { CollectionRegistry } from '@/lib/CollectionRegistry';
 import { SECTION_SCHEMAS } from '@/lib/schemas';
 import { addSectionConfig } from '@/lib/addSectionConfig';
 import { getHydratedData } from '@/lib/draftStorage';
@@ -2895,6 +2959,7 @@ import { startCloudSaveStream } from '@olonjs/core';
 import siteData from '@/data/config/site.json';
 import themeData from '@/data/config/theme.json';
 import menuData from '@/data/config/menu.json';
+import libriData from '@/data/collections/libri/libri.json';
 import { getFilePages } from '@/lib/getFilePages';
 import { DopaDrawer } from '@/components/save-drawer/DopaDrawer';
 import { EmptyTenantView } from '@/components/empty-tenant';
@@ -2926,6 +2991,9 @@ const TENANT_ID = 'alpha';
 
 const filePages = getFilePages();
 const fileSiteConfig = siteData as unknown as SiteConfig;
+const collections = {
+  libri: libriData as unknown as Record<string, unknown>,
+} satisfies NonNullable<JsonPagesConfig['collections']>;
 const MAX_UPLOAD_SIZE_BYTES = 5 * 1024 * 1024;
 const ASSET_UPLOAD_MAX_RETRIES = 2;
 const ASSET_UPLOAD_TIMEOUT_MS = 20_000;
@@ -2963,6 +3031,7 @@ type CachedCloudContent = {
   savedAt: number;
   siteConfig: unknown | null;
   pages: Record<string, unknown>;
+  collections?: JsonPagesConfig['collections'];
 };
 
 const CLOUD_CACHE_KEY = 'jp_cloud_content_cache_v1';
@@ -3008,7 +3077,7 @@ function asString(value: unknown, fallback: string): string {
 function normalizeRouteSlug(value: string): string {
   return value
     .toLowerCase()
-    .replace(/[^a-z0-9/_-]/g, '-')
+    .replace(/[^a-z0-9/_[\]-]/g, '-')
     .replace(/^\/+|\/+$/g, '') || 'home';
 }
 
@@ -3034,6 +3103,7 @@ function coercePageConfig(slug: string, value: unknown): PageConfig | null {
     slug: normalizedSlug,
     meta: { title, description },
     sections: input.sections as PageConfig['sections'],
+    ...(isObjectRecord(input.collection) ? { collection: input.collection as unknown as PageConfig['collection'] } : {}),
     ...(typeof input['global-header'] === 'boolean' ? { 'global-header': input['global-header'] } : {}),
   };
 }
@@ -3175,7 +3245,7 @@ function normalizeSlugForCache(slug: string): string {
     slug
       .trim()
       .toLowerCase()
-      .replace(/[^a-z0-9/_-]/g, '-')
+      .replace(/[^a-z0-9/_[\]-]/g, '-')
       .replace(/^\/+|\/+$/g, '') || 'home'
   );
 }
@@ -3740,10 +3810,12 @@ function App() {
     basePath: APP_BASE_PATH,
     registry: ComponentRegistry as JsonPagesConfig['registry'],
     schemas: SECTION_SCHEMAS as unknown as JsonPagesConfig['schemas'],
+    collectionSchemas: CollectionRegistry as unknown as JsonPagesConfig['collectionSchemas'],
     pages,
     siteConfig,
     themeConfig,
     menuConfig,
+    collections,
     refDocuments,
     themeCss: { tenant: resolvedTenantCss },
     iconRegistry: iconMap,
@@ -3780,6 +3852,7 @@ function App() {
             slug,
             page: state.page,
             siteConfig: state.site,
+            collections: state.collections,
           }),
         });
         const body = (await res.json().catch(() => ({}))) as { error?: string; code?: string };
@@ -3793,6 +3866,7 @@ function App() {
           keyFingerprint,
           savedAt: Date.now(),
           siteConfig: state.site ?? null,
+          collections: state.collections,
           pages: {
             ...(existing?.pages ?? {}),
             [normalizedSlug]: state.page,
@@ -4039,6 +4113,39 @@ export default App;
 
 END_OF_FILE_CONTENT
 # SKIP: src/App.tsx:Zone.Identifier is binary and cannot be embedded as text.
+mkdir -p "src/collections"
+mkdir -p "src/collections/libri"
+echo "Creating src/collections/libri/index.ts..."
+cat << 'END_OF_FILE_CONTENT' > "src/collections/libri/index.ts"
+export { LibroSchema, LibriCollectionSchema } from './schema';
+export type { Libro, LibriCollection } from './types';
+
+END_OF_FILE_CONTENT
+echo "Creating src/collections/libri/schema.ts..."
+cat << 'END_OF_FILE_CONTENT' > "src/collections/libri/schema.ts"
+import { z } from 'zod';
+import { BaseCollectionItem } from '@olonjs/core';
+
+export const LibroSchema = BaseCollectionItem.extend({
+  title: z.string().describe('ui:text'),
+  author: z.string().describe('ui:text'),
+  year: z.number().describe('ui:number'),
+  genre: z.string().describe('ui:text'),
+  summary: z.string().describe('ui:textarea'),
+});
+
+export const LibriCollectionSchema = z.record(z.string(), LibroSchema);
+
+END_OF_FILE_CONTENT
+echo "Creating src/collections/libri/types.ts..."
+cat << 'END_OF_FILE_CONTENT' > "src/collections/libri/types.ts"
+import { z } from 'zod';
+import { LibroSchema, LibriCollectionSchema } from './schema';
+
+export type Libro = z.infer<typeof LibroSchema>;
+export type LibriCollection = z.infer<typeof LibriCollectionSchema>;
+
+END_OF_FILE_CONTENT
 mkdir -p "src/components"
 echo "Creating src/components/ThemeProvider.tsx..."
 cat << 'END_OF_FILE_CONTENT' > "src/components/ThemeProvider.tsx"
@@ -4103,6 +4210,221 @@ export function useTheme() {
 }
 
 END_OF_FILE_CONTENT
+mkdir -p "src/components/book-detail"
+echo "Creating src/components/book-detail/View.tsx..."
+cat << 'END_OF_FILE_CONTENT' > "src/components/book-detail/View.tsx"
+import type { BookDetailData } from './types';
+
+type BookDetailViewProps = {
+  data: BookDetailData;
+};
+
+export function BookDetailView({ data }: BookDetailViewProps) {
+  const book = data.item;
+
+  return (
+    <main className="min-h-screen bg-background text-foreground px-6 py-16">
+      <article
+        data-jp-field="item"
+        data-jp-item-id={book.id}
+        data-jp-item-field="item"
+        className="mx-auto w-full max-w-3xl rounded-2xl border border-border bg-card p-8 shadow-sm"
+      >
+        <a
+          href="/libri"
+          className="text-sm font-medium text-muted-foreground hover:text-foreground"
+        >
+          {data.backLabel}
+        </a>
+        <p className="mt-10 text-sm font-medium uppercase tracking-[0.18em] text-muted-foreground">
+          {book.genre} · {book.year}
+        </p>
+        <h1 className="mt-3 text-4xl font-semibold tracking-tight sm:text-5xl">
+          {book.title}
+        </h1>
+        <p className="mt-4 text-lg text-muted-foreground">
+          {book.author}
+        </p>
+        <p className="mt-8 text-base leading-8 text-muted-foreground">
+          {book.summary}
+        </p>
+      </article>
+    </main>
+  );
+}
+
+END_OF_FILE_CONTENT
+echo "Creating src/components/book-detail/index.ts..."
+cat << 'END_OF_FILE_CONTENT' > "src/components/book-detail/index.ts"
+export * from './View';
+export * from './schema';
+export * from './types';
+
+END_OF_FILE_CONTENT
+echo "Creating src/components/book-detail/schema.ts..."
+cat << 'END_OF_FILE_CONTENT' > "src/components/book-detail/schema.ts"
+import { z } from 'zod';
+import { BaseSectionData } from '@olonjs/core';
+import { LibroSchema } from '@/collections/libri';
+
+export const BookDetailSchema = BaseSectionData.extend({
+  item: LibroSchema.describe('ui:collection-ref'),
+  backLabel: z.string().default('Torna ai libri').describe('ui:text'),
+});
+
+export const BookDetailSettingsSchema = z.object({});
+
+END_OF_FILE_CONTENT
+echo "Creating src/components/book-detail/types.ts..."
+cat << 'END_OF_FILE_CONTENT' > "src/components/book-detail/types.ts"
+import { z } from 'zod';
+import { BookDetailSchema, BookDetailSettingsSchema } from './schema';
+
+export type BookDetailData = z.infer<typeof BookDetailSchema>;
+export type BookDetailSettings = z.infer<typeof BookDetailSettingsSchema>;
+
+END_OF_FILE_CONTENT
+mkdir -p "src/components/books-list"
+echo "Creating src/components/books-list/View.tsx..."
+cat << 'END_OF_FILE_CONTENT' > "src/components/books-list/View.tsx"
+import { useMemo, useState } from 'react';
+import type { Libro } from '@/collections/libri';
+import type { BooksListData } from './types';
+
+type BooksListViewProps = {
+  data: BooksListData;
+};
+
+function toBooks(items: BooksListData['items']): Libro[] {
+  return Object.values(items ?? {}).sort((a, b) => a.title.localeCompare(b.title));
+}
+
+export function BooksListView({ data }: BooksListViewProps) {
+  const books = useMemo(() => toBooks(data.items), [data.items]);
+  const pageSize = Math.max(1, Math.floor(data.pageSize || 10));
+  const totalPages = Math.max(1, Math.ceil(books.length / pageSize));
+  const [page, setPage] = useState(1);
+  const currentPage = Math.min(page, totalPages);
+  const startIndex = (currentPage - 1) * pageSize;
+  const visibleBooks = books.slice(startIndex, startIndex + pageSize);
+
+  return (
+    <main className="min-h-screen bg-background text-foreground px-6 py-16">
+      <section className="mx-auto flex w-full max-w-5xl flex-col gap-10">
+        <div className="max-w-2xl">
+          {data.eyebrow && (
+            <p
+              data-jp-field="eyebrow"
+              className="text-sm font-medium uppercase tracking-[0.18em] text-muted-foreground"
+            >
+              {data.eyebrow}
+            </p>
+          )}
+          <h1
+            data-jp-field="title"
+            className="mt-3 text-4xl font-semibold tracking-tight sm:text-5xl"
+          >
+            {data.title}
+          </h1>
+          {data.description && (
+            <p
+              data-jp-field="description"
+              className="mt-4 text-base leading-7 text-muted-foreground"
+            >
+              {data.description}
+            </p>
+          )}
+        </div>
+
+        <div data-jp-field="items" className="grid gap-4">
+          {visibleBooks.map((book) => (
+            <article
+              key={book.id}
+              data-jp-item-id={book.id}
+              data-jp-item-field="items"
+              className="rounded-xl border border-border bg-card p-5 shadow-sm"
+            >
+              <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+                <div>
+                  <h2 className="text-xl font-semibold">{book.title}</h2>
+                  <p className="mt-1 text-sm text-muted-foreground">
+                    {book.author} · {book.year} · {book.genre}
+                  </p>
+                  <p className="mt-3 max-w-3xl text-sm leading-6 text-muted-foreground">
+                    {book.summary}
+                  </p>
+                </div>
+                <a
+                  href={`/libri/${book.id}`}
+                  className="inline-flex shrink-0 items-center justify-center rounded-md border border-border px-3 py-2 text-sm font-medium hover:bg-muted"
+                >
+                  Apri scheda
+                </a>
+              </div>
+            </article>
+          ))}
+        </div>
+
+        <nav className="flex items-center justify-between border-t border-border pt-6 text-sm">
+          <button
+            type="button"
+            onClick={() => setPage((value) => Math.max(1, value - 1))}
+            disabled={currentPage === 1}
+            className="rounded-md border border-border px-3 py-2 font-medium disabled:cursor-not-allowed disabled:opacity-40 hover:bg-muted"
+          >
+            Precedente
+          </button>
+          <span className="text-muted-foreground">
+            Pagina {currentPage} di {totalPages} · {books.length} libri
+          </span>
+          <button
+            type="button"
+            onClick={() => setPage((value) => Math.min(totalPages, value + 1))}
+            disabled={currentPage === totalPages}
+            className="rounded-md border border-border px-3 py-2 font-medium disabled:cursor-not-allowed disabled:opacity-40 hover:bg-muted"
+          >
+            Successiva
+          </button>
+        </nav>
+      </section>
+    </main>
+  );
+}
+
+END_OF_FILE_CONTENT
+echo "Creating src/components/books-list/index.ts..."
+cat << 'END_OF_FILE_CONTENT' > "src/components/books-list/index.ts"
+export * from './View';
+export * from './schema';
+export * from './types';
+
+END_OF_FILE_CONTENT
+echo "Creating src/components/books-list/schema.ts..."
+cat << 'END_OF_FILE_CONTENT' > "src/components/books-list/schema.ts"
+import { z } from 'zod';
+import { BaseSectionData } from '@olonjs/core';
+import { LibroSchema } from '@/collections/libri';
+
+export const BooksListSchema = BaseSectionData.extend({
+  eyebrow: z.string().optional().describe('ui:text'),
+  title: z.string().describe('ui:text'),
+  description: z.string().optional().describe('ui:textarea'),
+  items: z.record(z.string(), LibroSchema).describe('ui:collection-ref'),
+  pageSize: z.number().default(10).describe('ui:number'),
+});
+
+export const BooksListSettingsSchema = z.object({});
+
+END_OF_FILE_CONTENT
+echo "Creating src/components/books-list/types.ts..."
+cat << 'END_OF_FILE_CONTENT' > "src/components/books-list/types.ts"
+import { z } from 'zod';
+import { BooksListSchema, BooksListSettingsSchema } from './schema';
+
+export type BooksListData = z.infer<typeof BooksListSchema>;
+export type BooksListSettings = z.infer<typeof BooksListSettingsSchema>;
+
+END_OF_FILE_CONTENT
 mkdir -p "src/components/empty-tenant"
 echo "Creating src/components/empty-tenant/View.tsx..."
 cat << 'END_OF_FILE_CONTENT' > "src/components/empty-tenant/View.tsx"
@@ -4154,6 +4476,123 @@ import { EmptyTenantSchema, EmptyTenantSettingsSchema } from './schema';
 
 export type EmptyTenantData = z.infer<typeof EmptyTenantSchema>;
 export type EmptyTenantSettings = z.infer<typeof EmptyTenantSettingsSchema>;
+
+END_OF_FILE_CONTENT
+mkdir -p "src/components/footer"
+echo "Creating src/components/footer/View.tsx..."
+cat << 'END_OF_FILE_CONTENT' > "src/components/footer/View.tsx"
+import type React from 'react';
+import type { FooterData, FooterSettings } from './types';
+
+type FooterViewProps = {
+  data: FooterData;
+  settings?: FooterSettings;
+};
+
+export function FooterView({ data, settings }: FooterViewProps) {
+  const links = data.links ?? [];
+
+  return (
+    <footer
+      style={{
+        '--local-bg': 'var(--background)',
+        '--local-text': 'var(--foreground)',
+        '--local-muted': 'var(--muted-foreground)',
+        '--local-border': 'var(--border)',
+      } as React.CSSProperties}
+      className="border-t border-[var(--local-border)] bg-[var(--local-bg)] px-6 py-10 text-[var(--local-text)]"
+    >
+      <div className="mx-auto flex w-full max-w-5xl flex-col gap-8 md:flex-row md:items-end md:justify-between">
+        <div className="max-w-md">
+          <div className="flex items-center gap-3">
+            {settings?.showLogo !== false && (
+              <span className="flex h-9 w-9 items-center justify-center rounded-lg border border-[var(--local-border)] text-sm font-semibold">
+                O
+              </span>
+            )}
+            <p data-jp-field="brandText" className="text-lg font-semibold tracking-tight">
+              {data.brandText}
+            </p>
+          </div>
+          {data.description && (
+            <p data-jp-field="description" className="mt-3 text-sm leading-6 text-[var(--local-muted)]">
+              {data.description}
+            </p>
+          )}
+          <p data-jp-field="copyright" className="mt-4 text-xs text-[var(--local-muted)]">
+            {data.copyright}
+          </p>
+        </div>
+
+        <nav data-jp-field="links" className="flex flex-wrap gap-4 text-sm">
+          {links.map((link) => (
+            <a
+              key={link.id}
+              data-jp-item-id={link.id}
+              data-jp-item-field="links"
+              href={link.href}
+              target={link.external ? '_blank' : undefined}
+              rel={link.external ? 'noreferrer' : undefined}
+              className="text-[var(--local-muted)] transition-colors hover:text-[var(--local-text)]"
+            >
+              {link.label}
+            </a>
+          ))}
+          {data.designSystemHref && (
+            <a
+              data-jp-field="designSystemHref"
+              href={data.designSystemHref}
+              className="text-[var(--local-muted)] transition-colors hover:text-[var(--local-text)]"
+            >
+              Design system
+            </a>
+          )}
+        </nav>
+      </div>
+    </footer>
+  );
+}
+
+END_OF_FILE_CONTENT
+echo "Creating src/components/footer/index.ts..."
+cat << 'END_OF_FILE_CONTENT' > "src/components/footer/index.ts"
+export * from './View';
+export * from './schema';
+export * from './types';
+
+END_OF_FILE_CONTENT
+echo "Creating src/components/footer/schema.ts..."
+cat << 'END_OF_FILE_CONTENT' > "src/components/footer/schema.ts"
+import { z } from 'zod';
+import { BaseArrayItem, BaseSectionData } from '@olonjs/core';
+
+export const FooterLinkSchema = BaseArrayItem.extend({
+  id: z.string(),
+  label: z.string().describe('ui:text'),
+  href: z.string().describe('ui:text'),
+  external: z.boolean().optional(),
+});
+
+export const FooterSchema = BaseSectionData.extend({
+  brandText: z.string().describe('ui:text'),
+  description: z.string().optional().describe('ui:textarea'),
+  copyright: z.string().describe('ui:text'),
+  links: z.array(FooterLinkSchema).default([]).describe('ui:list'),
+  designSystemHref: z.string().optional().describe('ui:text'),
+});
+
+export const FooterSettingsSchema = z.object({
+  showLogo: z.boolean().default(true),
+});
+
+END_OF_FILE_CONTENT
+echo "Creating src/components/footer/types.ts..."
+cat << 'END_OF_FILE_CONTENT' > "src/components/footer/types.ts"
+import { z } from 'zod';
+import { FooterSchema, FooterSettingsSchema } from './schema';
+
+export type FooterData = z.infer<typeof FooterSchema>;
+export type FooterSettings = z.infer<typeof FooterSettingsSchema>;
 
 END_OF_FILE_CONTENT
 mkdir -p "src/components/form-demo"
@@ -8567,6 +9006,253 @@ export { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger }
 END_OF_FILE_CONTENT
 # SKIP: src/components/ui/tooltip.tsx:Zone.Identifier is binary and cannot be embedded as text.
 mkdir -p "src/data"
+mkdir -p "src/data/collections"
+mkdir -p "src/data/collections/libri"
+echo "Creating src/data/collections/libri/libri.json..."
+cat << 'END_OF_FILE_CONTENT' > "src/data/collections/libri/libri.json"
+{
+  "1984": {
+    "id": "1984",
+    "title": "1984",
+    "author": "Guido Seiero",
+    "year": 1949,
+    "genre": "Distopia",
+    "summary": "Un regime totalitario controlla linguaggio, memoria e pensiero."
+  },
+  "il-nome-della-rosa": {
+    "id": "il-nome-della-rosa",
+    "title": "Il nome della rosa",
+    "author": "Umberto Eco",
+    "year": 1980,
+    "genre": "Romanzo storico",
+    "summary": "Un'indagine in un'abbazia medievale diventa una riflessione su conoscenza, potere e interpretazione."
+  },
+  "se-questo-e-un-uomo": {
+    "id": "se-questo-e-un-uomo",
+    "title": "Se questo e un uomo",
+    "author": "Primo Levi",
+    "year": 1947,
+    "genre": "Memoria",
+    "summary": "La testimonianza essenziale di Levi sull'esperienza del lager e sulla dignita umana."
+  },
+  "le-citta-invisibili": {
+    "id": "le-citta-invisibili",
+    "title": "Le citta invisibili",
+    "author": "Italo Calvino",
+    "year": 1972,
+    "genre": "Letteratura fantastica",
+    "summary": "Marco Polo racconta a Kublai Khan citta immaginarie che parlano di memoria, desiderio e linguaggio."
+  },
+  "il-gattopardo": {
+    "id": "il-gattopardo",
+    "title": "Il Gattopardo",
+    "author": "Giuseppe Tomasi di Lampedusa",
+    "year": 1958,
+    "genre": "Romanzo storico",
+    "summary": "Il tramonto dell'aristocrazia siciliana durante l'unificazione italiana."
+  },
+  "la-coscienza-di-zeno": {
+    "id": "la-coscienza-di-zeno",
+    "title": "La coscienza di Zeno",
+    "author": "Italo Svevo",
+    "year": 1923,
+    "genre": "Romanzo psicologico",
+    "summary": "Un diario ironico e nevrotico attraversa memoria, terapia e autoinganno."
+  },
+  "i-promessi-sposi": {
+    "id": "i-promessi-sposi",
+    "title": "I promessi sposi",
+    "author": "Alessandro Manzoni",
+    "year": 1842,
+    "genre": "Classico",
+    "summary": "La vicenda di Renzo e Lucia dentro carestia, guerra, peste e provvidenza."
+  },
+  "il-barone-rampante": {
+    "id": "il-barone-rampante",
+    "title": "Il barone rampante",
+    "author": "Italo Calvino",
+    "year": 1957,
+    "genre": "Romanzo filosofico",
+    "summary": "Cosimo sceglie di vivere sugli alberi e trasforma la distanza in una forma di liberta."
+  },
+  "gomorra": {
+    "id": "gomorra",
+    "title": "Gomorra",
+    "author": "Roberto Saviano",
+    "year": 2006,
+    "genre": "Inchiesta",
+    "summary": "Un reportage narrativo sulle economie e le violenze del sistema camorristico."
+  },
+  "oceano-mare": {
+    "id": "oceano-mare",
+    "title": "Oceano mare",
+    "author": "Alessandro Baricco",
+    "year": 1993,
+    "genre": "Romanzo letterario",
+    "summary": "Storie diverse si incontrano in una locanda sul mare, tra cura, naufragio e mistero."
+  },
+  "lessico-famigliare": {
+    "id": "lessico-famigliare",
+    "title": "Lessico famigliare",
+    "author": "Natalia Ginzburg",
+    "year": 1963,
+    "genre": "Memoria narrativa",
+    "summary": "Una famiglia prende forma attraverso parole, tic linguistici e memoria civile."
+  },
+  "cent-anni-di-solitudine": {
+    "id": "cent-anni-di-solitudine",
+    "title": "Cent'anni di solitudine",
+    "author": "Gabriel Garcia Marquez",
+    "year": 1967,
+    "genre": "Realismo magico",
+    "summary": "La saga dei Buendia e di Macondo intreccia mito, storia e destino."
+  },
+  "fahrenheit-451": {
+    "id": "fahrenheit-451",
+    "title": "Fahrenheit 451",
+    "author": "Ray Bradbury",
+    "year": 1953,
+    "genre": "Distopia",
+    "summary": "In un futuro dove i libri bruciano, leggere diventa un atto di resistenza."
+  },
+  "dune": {
+    "id": "dune",
+    "title": "Dune",
+    "author": "Frank Herbert",
+    "year": 1965,
+    "genre": "Fantascienza",
+    "summary": "Politica, ecologia e messianismo si scontrano sul pianeta desertico Arrakis."
+  },
+  "neuromancer": {
+    "id": "neuromancer",
+    "title": "Neuromancer",
+    "author": "William Gibson",
+    "year": 1984,
+    "genre": "Cyberpunk",
+    "summary": "Un hacker decaduto viene trascinato in un colpo che attraversa cyberspazio e intelligenze artificiali."
+  },
+  "il-signore-degli-anelli": {
+    "id": "il-signore-degli-anelli",
+    "title": "Il Signore degli Anelli",
+    "author": "J. R. R. Tolkien",
+    "year": 1954,
+    "genre": "Fantasy",
+    "summary": "La Compagnia affronta il potere dell'Anello in una delle grandi epopee moderne."
+  },
+  "harry-potter-e-la-pietra-filosofale": {
+    "id": "harry-potter-e-la-pietra-filosofale",
+    "title": "Harry Potter e la pietra filosofale",
+    "author": "J. K. Rowling",
+    "year": 1997,
+    "genre": "Fantasy",
+    "summary": "Un ragazzo scopre il mondo magico e il proprio posto in una storia piu grande."
+  },
+  "orgoglio-e-pregiudizio": {
+    "id": "orgoglio-e-pregiudizio",
+    "title": "Orgoglio e pregiudizio",
+    "author": "Jane Austen",
+    "year": 1813,
+    "genre": "Classico",
+    "summary": "Elizabeth Bennet e Mr. Darcy si misurano con classe, carattere e giudizio sociale."
+  },
+  "moby-dick": {
+    "id": "moby-dick",
+    "title": "Moby Dick",
+    "author": "Herman Melville",
+    "year": 1851,
+    "genre": "Avventura",
+    "summary": "La caccia alla balena bianca diventa ossessione metafisica e viaggio nell'abisso."
+  },
+  "delitto-e-castigo": {
+    "id": "delitto-e-castigo",
+    "title": "Delitto e castigo",
+    "author": "Fedor Dostoevskij",
+    "year": 1866,
+    "genre": "Romanzo psicologico",
+    "summary": "Raskolnikov attraversa colpa, febbre morale e possibilita di redenzione."
+  },
+  "anna-karenina": {
+    "id": "anna-karenina",
+    "title": "Anna Karenina",
+    "author": "Lev Tolstoj",
+    "year": 1877,
+    "genre": "Classico",
+    "summary": "Una storia d'amore e rovina dentro la societa russa dell'Ottocento."
+  },
+  "il-maestro-e-margherita": {
+    "id": "il-maestro-e-margherita",
+    "title": "Il maestro e Margherita",
+    "author": "Michail Bulgakov",
+    "year": 1967,
+    "genre": "Satira fantastica",
+    "summary": "Il diavolo visita Mosca in un romanzo visionario su arte, censura e amore."
+  },
+  "la-strada": {
+    "id": "la-strada",
+    "title": "La strada",
+    "author": "Cormac McCarthy",
+    "year": 2006,
+    "genre": "Post-apocalittico",
+    "summary": "Padre e figlio attraversano un mondo bruciato portando con se una fragile idea di bene."
+  },
+  "cloud-atlas": {
+    "id": "cloud-atlas",
+    "title": "Cloud Atlas",
+    "author": "David Mitchell",
+    "year": 2004,
+    "genre": "Romanzo corale",
+    "summary": "Sei storie in epoche diverse compongono una meditazione su potere, memoria e reincorrenza."
+  },
+  "kafka-sulla-spiaggia": {
+    "id": "kafka-sulla-spiaggia",
+    "title": "Kafka sulla spiaggia",
+    "author": "Haruki Murakami",
+    "year": 2002,
+    "genre": "Surrealismo",
+    "summary": "Fuga, destino e sogno si intrecciano in un romanzo sospeso tra reale e mitico."
+  },
+  "americanah": {
+    "id": "americanah",
+    "title": "Americanah",
+    "author": "Chimamanda Ngozi Adichie",
+    "year": 2013,
+    "genre": "Romanzo contemporaneo",
+    "summary": "Migrazione, razza e identita raccontate attraverso una storia d'amore tra Nigeria e Stati Uniti."
+  },
+  "la-casa-degli-spiriti": {
+    "id": "la-casa-degli-spiriti",
+    "title": "La casa degli spiriti",
+    "author": "Isabel Allende",
+    "year": 1982,
+    "genre": "Saga familiare",
+    "summary": "La storia della famiglia Trueba intreccia politica, memoria e realismo magico."
+  },
+  "beloved": {
+    "id": "beloved",
+    "title": "Beloved",
+    "author": "Toni Morrison",
+    "year": 1987,
+    "genre": "Romanzo storico",
+    "summary": "Il trauma della schiavitu ritorna come presenza viva nella casa di Sethe."
+  },
+  "la-breve-favolosa-vita-di-oscar-wao": {
+    "id": "la-breve-favolosa-vita-di-oscar-wao",
+    "title": "La breve favolosa vita di Oscar Wao",
+    "author": "Junot Diaz",
+    "year": 2007,
+    "genre": "Romanzo contemporaneo",
+    "summary": "Famiglia, diaspora dominicana e cultura pop si intrecciano nella storia di Oscar."
+  },
+  "le-correzioni": {
+    "id": "le-correzioni",
+    "title": "Le correzioni",
+    "author": "Jonathan Franzen",
+    "year": 2001,
+    "genre": "Romanzo familiare",
+    "summary": "Una famiglia americana tenta di ritrovarsi mentre ciascuno affronta le proprie fratture."
+  }
+}
+END_OF_FILE_CONTENT
 mkdir -p "src/data/config"
 echo "Creating src/data/config/menu.json..."
 cat << 'END_OF_FILE_CONTENT' > "src/data/config/menu.json"
@@ -8591,6 +9277,24 @@ cat << 'END_OF_FILE_CONTENT' > "src/data/config/menu.json"
     {
       "label": "GitHub",
       "href": "https://github.com/olonjs/core"
+    }
+  ],
+  "footer": [
+    {
+      "id": "footer-home",
+      "label": "Home",
+      "href": "/"
+    },
+    {
+      "id": "footer-libri",
+      "label": "Libri",
+      "href": "/libri"
+    },
+    {
+      "id": "footer-github",
+      "label": "GitHub",
+      "href": "https://github.com/olonjs/core",
+      "external": true
     }
   ]
 }
@@ -8647,7 +9351,6 @@ cat << 'END_OF_FILE_CONTENT' > "src/data/config/site.json"
     "title": "OlonJS",
     "logoUrl": "/brand/mark/olon-mark-dark.svg"
   },
-  
   "header": {
     "id": "global-header",
     "type": "header",
@@ -8686,13 +9389,11 @@ cat << 'END_OF_FILE_CONTENT' > "src/data/config/site.json"
     "type": "footer",
     "data": {
       "brandText": "OlonJS",
+      "description": "AI-native content infrastructure for deterministic, sovereign, git-backed sites.",
       "copyright": "© 2026 OlonJS · v1.5 · Guido Serio",
-      "links": [
-        {
-          "label": "GitHub",
-          "href": "https://github.com/olonjs/core"
-        }
-      ],
+      "links": {
+        "$ref": "../config/menu.json#/footer"
+      },
       "designSystemHref": ""
     },
     "settings": {
@@ -8893,6 +9594,65 @@ cat << 'END_OF_FILE_CONTENT' > "src/data/pages/home.json"
       }
     }
   ],
+  "global-header": false
+}
+END_OF_FILE_CONTENT
+mkdir -p "src/data/pages/libri"
+echo "Creating src/data/pages/libri.json..."
+cat << 'END_OF_FILE_CONTENT' > "src/data/pages/libri.json"
+{
+  "id": "libri-page",
+  "slug": "libri",
+  "meta": {
+    "title": "Libri",
+    "description": "Catalogo libri dimostrativo alimentato da COP collections."
+  },
+  "sections": [
+    {
+      "id": "books-list-1",
+      "type": "books-list",
+      "data": {
+        "anchorId": "catalogo-libri",
+        "eyebrow": "Collection demo",
+        "title": "Libri",
+        "description": "Una pagina collection con 30 titoli, paginazione lato componente e link alle schede dinamiche.",
+        "items": {
+          "$ref": "../collections/libri/libri.json"
+        },
+        "pageSize": 10
+      }
+    }
+  ],
+  "global-header": false
+}
+
+END_OF_FILE_CONTENT
+echo "Creating src/data/pages/libri/[slug].json..."
+cat << 'END_OF_FILE_CONTENT' > "src/data/pages/libri/[slug].json"
+{
+  "id": "libro-detail-page",
+  "slug": "libri/[slug]",
+  "meta": {
+    "title": "Dettaglio libro",
+    "description": "Pagina dinamica dettaglio libro alimentata dalla collection libri."
+  },
+  "sections": [
+    {
+      "id": "book-detail-1",
+      "type": "book-detail",
+      "data": {
+        "anchorId": "dettaglio-libro",
+        "item": {
+          "$ref": "collection:current"
+        },
+        "backLabel": "← Torna ai libri"
+      }
+    }
+  ],
+  "collection": {
+    "source": "libri",
+    "paramKey": "slug"
+  },
   "global-header": false
 }
 END_OF_FILE_CONTENT
@@ -9213,12 +9973,19 @@ echo "Creating src/entry-ssg.tsx..."
 cat << 'END_OF_FILE_CONTENT' > "src/entry-ssg.tsx"
 import { renderToString } from 'react-dom/server';
 import { StaticRouter } from 'react-router-dom/server';
-import { ConfigProvider, PageRenderer, StudioProvider, resolveRuntimeConfig } from '@olonjs/core';
+import {
+  ConfigProvider,
+  PageRenderer,
+  StudioProvider,
+  contract,
+  resolvePageMatchFromRegistry,
+  resolveRuntimeConfig,
+} from '@olonjs/core';
 import type { JsonPagesConfig, PageConfig, SiteConfig, ThemeConfig } from '@/types';
 import { ThemeProvider } from '@/components/ThemeProvider';
 import { ComponentRegistry } from '@/lib/ComponentRegistry';
 import { SECTION_SCHEMAS } from '@/lib/schemas';
-import { menuConfig, pages, refDocuments, siteConfig, themeConfig } from '@/runtime';
+import { collectionSchemas, collections, menuConfig, pages, refDocuments, siteConfig, themeConfig } from '@/runtime';
 import tenantCss from '@/index.css?inline';
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -9233,10 +10000,16 @@ function getSortedSlugs(): string[] {
   return Object.keys(pages).sort((a, b) => a.localeCompare(b));
 }
 
-function resolvePage(slug: string): { slug: string; page: PageConfig } {
+function resolvePage(slug: string): { slug: string; registrySlug: string; page: PageConfig; params: Record<string, string> } {
   const normalized = normalizeSlug(slug);
-  if (normalized && pages[normalized]) {
-    return { slug: normalized, page: pages[normalized] };
+  const pageMatch = resolvePageMatchFromRegistry(pages, normalized);
+  if (pageMatch) {
+    return {
+      slug: normalized || pageMatch.registrySlug,
+      registrySlug: pageMatch.registrySlug,
+      page: pageMatch.page,
+      params: pageMatch.params,
+    };
   }
 
   const slugs = getSortedSlugs();
@@ -9246,7 +10019,7 @@ function resolvePage(slug: string): { slug: string; page: PageConfig } {
 
   const home = slugs.find((item) => item === 'home');
   const fallbackSlug = home ?? slugs[0];
-  return { slug: fallbackSlug, page: pages[fallbackSlug] };
+  return { slug: fallbackSlug, registrySlug: fallbackSlug, page: pages[fallbackSlug], params: {} };
 }
 
 function flattenThemeTokens(
@@ -9334,14 +10107,18 @@ function resolveTenantId(): string {
 export function render(slug: string): string {
   const resolved = resolvePage(slug);
   const location = resolved.slug === 'home' ? '/' : `/${resolved.slug}`;
+  const collectionContext = contract.resolveCollectionContext(resolved.page, resolved.params, collections);
   const resolvedRuntime = resolveRuntimeConfig({
-    pages,
+    pages: { [resolved.registrySlug]: resolved.page },
     siteConfig,
     themeConfig,
     menuConfig,
+    collections,
+    collectionSchemas,
+    collectionContext,
     refDocuments,
   });
-  const resolvedPage = resolvedRuntime.pages[resolved.slug] ?? resolved.page;
+  const resolvedPage = resolvedRuntime.pages[resolved.registrySlug] ?? resolved.page;
 
   return renderToString(
     <StaticRouter location={location}>
@@ -9391,12 +10168,22 @@ export function getPageMeta(slug: string): { title: string; description: string 
 export function getWebMcpBuildState(): {
   pages: Record<string, PageConfig>;
   schemas: JsonPagesConfig['schemas'];
+  collections: JsonPagesConfig['collections'];
+  collectionSchemas: JsonPagesConfig['collectionSchemas'];
   siteConfig: SiteConfig;
+  themeConfig: ThemeConfig;
+  menuConfig: JsonPagesConfig['menuConfig'];
+  refDocuments: JsonPagesConfig['refDocuments'];
 } {
   return {
     pages,
     schemas: SECTION_SCHEMAS as unknown as JsonPagesConfig['schemas'],
+    collections,
+    collectionSchemas,
     siteConfig,
+    themeConfig,
+    menuConfig,
+    refDocuments,
   };
 }
 
@@ -10344,17 +11131,34 @@ cat << 'END_OF_FILE_CONTENT' > "src/index.css"
 
 END_OF_FILE_CONTENT
 mkdir -p "src/lib"
+echo "Creating src/lib/CollectionRegistry.ts..."
+cat << 'END_OF_FILE_CONTENT' > "src/lib/CollectionRegistry.ts"
+import { LibriCollectionSchema } from '@/collections/libri';
+
+export const CollectionRegistry = {
+  libri: LibriCollectionSchema,
+} as const;
+
+export type CollectionType = keyof typeof CollectionRegistry;
+
+END_OF_FILE_CONTENT
 echo "Creating src/lib/ComponentRegistry.tsx..."
 cat << 'END_OF_FILE_CONTENT' > "src/lib/ComponentRegistry.tsx"
 import type { SectionType } from '@/types';
 import type { SectionComponentPropsMap } from '@/types';
+import { BookDetailView } from '@/components/book-detail';
+import { BooksListView } from '@/components/books-list';
 import { EmptyTenantView } from '@/components/empty-tenant';
+import { FooterView } from '@/components/footer';
 import { FormDemoView } from '@/components/form-demo';
 
 export const ComponentRegistry: {
   [K in SectionType]: React.FC<SectionComponentPropsMap[K]>;
 } = {
+  'book-detail': BookDetailView as React.FC<SectionComponentPropsMap['book-detail']>,
+  'books-list': BooksListView as React.FC<SectionComponentPropsMap['books-list']>,
   'empty-tenant': EmptyTenantView as React.FC<SectionComponentPropsMap['empty-tenant']>,
+  footer: FooterView as React.FC<SectionComponentPropsMap['footer']>,
   'form-demo': FormDemoView as React.FC<SectionComponentPropsMap['form-demo']>,
 };
 
@@ -10423,19 +11227,43 @@ echo "Creating src/lib/addSectionConfig.ts..."
 cat << 'END_OF_FILE_CONTENT' > "src/lib/addSectionConfig.ts"
 import type { AddSectionConfig } from '@olonjs/core';
 
-const addableSectionTypes = ['empty-tenant', 'form-demo'] as const;
+const addableSectionTypes = ['book-detail', 'books-list', 'empty-tenant', 'footer', 'form-demo'] as const;
 
 const sectionTypeLabels: Record<string, string> = {
+  'book-detail': 'Book Detail',
+  'books-list': 'Books List',
   'empty-tenant': 'Empty Tenant',
+  footer: 'Footer',
   'form-demo': 'Form Demo',
 };
 
 function getDefaultSectionData(type: string): Record<string, unknown> {
   switch (type) {
+    case 'book-detail':
+      return {
+        item: { $ref: 'collection:current' },
+        backLabel: 'Torna ai libri',
+      };
+    case 'books-list':
+      return {
+        eyebrow: 'Collection demo',
+        title: 'Libri',
+        description: 'Catalogo dimostrativo alimentato dalla collection libri.',
+        items: { $ref: '../collections/libri/libri.json' },
+        pageSize: 10,
+      };
     case 'empty-tenant':
       return {
         title: 'Your tenant is empty.',
         description: 'Create your first page to start building your site.',
+      };
+    case 'footer':
+      return {
+        brandText: 'OlonJS',
+        description: 'AI-native content infrastructure for deterministic, git-backed sites.',
+        copyright: '© 2026 OlonJS',
+        links: [],
+        designSystemHref: '',
       };
     case 'form-demo':
       return {
@@ -10535,11 +11363,17 @@ export function getFilePages(): Record<string, PageConfig> {
 END_OF_FILE_CONTENT
 echo "Creating src/lib/schemas.ts..."
 cat << 'END_OF_FILE_CONTENT' > "src/lib/schemas.ts"
+import { BookDetailSchema } from '@/components/book-detail';
+import { BooksListSchema } from '@/components/books-list';
 import { EmptyTenantSchema } from '@/components/empty-tenant';
+import { FooterSchema } from '@/components/footer';
 import { FormDemoSchema, FormDemoSubmissionSchema } from '@/components/form-demo';
 
 export const SECTION_SCHEMAS = {
+  'book-detail': BookDetailSchema,
+  'books-list': BooksListSchema,
   'empty-tenant': EmptyTenantSchema,
+  footer: FooterSchema,
   'form-demo': FormDemoSchema,
 } as const;
 
@@ -10559,6 +11393,7 @@ export type SectionType = keyof typeof SECTION_SCHEMAS;
 export {
   BaseSectionData,
   BaseArrayItem,
+  BaseCollectionItem,
   BaseSectionSettingsSchema,
   CtaSchema,
   ImageSelectionSchema,
@@ -10817,16 +11652,22 @@ END_OF_FILE_CONTENT
 echo "Creating src/runtime.ts..."
 cat << 'END_OF_FILE_CONTENT' > "src/runtime.ts"
 import type { JsonPagesConfig, MenuConfig, PageConfig, SiteConfig, ThemeConfig } from '@/types';
+import { CollectionRegistry } from '@/lib/CollectionRegistry';
 import { SECTION_SCHEMAS } from '@/lib/schemas';
 import { getFilePages } from '@/lib/getFilePages';
 import siteData from '@/data/config/site.json';
 import menuData from '@/data/config/menu.json';
 import themeData from '@/data/config/theme.json';
+import libriData from '@/data/collections/libri/libri.json';
 
 export const siteConfig = siteData as unknown as SiteConfig;
 export const themeConfig = themeData as unknown as ThemeConfig;
 export const menuConfig = menuData as unknown as MenuConfig;
 export const pages = getFilePages();
+export const collections = {
+  libri: libriData as unknown as Record<string, unknown>,
+} satisfies NonNullable<JsonPagesConfig['collections']>;
+export const collectionSchemas = CollectionRegistry as unknown as JsonPagesConfig['collectionSchemas'];
 export const refDocuments = {
   'menu.json': menuConfig,
   'config/menu.json': menuConfig,
@@ -10836,12 +11677,22 @@ export const refDocuments = {
 export function getWebMcpBuildState(): {
   pages: Record<string, PageConfig>;
   schemas: JsonPagesConfig['schemas'];
+  collectionSchemas: JsonPagesConfig['collectionSchemas'];
+  collections: JsonPagesConfig['collections'];
   siteConfig: SiteConfig;
+  themeConfig: ThemeConfig;
+  menuConfig: MenuConfig;
+  refDocuments: JsonPagesConfig['refDocuments'];
 } {
   return {
     pages,
     schemas: SECTION_SCHEMAS as unknown as JsonPagesConfig['schemas'],
+    collectionSchemas,
+    collections,
     siteConfig,
+    themeConfig,
+    menuConfig,
+    refDocuments,
   };
 }
 
@@ -10849,22 +11700,38 @@ END_OF_FILE_CONTENT
 # SKIP: src/runtime.ts:Zone.Identifier is binary and cannot be embedded as text.
 echo "Creating src/types.ts..."
 cat << 'END_OF_FILE_CONTENT' > "src/types.ts"
+import type { BookDetailData, BookDetailSettings } from '@/components/book-detail';
+import type { BooksListData, BooksListSettings } from '@/components/books-list';
 import type { EmptyTenantData, EmptyTenantSettings } from '@/components/empty-tenant';
+import type { FooterData, FooterSettings } from '@/components/footer';
 import type { FormDemoData, FormDemoSettings } from '@/components/form-demo';
+import type { Libro } from '@/collections/libri';
 
 export type SectionComponentPropsMap = {
+  'book-detail': { data: BookDetailData; settings?: BookDetailSettings };
+  'books-list': { data: BooksListData; settings?: BooksListSettings };
   'empty-tenant': { data: EmptyTenantData; settings?: EmptyTenantSettings };
+  footer: { data: FooterData; settings?: FooterSettings };
   'form-demo': { data: FormDemoData; settings?: FormDemoSettings };
 };
 
 declare module '@olonjs/core' {
   export interface SectionDataRegistry {
+    'book-detail': BookDetailData;
+    'books-list': BooksListData;
     'empty-tenant': EmptyTenantData;
+    footer: FooterData;
     'form-demo': FormDemoData;
   }
   export interface SectionSettingsRegistry {
+    'book-detail': BookDetailSettings;
+    'books-list': BooksListSettings;
     'empty-tenant': EmptyTenantSettings;
+    footer: FooterSettings;
     'form-demo': FormDemoSettings;
+  }
+  export interface CollectionItemRegistry {
+    libri: Libro;
   }
 }
 
@@ -11027,6 +11894,7 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ASSETS_IMAGES_DIR = path.resolve(__dirname, 'public', 'assets', 'images');
 const DATA_CONFIG_DIR = path.resolve(__dirname, 'src', 'data', 'config');
 const DATA_PAGES_DIR = path.resolve(__dirname, 'src', 'data', 'pages');
+const DATA_COLLECTIONS_DIR = path.resolve(__dirname, 'src', 'data', 'collections');
 const IMAGE_EXT = new Set(['.jpg', '.jpeg', '.png', '.gif', '.webp', '.svg', '.avif']);
 const IMAGE_MIMES = new Set([
   'image/jpeg', 'image/png', 'image/webp', 'image/gif', 'image/svg+xml', 'image/avif',
@@ -11061,6 +11929,20 @@ function sendJsonFile(res, filePath) {
   } catch (e) {
     sendJson(res, 500, { error: e?.message || 'Read failed' });
   }
+}
+
+function safeDataSlugPath(rootDir, rawSlug, fallback) {
+  const slug = String(rawSlug || fallback)
+    .replace(/\\/g, '/')
+    .replace(/^\/+|\/+$/g, '');
+  const segments = slug
+    .split('/')
+    .map((segment) => segment.replace(/[^a-zA-Z0-9_[\]-]/g, '_'))
+    .filter(Boolean);
+  const candidate = path.resolve(rootDir, `${segments.join(path.sep) || fallback}.json`);
+  const isInsideRoot = candidate.startsWith(`${rootDir}${path.sep}`) || candidate === rootDir;
+  if (!isInsideRoot) throw new Error('Invalid data path');
+  return candidate;
 }
 
 function isTenantPageJsonRequest(req, pathname) {
@@ -11120,15 +12002,23 @@ export default defineConfig({
             const pageManifestMatch = pathname.match(/^\/mcp-manifests\/(.+)\.json$/i);
             if (pageManifestMatch && req.method === 'GET') {
               const slug = normalizeManifestSlug(pageManifestMatch[1]);
-              const pageConfig = buildState.pages[slug];
-              if (!pageConfig) {
+              const resolved = core.resolvePublicPageDocument({
+                slug,
+                pages: buildState.pages,
+                siteConfig: buildState.siteConfig,
+                themeConfig: buildState.themeConfig,
+                menuConfig: buildState.menuConfig,
+                collections: buildState.collections,
+                refDocuments: buildState.refDocuments,
+              });
+              if (!resolved) {
                 sendJson(res, 404, { error: 'Page manifest not found' });
                 return true;
               }
 
               sendJson(res, 200, buildPageManifest({
                 slug,
-                pageConfig,
+                pageConfig: resolved.page,
                 schemas: buildState.schemas,
                 submissionSchemas: buildState.submissionSchemas,
                 siteConfig: buildState.siteConfig,
@@ -11139,15 +12029,23 @@ export default defineConfig({
             const schemaMatch = pathname.match(/^\/schemas\/(.+)\.schema\.json$/i);
             if (schemaMatch && req.method === 'GET') {
               const slug = normalizeManifestSlug(schemaMatch[1]);
-              const pageConfig = buildState.pages[slug];
-              if (!pageConfig) {
+              const resolved = core.resolvePublicPageDocument({
+                slug,
+                pages: buildState.pages,
+                siteConfig: buildState.siteConfig,
+                themeConfig: buildState.themeConfig,
+                menuConfig: buildState.menuConfig,
+                collections: buildState.collections,
+                refDocuments: buildState.refDocuments,
+              });
+              if (!resolved) {
                 sendJson(res, 404, { error: 'Schema contract not found' });
                 return true;
               }
 
               sendJson(res, 200, buildPageContract({
                 slug,
-                pageConfig,
+                pageConfig: resolved.page,
                 schemas: buildState.schemas,
                 submissionSchemas: buildState.submissionSchemas,
                 siteConfig: buildState.siteConfig,
@@ -11188,13 +12086,31 @@ export default defineConfig({
               .replace(/^pages\//i, '')
               .replace(/\.json$/i, '')
               .replace(/^\/+|\/+$/g, '');
-            const candidate = path.resolve(DATA_PAGES_DIR, `${slug}.json`);
-            const isInsidePagesDir = candidate.startsWith(`${DATA_PAGES_DIR}${path.sep}`) || candidate === DATA_PAGES_DIR;
-            if (!slug || !isInsidePagesDir || !fs.existsSync(candidate) || !fs.statSync(candidate).isFile()) {
+            if (!slug) {
               sendJson(res, 404, { error: 'Page JSON not found' });
               return;
             }
-            sendJsonFile(res, candidate);
+            void (async () => {
+              const core = await loadWebMcpBuilders();
+              const runtime = await server.ssrLoadModule('/src/runtime.ts');
+              const buildState = runtime.getWebMcpBuildState();
+              const resolved = core.resolvePublicPageDocument({
+                slug,
+                pages: buildState.pages,
+                siteConfig: buildState.siteConfig,
+                themeConfig: buildState.themeConfig,
+                menuConfig: buildState.menuConfig,
+                collections: buildState.collections,
+                refDocuments: buildState.refDocuments,
+              });
+              if (!resolved) {
+                sendJson(res, 404, { error: 'Page JSON not found' });
+                return;
+              }
+              sendJson(res, 200, resolved.page);
+            })().catch((error) => {
+              sendJson(res, 500, { error: error?.message || 'Page JSON resolution failed' });
+            });
             return;
           }
           if (req.method === 'GET' && req.url === '/api/list-assets') {
@@ -11213,12 +12129,23 @@ export default defineConfig({
                 if (!projectState || typeof slug !== 'string') { sendJson(res, 400, { error: 'Missing projectState or slug' }); return; }
                 if (!fs.existsSync(DATA_CONFIG_DIR)) fs.mkdirSync(DATA_CONFIG_DIR, { recursive: true });
                 if (!fs.existsSync(DATA_PAGES_DIR)) fs.mkdirSync(DATA_PAGES_DIR, { recursive: true });
+                if (!fs.existsSync(DATA_COLLECTIONS_DIR)) fs.mkdirSync(DATA_COLLECTIONS_DIR, { recursive: true });
                 if (projectState.site != null) fs.writeFileSync(path.join(DATA_CONFIG_DIR, 'site.json'), JSON.stringify(projectState.site, null, 2), 'utf8');
                 if (projectState.menu != null) fs.writeFileSync(path.join(DATA_CONFIG_DIR, 'menu.json'), JSON.stringify(projectState.menu, null, 2), 'utf8');
                 if (projectState.theme != null) fs.writeFileSync(path.join(DATA_CONFIG_DIR, 'theme.json'), JSON.stringify(projectState.theme, null, 2), 'utf8');
                 if (projectState.page != null) {
-                  const safeSlug = (slug.replace(/[^a-zA-Z0-9-_]/g, '_') || 'page');
-                  fs.writeFileSync(path.join(DATA_PAGES_DIR, `${safeSlug}.json`), JSON.stringify(projectState.page, null, 2), 'utf8');
+                  const pagePath = safeDataSlugPath(DATA_PAGES_DIR, slug, 'page');
+                  fs.mkdirSync(path.dirname(pagePath), { recursive: true });
+                  fs.writeFileSync(pagePath, JSON.stringify(projectState.page, null, 2), 'utf8');
+                }
+                if (projectState.collections && typeof projectState.collections === 'object') {
+                  for (const [source, collection] of Object.entries(projectState.collections)) {
+                    const sourceSlug = String(source).replace(/[^a-zA-Z0-9-_]/g, '_');
+                    if (!sourceSlug) continue;
+                    const collectionDir = path.join(DATA_COLLECTIONS_DIR, sourceSlug);
+                    fs.mkdirSync(collectionDir, { recursive: true });
+                    fs.writeFileSync(path.join(collectionDir, `${sourceSlug}.json`), JSON.stringify(collection, null, 2), 'utf8');
+                  }
                 }
                 sendJson(res, 200, { ok: true });
               } catch (e) { sendJson(res, 500, { error: e?.message || 'Save to file failed' }); }

@@ -1,4 +1,12 @@
 {
+  "1984": {
+    "id": "1984",
+    "title": "1984",
+    "author": "Guido Seiero",
+    "year": 1949,
+    "genre": "Distopia",
+    "summary": "Un regime totalitario controlla linguaggio, memoria e pensiero."
+  },
   "il-nome-della-rosa": {
     "id": "il-nome-della-rosa",
     "title": "Il nome della rosa",
@@ -86,14 +94,6 @@
     "year": 1967,
     "genre": "Realismo magico",
     "summary": "La saga dei Buendia e di Macondo intreccia mito, storia e destino."
-  },
-  "1984": {
-    "id": "1984",
-    "title": "1984",
-    "author": "George Orwell",
-    "year": 1949,
-    "genre": "Distopia",
-    "summary": "Un regime totalitario controlla linguaggio, memoria e pensiero."
   },
   "fahrenheit-451": {
     "id": "fahrenheit-451",

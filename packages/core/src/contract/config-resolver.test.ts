@@ -212,6 +212,89 @@ describe('config-resolver collection refs', () => {
     });
   });
 
+  it('resolves nested refs between collection documents at runtime', () => {
+    const authorSchema = z.record(
+      z.object({
+        id: z.string(),
+        name: z.string(),
+      })
+    );
+    const bookWithAuthorRefSchema = z.record(
+      z.object({
+        id: z.string(),
+        title: z.string(),
+        author: z.union([
+          z.object({
+            id: z.string(),
+            name: z.string(),
+          }),
+          z.object({
+            $ref: z.string(),
+          }),
+        ]),
+      })
+    );
+
+    const resolved = resolveRuntimeConfig({
+      pages: {
+        libri: {
+          id: 'libri-page',
+          slug: 'libri',
+          meta: {
+            title: 'Catalogo libri',
+            description: 'Catalogo libri usato per validare relazioni tra collection.',
+          },
+          sections: [
+            {
+              id: 'books-list',
+              type: 'books-list',
+              data: {
+                items: { $ref: '../collections/libri/libri.json' },
+              },
+            },
+          ],
+        },
+      },
+      siteConfig,
+      themeConfig,
+      menuConfig,
+      collections: {
+        autori: {
+          'frank-herbert': {
+            id: 'frank-herbert',
+            name: 'Frank Herbert',
+          },
+        },
+        libri: {
+          dune: {
+            id: 'dune',
+            title: 'Dune',
+            author: {
+              $ref: '../autori/autori.json#/frank-herbert',
+            },
+          },
+        },
+      },
+      collectionSchemas: {
+        autori: authorSchema,
+        libri: bookWithAuthorRefSchema,
+      },
+    });
+
+    expect(resolved.pages.libri.sections[0].data).toEqual({
+      items: {
+        dune: {
+          id: 'dune',
+          title: 'Dune',
+          author: {
+            id: 'frank-herbert',
+            name: 'Frank Herbert',
+          },
+        },
+      },
+    });
+  });
+
   it('keeps explicit refDocuments aliases available alongside collections', () => {
     const resolved = resolveRuntimeConfig({
       pages: {
@@ -537,6 +620,112 @@ describe('config-resolver collection refs', () => {
           id: 'dune',
           title: 'Dune',
         },
+      },
+    });
+  });
+
+  it('preserves nested authored collection refs when edited resolved entities are written back', () => {
+    const result = applyCollectionRefBindingsToDraft(
+      {
+        items: { $ref: '../collections/libri/libri.json' },
+      },
+      {
+        items: {
+          dune: {
+            id: 'dune',
+            title: 'Dune Messiah',
+            author: {
+              id: 'frank-herbert',
+              name: 'Frank Herbert',
+            },
+          },
+        },
+      },
+      {
+        libri: {
+          dune: {
+            id: 'dune',
+            title: 'Dune',
+            author: {
+              $ref: '../autori/autori.json#/frank-herbert',
+            },
+          },
+        },
+        autori: {
+          'frank-herbert': {
+            id: 'frank-herbert',
+            name: 'Frank Herbert',
+          },
+        },
+      },
+      undefined,
+      {
+        libri: looseCollectionSchema,
+        autori: looseCollectionSchema,
+      }
+    );
+
+    expect(result.normalizedData).toEqual({
+      items: { $ref: '../collections/libri/libri.json' },
+    });
+    expect(result.collectionsDraft?.libri?.dune).toEqual({
+      id: 'dune',
+      title: 'Dune Messiah',
+      author: {
+        $ref: '../autori/autori.json#/frank-herbert',
+      },
+    });
+  });
+
+  it('persists changed nested collection relations as authored refs', () => {
+    const result = applyCollectionRefBindingsToDraft(
+      {
+        items: { $ref: '../collections/libri/libri.json' },
+      },
+      {
+        items: {
+          dune: {
+            id: 'dune',
+            title: 'Dune',
+            author: {
+              $ref: '../autori/autori.json#/ursula-k-le-guin',
+            },
+          },
+        },
+      },
+      {
+        libri: {
+          dune: {
+            id: 'dune',
+            title: 'Dune',
+            author: {
+              $ref: '../autori/autori.json#/frank-herbert',
+            },
+          },
+        },
+        autori: {
+          'frank-herbert': {
+            id: 'frank-herbert',
+            name: 'Frank Herbert',
+          },
+          'ursula-k-le-guin': {
+            id: 'ursula-k-le-guin',
+            name: 'Ursula K. Le Guin',
+          },
+        },
+      },
+      undefined,
+      {
+        libri: looseCollectionSchema,
+        autori: looseCollectionSchema,
+      }
+    );
+
+    expect(result.collectionsDraft?.libri?.dune).toEqual({
+      id: 'dune',
+      title: 'Dune',
+      author: {
+        $ref: '../autori/autori.json#/ursula-k-le-guin',
       },
     });
   });

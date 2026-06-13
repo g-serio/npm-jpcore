@@ -6,7 +6,7 @@ export const BooksListSchema = BaseSectionData.extend({
   eyebrow: z.string().optional().describe('ui:text'),
   title: z.string().describe('ui:text'),
   description: z.string().optional().describe('ui:textarea'),
-  items: z.record(z.string(), LibroSchema).describe('ui:collection-ref'),
+  items: z.record(z.string(), LibroSchema).describe('ui:collection-ref:libri'),
   pageSize: z.number().default(10).describe('ui:number'),
 });
 

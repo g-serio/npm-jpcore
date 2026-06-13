@@ -4,6 +4,13 @@ type BookDetailViewProps = {
   data: BookDetailData;
 };
 
+function getAuthorName(author: BookDetailData['item']['author']): string {
+  if (typeof author === 'object' && author !== null && 'name' in author) {
+    return String(author.name);
+  }
+  return 'Autore';
+}
+
 export function BookDetailView({ data }: BookDetailViewProps) {
   const book = data.item;
 
@@ -16,7 +23,7 @@ export function BookDetailView({ data }: BookDetailViewProps) {
         className="mx-auto w-full max-w-3xl rounded-2xl border border-border bg-card p-8 shadow-sm"
       >
         <a
-          href="/libri"
+          href="/"
           className="text-sm font-medium text-muted-foreground hover:text-foreground"
         >
           {data.backLabel}
@@ -28,7 +35,7 @@ export function BookDetailView({ data }: BookDetailViewProps) {
           {book.title}
         </h1>
         <p className="mt-4 text-lg text-muted-foreground">
-          {book.author}
+          {getAuthorName(book.author)}
         </p>
         <p className="mt-8 text-base leading-8 text-muted-foreground">
           {book.summary}
