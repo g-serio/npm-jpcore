@@ -11,6 +11,10 @@
     "sections"
   ],
   "properties": {
+    "collection": {
+      "$ref": "#/definitions/PageCollectionBinding",
+      "description": "Binds a dynamic page route to a collection source. At runtime, the route parameter selects `collection:current` for sections on this page."
+    },
     "global-header": {
       "description": "When `false`, this page opts out of the site-level global header. Defaults to `true` when omitted.",
       "type": "boolean",
@@ -32,13 +36,34 @@
       }
     },
     "slug": {
-      "description": "URL path segment(s). Kebab-case; slashes allowed for nested routes (e.g. `docs/getting-started`).",
+      "description": "URL path segment(s). Kebab-case; slashes allowed for nested routes. Dynamic COP routes use bracketed params (e.g. `libri/[slug]`).",
       "type": "string",
-      "pattern": "^[a-z0-9-/]+$"
+      "pattern": "^[a-z0-9-/[\\]]+$"
     }
   },
   "additionalProperties": false,
   "definitions": {
+    "PageCollectionBinding": {
+      "description": "Binds a dynamic page route to a collection source. At runtime, the route parameter selects `collection:current` for sections on this page.",
+      "type": "object",
+      "required": [
+        "source",
+        "paramKey"
+      ],
+      "properties": {
+        "paramKey": {
+          "description": "Dynamic route parameter name used to select the active collection entity (for example `slug` in `libri/[slug]`).",
+          "type": "string",
+          "pattern": "^[a-zA-Z_][a-zA-Z0-9_]*$"
+        },
+        "source": {
+          "description": "Collection source key, matching an entry in the tenant `collections` map and its collection document path.",
+          "type": "string",
+          "pattern": "^[a-z0-9-]+$"
+        }
+      },
+      "additionalProperties": false
+    },
     "PageMeta": {
       "description": "Page metadata for SEO, social previews, and the document `<head>`.",
       "type": "object",
@@ -119,6 +144,29 @@
         }
       ],
       "slug": "home"
+    },
+    {
+      "collection": {
+        "paramKey": "slug",
+        "source": "libri"
+      },
+      "id": "book-detail-page",
+      "meta": {
+        "title": "Dettaglio libro nella collection",
+        "description": "Pagina dinamica che usa il Collection Protocol per risolvere il libro corrente dalla route."
+      },
+      "sections": [
+        {
+          "type": "book-detail",
+          "data": {
+            "item": {
+              "$ref": "collection:current"
+            }
+          },
+          "id": "book-detail"
+        }
+      ],
+      "slug": "libri/[slug]"
     }
   ]
 }

@@ -2,7 +2,7 @@
   "$schema": "http://json-schema.org/draft-07/schema#",
   "$id": "https://olon.js.org/schemas/v1/tenant.schema.json",
   "title": "Olon Tenant Manifest",
-  "description": "Top-level Olon tenant manifest. Bundles a tenant's complete public contract: brand identity, design system tokens, site shell, navigation, and full page list. Each top-level field references a separately-published canonical schema; this manifest is the entry point for agents discovering or validating a complete Olon tenant.",
+  "description": "Top-level Olon tenant manifest. Bundles a tenant's complete public contract: brand identity, design system tokens, site shell, navigation, full page list, and optional COP collections. Each top-level field references a separately-published canonical schema; this manifest is the entry point for agents discovering or validating a complete Olon tenant.",
   "type": "object",
   "required": [
     "identity",
@@ -12,6 +12,12 @@
     "pages"
   ],
   "properties": {
+    "collections": {
+      "type": "object",
+      "additionalProperties": {
+        "$ref": "collection.schema.json"
+      }
+    },
     "design": {
       "$ref": "design.schema.json"
     },
@@ -54,6 +60,16 @@
   },
   "examples": [
     {
+      "collections": {
+        "libri": {
+          "dune": {
+            "title": "Dune",
+            "author": "Frank Herbert",
+            "id": "dune",
+            "year": 1965
+          }
+        }
+      },
       "design": {
         "name": "Olon",
         "tokens": {
