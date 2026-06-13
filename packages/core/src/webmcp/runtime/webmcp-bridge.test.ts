@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
+import { applyCollectionRefBindingsToDraft } from '../../contract/config-resolver';
 import {
   applyValueAtSelectionPath,
   buildWebMcpToolName,
@@ -54,6 +55,92 @@ describe('webmcp runtime bridge', () => {
     );
 
     expect(next).toEqual({ title: 'New', description: 'Updated' });
+  });
+
+  it('supports agent full-field replacement for a collection record ref while preserving the authored page ref', () => {
+    const authoredData = {
+      title: 'Libri',
+      items: { $ref: '../collections/libri/libri.json' },
+    };
+    const updatedCollection = {
+      dune: {
+        id: 'dune',
+        title: 'Dune Messiah',
+        author: 'Frank Herbert',
+      },
+      neuromancer: {
+        id: 'neuromancer',
+        title: 'Neuromancer',
+        author: 'William Gibson',
+      },
+    };
+
+    const nextData = resolveWebMcpMutationData(authoredData, {
+      sectionId: 'books-list',
+      sectionType: 'books-list',
+      fieldKey: 'items',
+      value: updatedCollection,
+    });
+
+    const result = applyCollectionRefBindingsToDraft(authoredData, nextData, {
+      libri: {
+        dune: {
+          id: 'dune',
+          title: 'Dune',
+          author: 'Frank Herbert',
+        },
+      },
+    });
+
+    expect(result.normalizedData.items).toEqual({ $ref: '../collections/libri/libri.json' });
+    expect(result.collectionsDraft?.libri).toEqual(updatedCollection);
+  });
+
+  it('supports agent full-field replacement for collection:current while preserving the authored detail ref', () => {
+    const authoredData = {
+      item: { $ref: 'collection:current' },
+      backLabel: 'Torna ai libri',
+    };
+    const updatedBook = {
+      id: 'dune',
+      title: 'Dune Messiah',
+      author: 'Frank Herbert',
+      summary: 'Updated by an agent.',
+    };
+
+    const nextData = resolveWebMcpMutationData(authoredData, {
+      sectionId: 'book-detail',
+      sectionType: 'book-detail',
+      fieldKey: 'item',
+      value: updatedBook,
+    });
+
+    const result = applyCollectionRefBindingsToDraft(
+      authoredData,
+      nextData,
+      {
+        libri: {
+          dune: {
+            id: 'dune',
+            title: 'Dune',
+            author: 'Frank Herbert',
+          },
+        },
+      },
+      {
+        source: 'libri',
+        paramKey: 'slug',
+        paramValue: 'dune',
+        currentItem: {
+          id: 'dune',
+          title: 'Dune',
+          author: 'Frank Herbert',
+        },
+      }
+    );
+
+    expect(result.normalizedData.item).toEqual({ $ref: 'collection:current' });
+    expect(result.collectionsDraft?.libri?.dune).toEqual(updatedBook);
   });
 
   it('installs a testing shim that can execute registered tools', async () => {

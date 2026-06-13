@@ -92,10 +92,26 @@ const humanizeLabel = (label: string): string =>
     .trim()
     .replace(/\b\w/g, (char) => char.toUpperCase());
 
-const getCollectionRefItemCount = (value: unknown): number => {
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+  value != null && typeof value === 'object' && !Array.isArray(value);
+
+const getCollectionRefItemCount = (value: unknown, schema: z.ZodTypeAny): number => {
+  if (schema instanceof z.ZodRecord && isRecord(value)) return Object.keys(value).length;
+  if (schema instanceof z.ZodObject && isRecord(value)) return 1;
   if (Array.isArray(value)) return value.length;
-  if (value != null && typeof value === 'object') return Object.keys(value).length;
   return 0;
+};
+
+const formatItemCount = (count: number): string => `${count} ${count === 1 ? 'item' : 'items'}`;
+
+const getRecordItemLabel = (key: string, item: Record<string, unknown>, index: number): string => {
+  const label =
+    (typeof item.title === 'string' ? item.title : null) ||
+    (typeof item.label === 'string' ? item.label : null) ||
+    (typeof item.name === 'string' ? item.name : null) ||
+    (typeof item.id === 'string' ? item.id : null);
+
+  return label ?? `Item #${index + 1} (${key})`;
 };
 
 export const FormFactory: React.FC<FormFactoryProps> = ({ schema, data, onChange, keys, expandedItemPath, onSidebarExpandedItemChange }) => {
@@ -122,7 +138,14 @@ export const FormFactory: React.FC<FormFactoryProps> = ({ schema, data, onChange
 
         if (uiHint === 'ui:collection-ref') {
           const isFocusedField = fieldKeyMatches(effectiveFocusedFieldKey, key);
-          const itemCount = getCollectionRefItemCount(value);
+          const itemCount = getCollectionRefItemCount(value, effectiveSchema);
+          const recordValue = isRecord(value) ? value : {};
+          const openItemIdFromPath = fieldKeyMatches(firstSeg?.fieldKey, key) ? firstSeg?.itemId : undefined;
+          const pathTail =
+            expandedItemPath && fieldKeyMatches(firstSeg?.fieldKey, key) && expandedItemPath.length > 1
+              ? expandedItemPath.slice(1)
+              : undefined;
+
           return (
             <div
               key={key}
@@ -139,9 +162,62 @@ export const FormFactory: React.FC<FormFactoryProps> = ({ schema, data, onChange
                   </p>
                 </div>
                 <span className="shrink-0 rounded-full border border-zinc-700 px-2 py-1 text-[10px] font-semibold text-zinc-400">
-                  {itemCount} items
+                  {formatItemCount(itemCount)}
                 </span>
               </div>
+
+              {effectiveSchema instanceof z.ZodRecord && (
+                <div className="mt-4 space-y-2">
+                  {Object.entries(recordValue).map(([recordKey, recordItem], index) => {
+                    const itemRecord = isRecord(recordItem) ? recordItem : {};
+                    const itemSchema = getEffectiveSchema(effectiveSchema.valueSchema);
+                    const itemId = String(itemRecord.id ?? recordKey);
+                    const isExpandedItem = openItemIdFromPath != null && String(openItemIdFromPath) === itemId;
+                    const isFadedItem = inItemScope && isFocusedField && openItemIdFromPath != null && !isExpandedItem;
+
+                    return (
+                      <CollectionRefRecordItemWrapper
+                        key={recordKey}
+                        itemId={itemId}
+                        openItemId={openItemIdFromPath != null ? String(openItemIdFromPath) : undefined}
+                        isFaded={isFadedItem}
+                        label={getRecordItemLabel(recordKey, itemRecord, index)}
+                        onExpandedChange={onSidebarExpandedItemChange ? (open) => onSidebarExpandedItemChange(open ? { fieldKey: key, itemId } : null) : undefined}
+                      >
+                        {itemSchema instanceof z.ZodObject ? (
+                          <FormFactory
+                            schema={itemSchema}
+                            data={itemRecord}
+                            expandedItemPath={isExpandedItem ? pathTail : undefined}
+                            onChange={(val) => {
+                              onChange({
+                                ...data,
+                                [key]: {
+                                  ...recordValue,
+                                  [recordKey]: val,
+                                },
+                              });
+                            }}
+                          />
+                        ) : (
+                          <div className="text-[10px] text-red-400">Collection records must contain object items.</div>
+                        )}
+                      </CollectionRefRecordItemWrapper>
+                    );
+                  })}
+                </div>
+              )}
+
+              {effectiveSchema instanceof z.ZodObject && (
+                <div className="mt-4 border-t border-zinc-800 pt-4">
+                  <FormFactory
+                    schema={effectiveSchema}
+                    data={recordValue}
+                    expandedItemPath={pathTail}
+                    onChange={(val) => onChange({ ...data, [key]: val })}
+                  />
+                </div>
+              )}
             </div>
           );
         }
@@ -411,6 +487,61 @@ const ArrayItemWrapper: React.FC<ArrayItemWrapperProps> = ({
           </button>
         </div>
       </div>
+      {isOpen && (
+        <div className="p-4 border-t border-zinc-800 bg-black/20">
+          {children}
+        </div>
+      )}
+    </div>
+  );
+};
+
+interface CollectionRefRecordItemWrapperProps {
+  itemId: string;
+  openItemId?: string | null;
+  isFaded?: boolean;
+  label: string;
+  onExpandedChange?: (open: boolean) => void;
+  children: React.ReactNode;
+}
+
+const CollectionRefRecordItemWrapper: React.FC<CollectionRefRecordItemWrapperProps> = ({
+  itemId,
+  openItemId,
+  isFaded = false,
+  label,
+  onExpandedChange,
+  children,
+}) => {
+  const shouldOpen = openItemId != null && String(openItemId) === String(itemId);
+  const [isOpen, setIsOpen] = React.useState(shouldOpen);
+
+  React.useEffect(() => {
+    if (openItemId == null) return;
+    if (shouldOpen && !isOpen) setIsOpen(true);
+    if (!shouldOpen && isOpen) setIsOpen(false);
+  }, [openItemId, shouldOpen, isOpen]);
+
+  const handleToggle = () => {
+    const next = !isOpen;
+    setIsOpen(next);
+    onExpandedChange?.(next);
+  };
+
+  const isExpandedTarget = shouldOpen && isOpen;
+  return (
+    <div
+      className={`border border-zinc-800 rounded-md bg-zinc-900/40 overflow-hidden transition-opacity duration-200 ${isFaded ? 'opacity-10' : 'opacity-100'}`}
+      {...(isExpandedTarget ? { 'data-jp-expanded-item': itemId } : {})}
+    >
+      <button
+        type="button"
+        onClick={handleToggle}
+        className="flex w-full items-center gap-2 px-3 py-2 bg-zinc-900/60 text-left text-[12px] font-semibold text-zinc-200 tracking-[0.01em]"
+      >
+        {isOpen ? <ChevronUp size={12} className="shrink-0" /> : <ChevronDown size={12} className="shrink-0" />}
+        <span className="truncate">{label}</span>
+      </button>
       {isOpen && (
         <div className="p-4 border-t border-zinc-800 bg-black/20">
           {children}

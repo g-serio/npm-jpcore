@@ -1,7 +1,7 @@
 {
   "version": "1.0.0",
   "kind": "olonjs-mcp-manifest-index",
-  "generatedAt": "2026-06-13T08:44:47.325Z",
+  "generatedAt": "2026-06-13T08:45:53.276Z",
   "pages": [
     {
       "slug": "home",
@@ -28,7 +28,7 @@
     {
       "slug": "libri/[slug]",
       "title": "Dettaglio libro",
-      "description": "Pagina dinamica dettaglio libro alimentata da collection:current.",
+      "description": "Pagina dinamica dettaglio libro alimentata dalla collection libri.",
       "manifestHref": "/mcp-manifests/libri/[slug].json",
       "contractHref": "/schemas/libri/[slug].schema.json",
       "sectionTypes": [
