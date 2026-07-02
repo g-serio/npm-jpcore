@@ -1,22 +1,23 @@
 ---
 name: tenant-harness-render-migration
-description: Migrates OlonJS tenant App.tsx harness from legacy GET /api/v1/content (god object) to dual bootstrap — visitor GET /api/v1/render?path=... (SPP projection) plus admin GET /content via useAdminStudioContent. Use when upgrading hot-save cloud bootstrap, fixing empty menus, Studio stuck on Loading Studio..., or aligning landing harness to multi-route sites (thebrief/gumlon).
+description: Migrates OlonJS tenant App.tsx harness from legacy GET /api/v1/content (god object) to SPP GET /api/v1/render?path=... — visitor single-path render plus admin render fan-out via useAdminStudioContent. Use when upgrading hot-save cloud bootstrap, fixing empty menus, Studio stuck on Loading Studio..., or aligning landing harness to multi-route sites (thebrief/gumlon/design-md-radice).
 ---
 
-# Tenant harness: `/content` → `/render` (+ admin `/content`)
+# Tenant harness: `/content` → `/render` (visitor + admin fan-out)
 
 Surgical migration for **hot-save cloud mode only**. Do not refactor the whole `App.tsx` into hooks unless explicitly requested.
 
-**Core rule:** `/render` replaces `/content` for the **visitor** only. **Studio `/admin` still needs `/content`** (all pages). Never delete `/content` entirely without adding `useAdminStudioContent`.
+**Core rule:** Both **visitor** and **Studio `/admin`** use `GET /render`. Visitor: one path per navigation. Admin: **fan-out** — one `/render` call per static page slug from `filePages` manifest. Do **not** use `GET /content` for admin bootstrap (no `menuConfig` in that response).
 
 ## When to migrate
 
 | Symptom | Cause |
 |---|---|
-| Menu/header empty in prod but OK locally | `menuConfig` stub or store missing `config/menu` |
+| Menu/header empty in prod but OK locally | Admin still on `/content` or `menuConfig` stub; visitor-only render |
 | Visitor loads all pages at once | Legacy harness uses god-object `/content` for everything |
-| `/admin` stuck on `Loading Studio...` | Render bootstrap skipped admin but nothing loads `pages` → `draft` is null in `StudioRoute` |
-| Need route-scoped bootstrap + resolved `$ref` | Platform SPP `/render` for visitor |
+| `/admin` stuck on `Loading Studio...` | Nothing loads `pages` → `draft` is null in `StudioRoute` |
+| Menu edits not visible after hot save reload | Admin bootstrap never reads `context.menuConfig` from render |
+| Need route-scoped bootstrap + resolved `$ref` | Platform SPP `/render` |
 
 ## Prerequisites (verify before harness work)
 
@@ -25,7 +26,6 @@ Surgical migration for **hot-save cloud mode only**. Do not refactor the whole `
 3. **Header** — schema includes `menu` (`ui:list`); View reads `data.menu` with IDAC attributes.
 4. **API smoke test**
    - `GET /api/v1/render?path=/` → `ok`, `page`, `context.siteConfig`, `context.menuConfig`
-   - `GET /api/v1/content` → `pages`, `siteConfig` (for admin)
 
 If store lacks menu, fix platform/tenant data first — harness alone will not fix empty nav.
 
@@ -41,8 +41,8 @@ isCloudMode (VITE_OLONJS_* env)?
       │    → GET /render?path={normalizeRenderPath(pathname)}
       │    → merge single page + context into engine state
       └─ /admin*
-           → skip visitor render bootstrap
-           → useAdminStudioContent → GET /content (all pages + site)
+           → skip visitor single-path bootstrap
+           → useAdminStudioContent → fan-out GET /render per static slug
            → required or Studio shows "Loading Studio..."
 ```
 
@@ -50,10 +50,11 @@ isCloudMode (VITE_OLONJS_* env)?
 
 ### Step 1 — Add render client
 
-Create `src/lib/spp/renderClient.ts` (copy from `thebrief` or `gumlon`):
+Create `src/lib/spp/renderClient.ts` (copy from `design-md-radice`, `thebrief`, or `gumlon`):
 
 - `fetchRenderProjection(apiBases, apiKey, path, { signal })`
 - `normalizeRenderPath`, `isAdminPath`, `resolveRegistrySlugFromRender`
+- `registrySlugToRenderPath`, `listAdminRenderPaths` (admin fan-out)
 - `patchHistoryNavigation` for visitor SPA navigation
 
 Request: `GET {apiBase}/render?path=/` with `Authorization: Bearer {apiKey}`.
@@ -72,11 +73,11 @@ const engineRefDocuments = useMemo(() => ({
 
 Pass `menuConfig` + `refDocuments: engineRefDocuments` to `JsonPagesConfig`.
 
-### Step 3 — Visitor: replace hot-save `/content` bootstrap
+### Step 3 — Visitor: single-path render bootstrap
 
 In the hot-save `useEffect` only:
 
-1. If `isAdminPath(pathname)` → set `hasInitialCloudResolved(true)` and **return** (no render fetch)
+1. If `isAdminPath(pathname)` → **return** early (admin hook owns bootstrap; `hasInitialCloudResolved` via `onBootstrapResolved`)
 2. Else `fetchRenderProjection` on `normalizeRenderPath(pathname)`
 3. `applyRenderPayload(result)`:
    - `setPages(prev => ({ ...prev, [registrySlug]: result.page }))` — **merge**, not replace
@@ -86,9 +87,9 @@ In the hot-save `useEffect` only:
 4. `patchHistoryNavigation` → re-fetch render on route change
 5. Log `boot.spp_render.*` (not `boot.cloud.*`)
 
-### Step 4 — Admin: add `useAdminStudioContent`
+### Step 4 — Admin: render fan-out via `useAdminStudioContent`
 
-Create `src/lib/cloud/useAdminStudioContent.ts` (copy from `thebrief` or `gumlon`).
+Create `src/lib/cloud/useAdminStudioContent.ts` (reference: `design-md-radice`).
 
 Wire in `App.tsx` when `isHotSaveMode`:
 
@@ -98,29 +99,31 @@ useAdminStudioContent({
   basePath: APP_BASE_PATH,
   apiCandidates: cloudApiCandidates,
   apiKey: CLOUD_API_KEY ?? '',
+  pageRegistry: filePages,
   setPages,
   setSiteConfig,
-  setMenuConfig,  // optional if /content returns menuConfig
+  setMenuConfig,
   writeCache: writeCachedCloudContent,
+  onBootstrapResolved: () => setHasInitialCloudResolved(true),
 });
 ```
 
 Hook behavior:
 
 - Runs only when `isAdminPath(window.location.pathname)`
-- `GET /content` — god object with **all pages** (Studio needs full registry)
-- `patchHistoryNavigation` for admin SPA transitions
-- **Never** call `/render` from this hook
+- `listAdminRenderPaths(filePages)` → `['/', '/menu', ...]` (skips slugs with `[`)
+- `Promise.allSettled` → `fetchRenderProjection` per path
+- Merge all `page` into `pages`; `siteConfig` + `menuConfig` from first ok response
+- `onBootstrapResolved` in `.finally()` — never block Studio on partial page failures
+- **Never** call `GET /content`
 
-### Step 5 — Clean up visitor-only dead code
+### Step 5 — Clean up dead `/content` code
 
-Remove `/content` helpers from the **visitor** bootstrap path only (`ContentResponse`, `extractContentSources` in `App.tsx` if moved to admin hook).
-
-Keep `/content` client code used by `useAdminStudioContent`.
+Remove `/content` helpers from tenant harness (`fetchLegacyCloudContentPayload`, `ContentResponse`, etc.).
 
 ## Payload contracts
 
-### Visitor — `/render`
+### Visitor + Admin — `/render`
 
 ```typescript
 {
@@ -132,20 +135,18 @@ Keep `/content` client code used by `useAdminStudioContent`.
 }
 ```
 
-| JsonPagesConfig field | Source |
-|---|---|
-| `pages[slug]` | `result.page` (merged) |
-| `siteConfig` | `result.context.siteConfig` |
-| `menuConfig` | `result.context.menuConfig` |
-| `refDocuments` | `useMemo(menuConfig)` |
+| JsonPagesConfig field | Visitor source | Admin source |
+|---|---|---|
+| `pages[slug]` | `result.page` (merge per nav) | each fan-out `result.page` (merge all) |
+| `siteConfig` | `result.context.siteConfig` | first ok `context.siteConfig` |
+| `menuConfig` | `result.context.menuConfig` | first ok `context.menuConfig` |
+| `refDocuments` | `useMemo(menuConfig)` | same |
 
-### Admin — `/content`
+Studio `draft` requires at least one page in `pages` state.
 
-```typescript
-{ ok: true, siteConfig, pages: { home: PageConfig, ... } }
-```
+## Dynamic routes
 
-Studio `draft` requires at least one page in `pages` state. `siteConfig` can come from seed but pages cannot stay `{}` in cloud mode.
+Slugs containing `[` (e.g. `libri/[slug]`) are **excluded** from admin fan-out path list. Studio still needs template page in registry — handle separately if tenant has dynamic routes.
 
 ## Do not change (scope guard)
 
@@ -158,6 +159,7 @@ Studio `draft` requires at least one page in `pages` state. `siteConfig` can com
 ## Verification
 
 ```bash
+npm run test:admin-render-paths
 npm run build
 npm run dev   # VITE_OLONJS_CLOUD_URL + VITE_OLONJS_API_KEY
 ```
@@ -166,18 +168,19 @@ npm run dev   # VITE_OLONJS_CLOUD_URL + VITE_OLONJS_API_KEY
 |---|---|---|
 | Visitor `/` | `render?path=/` | Menu visible; `boot.spp_render.success` |
 | Visitor nav | `render?path=...` | Per-route fetch |
-| Admin `/admin` | `content` (not render) | Studio loads; no `Loading Studio...` |
-| Admin | no `pages: {}` in React state | `StudioRoute` gets `draft` |
+| Admin `/admin` | N × `render?path=...` | Zero `content`; Studio loads all static pages |
+| Admin menu | from `context.menuConfig` | Not local `menu.json` seed after cloud load |
 
 ## Reference implementations
 
 | Tenant | Visitor | Admin |
 |---|---|---|
-| `thebrief` | `useTenantBootstrap` + `lib/spp/renderClient.ts` | `lib/cloud/useAdminStudioContent.ts` |
-| `gumlon` | surgical `App.tsx` render branch | `lib/cloud/useAdminStudioContent.ts` |
+| `design-md-radice` | `App.tsx` render branch | `lib/cloud/useAdminStudioContent.ts` (render fan-out) |
+| `thebrief` | `useTenantBootstrap` + `lib/spp/renderClient.ts` | legacy `/content` — migrate to fan-out |
+| `gumlon` | surgical `App.tsx` render branch | legacy `/content` — migrate to fan-out |
 
-Read reference code before improvising. Copy `renderClient.ts` and `useAdminStudioContent.ts` verbatim when possible; adapt only the hot-save `useEffect` in `App.tsx`.
+Read `design-md-radice` for the current fan-out pattern before improvising.
 
 ## Platform alignment
 
-`provision-stream` / `vercelIntegrationCallback` must bootstrap `menu.json` into the store like `save2edge-snapshot` (`buildTenantContentPayloadFromRepo` in `jsonpages-platform`). Both `/render` and `/content` read from `tenant_content_store`.
+`provision-stream` / snapshot must bootstrap `menu.json` into the store. `/render` reads from `tenant_content_store` with resolved `context.menuConfig`. `GET /content` remains on platform for legacy clients but **tenants should not use it** for Studio bootstrap.
