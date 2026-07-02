@@ -2,6 +2,8 @@ import { z } from 'zod';
 import { BaseSectionData } from '@olonjs/core';
 import { LibroSchema } from '@/collections/libri';
 
+
+
 export const BooksListSchema = BaseSectionData.extend({
   eyebrow: z.string().optional().describe('ui:text'),
   title: z.string().describe('ui:text'),

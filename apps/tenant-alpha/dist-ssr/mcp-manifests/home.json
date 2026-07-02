@@ -1,10 +1,10 @@
 {
   "version": "1.0.0",
   "kind": "olonjs-page-mcp-manifest",
-  "generatedAt": "2026-06-13T13:52:45.672Z",
+  "generatedAt": "2026-07-02T07:46:49.713Z",
   "slug": "home",
-  "title": "Home",
-  "description": "OlonJS tenant alpha — form smoke test",
+  "title": "Libri",
+  "description": "Catalogo libri dimostrativo alimentato da COP collections.",
   "contractHref": "/schemas/home.schema.json",
   "transport": {
     "kind": "window-message",
@@ -16,7 +16,7 @@
     "resources": [
       {
         "uri": "olon://pages/home",
-        "name": "Home Data",
+        "name": "Libri Data",
         "mimeType": "application/json",
         "description": "Structured content for the home page."
       },
@@ -30,7 +30,7 @@
   },
   "sectionTypes": [
     "footer",
-    "form-demo"
+    "books-list"
   ],
   "sectionInstances": [
     {
@@ -40,10 +40,10 @@
       "label": "footer"
     },
     {
-      "id": "form-demo-1",
-      "type": "form-demo",
+      "id": "books-list-1",
+      "type": "books-list",
       "scope": "local",
-      "label": "Contattaci"
+      "label": "Collections"
     }
   ],
   "tools": [

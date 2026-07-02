@@ -1817,7 +1817,7 @@ cat << 'END_OF_FILE_CONTENT' > "package.json"
     "@tiptap/extension-link": "^2.11.5",
     "@tiptap/react": "^2.11.5",
     "@tiptap/starter-kit": "^2.11.5",
-    "@olonjs/core": "^1.1.11",
+    "@olonjs/core": "^1.1.12",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "lucide-react": "^0.474.0",
@@ -2959,7 +2959,7 @@ import { startCloudSaveStream } from '@olonjs/core';
 import siteData from '@/data/config/site.json';
 import themeData from '@/data/config/theme.json';
 import menuData from '@/data/config/menu.json';
-import libriData from '@/data/collections/libri/libri.json';
+import { getFileCollections } from '@/lib/getFileCollections';
 import { getFilePages } from '@/lib/getFilePages';
 import { DopaDrawer } from '@/components/save-drawer/DopaDrawer';
 import { EmptyTenantView } from '@/components/empty-tenant';
@@ -2991,9 +2991,7 @@ const TENANT_ID = 'alpha';
 
 const filePages = getFilePages();
 const fileSiteConfig = siteData as unknown as SiteConfig;
-const collections = {
-  libri: libriData as unknown as Record<string, unknown>,
-} satisfies NonNullable<JsonPagesConfig['collections']>;
+const collections = getFileCollections();
 const MAX_UPLOAD_SIZE_BYTES = 5 * 1024 * 1024;
 const ASSET_UPLOAD_MAX_RETRIES = 2;
 const ASSET_UPLOAD_TIMEOUT_MS = 20_000;
@@ -4114,6 +4112,34 @@ export default App;
 END_OF_FILE_CONTENT
 # SKIP: src/App.tsx:Zone.Identifier is binary and cannot be embedded as text.
 mkdir -p "src/collections"
+mkdir -p "src/collections/autori"
+echo "Creating src/collections/autori/index.ts..."
+cat << 'END_OF_FILE_CONTENT' > "src/collections/autori/index.ts"
+export { AutoreSchema, AutoriCollectionSchema } from './schema';
+export type { Autore, AutoriCollection } from './types';
+
+END_OF_FILE_CONTENT
+echo "Creating src/collections/autori/schema.ts..."
+cat << 'END_OF_FILE_CONTENT' > "src/collections/autori/schema.ts"
+import { z } from 'zod';
+import { BaseCollectionItem } from '@olonjs/core';
+
+export const AutoreSchema = BaseCollectionItem.extend({
+  name: z.string().describe('ui:text'),
+});
+
+export const AutoriCollectionSchema = z.record(z.string(), AutoreSchema);
+
+END_OF_FILE_CONTENT
+echo "Creating src/collections/autori/types.ts..."
+cat << 'END_OF_FILE_CONTENT' > "src/collections/autori/types.ts"
+import { z } from 'zod';
+import { AutoreSchema, AutoriCollectionSchema } from './schema';
+
+export type Autore = z.infer<typeof AutoreSchema>;
+export type AutoriCollection = z.infer<typeof AutoriCollectionSchema>;
+
+END_OF_FILE_CONTENT
 mkdir -p "src/collections/libri"
 echo "Creating src/collections/libri/index.ts..."
 cat << 'END_OF_FILE_CONTENT' > "src/collections/libri/index.ts"
@@ -4125,10 +4151,15 @@ echo "Creating src/collections/libri/schema.ts..."
 cat << 'END_OF_FILE_CONTENT' > "src/collections/libri/schema.ts"
 import { z } from 'zod';
 import { BaseCollectionItem } from '@olonjs/core';
+import { AutoreSchema } from '@/collections/autori';
+
+const CollectionRefSchema = z.object({
+  $ref: z.string(),
+});
 
 export const LibroSchema = BaseCollectionItem.extend({
   title: z.string().describe('ui:text'),
-  author: z.string().describe('ui:text'),
+  author: z.union([AutoreSchema, CollectionRefSchema]).describe('ui:collection-ref:autori'),
   year: z.number().describe('ui:number'),
   genre: z.string().describe('ui:text'),
   summary: z.string().describe('ui:textarea'),
@@ -4210,6 +4241,106 @@ export function useTheme() {
 }
 
 END_OF_FILE_CONTENT
+mkdir -p "src/components/authors-list"
+echo "Creating src/components/authors-list/View.tsx..."
+cat << 'END_OF_FILE_CONTENT' > "src/components/authors-list/View.tsx"
+import { useMemo } from 'react';
+import type { Autore } from '@/collections/autori';
+import type { AuthorsListData } from './types';
+
+type AuthorsListViewProps = {
+  data: AuthorsListData;
+};
+
+function toAuthors(items: AuthorsListData['items']): Autore[] {
+  return Object.values(items ?? {}).sort((a, b) => a.name.localeCompare(b.name));
+}
+
+export function AuthorsListView({ data }: AuthorsListViewProps) {
+  const authors = useMemo(() => toAuthors(data.items), [data.items]);
+
+  return (
+    <main className="min-h-screen bg-background px-6 py-16 text-foreground">
+      <section className="mx-auto flex w-full max-w-5xl flex-col gap-10">
+        <div className="max-w-2xl">
+          {data.eyebrow && (
+            <p
+              data-jp-field="eyebrow"
+              className="text-sm font-medium uppercase tracking-[0.18em] text-muted-foreground"
+            >
+              {data.eyebrow}
+            </p>
+          )}
+          <h1
+            data-jp-field="title"
+            className="mt-3 text-4xl font-semibold tracking-tight sm:text-5xl"
+          >
+            {data.title}
+          </h1>
+          {data.description && (
+            <p
+              data-jp-field="description"
+              className="mt-4 text-base leading-7 text-muted-foreground"
+            >
+              {data.description}
+            </p>
+          )}
+        </div>
+
+        <div data-jp-field="items" className="grid gap-4 sm:grid-cols-2">
+          {authors.map((author) => (
+            <a
+              key={author.id}
+              href={`/authors/${encodeURIComponent(author.id)}/libri`}
+              data-jp-item-id={author.id}
+              data-jp-item-field="items"
+              className="block rounded-xl border border-border bg-card p-5 shadow-sm transition-colors hover:bg-muted/40"
+            >
+              <h2 className="text-xl font-semibold">{author.name}</h2>
+              <p className="mt-2 text-sm text-muted-foreground">
+                Vedi libri di {author.name}
+              </p>
+            </a>
+          ))}
+        </div>
+      </section>
+    </main>
+  );
+}
+
+END_OF_FILE_CONTENT
+echo "Creating src/components/authors-list/index.ts..."
+cat << 'END_OF_FILE_CONTENT' > "src/components/authors-list/index.ts"
+export { AuthorsListView } from './View';
+export { AuthorsListSchema, AuthorsListSettingsSchema } from './schema';
+export type { AuthorsListData, AuthorsListSettings } from './types';
+
+END_OF_FILE_CONTENT
+echo "Creating src/components/authors-list/schema.ts..."
+cat << 'END_OF_FILE_CONTENT' > "src/components/authors-list/schema.ts"
+import { z } from 'zod';
+import { BaseSectionData } from '@olonjs/core';
+import { AutoreSchema } from '@/collections/autori';
+
+export const AuthorsListSchema = BaseSectionData.extend({
+  eyebrow: z.string().optional().describe('ui:text'),
+  title: z.string().describe('ui:text'),
+  description: z.string().optional().describe('ui:textarea'),
+  items: z.record(z.string(), AutoreSchema).describe('ui:collection-ref:autori'),
+});
+
+export const AuthorsListSettingsSchema = z.object({});
+
+END_OF_FILE_CONTENT
+echo "Creating src/components/authors-list/types.ts..."
+cat << 'END_OF_FILE_CONTENT' > "src/components/authors-list/types.ts"
+import { z } from 'zod';
+import { AuthorsListSchema, AuthorsListSettingsSchema } from './schema';
+
+export type AuthorsListData = z.infer<typeof AuthorsListSchema>;
+export type AuthorsListSettings = z.infer<typeof AuthorsListSettingsSchema>;
+
+END_OF_FILE_CONTENT
 mkdir -p "src/components/book-detail"
 echo "Creating src/components/book-detail/View.tsx..."
 cat << 'END_OF_FILE_CONTENT' > "src/components/book-detail/View.tsx"
@@ -4218,6 +4349,13 @@ import type { BookDetailData } from './types';
 type BookDetailViewProps = {
   data: BookDetailData;
 };
+
+function getAuthorName(author: BookDetailData['item']['author']): string {
+  if (typeof author === 'object' && author !== null && 'name' in author) {
+    return String(author.name);
+  }
+  return 'Autore';
+}
 
 export function BookDetailView({ data }: BookDetailViewProps) {
   const book = data.item;
@@ -4231,7 +4369,7 @@ export function BookDetailView({ data }: BookDetailViewProps) {
         className="mx-auto w-full max-w-3xl rounded-2xl border border-border bg-card p-8 shadow-sm"
       >
         <a
-          href="/libri"
+          href="/"
           className="text-sm font-medium text-muted-foreground hover:text-foreground"
         >
           {data.backLabel}
@@ -4243,7 +4381,7 @@ export function BookDetailView({ data }: BookDetailViewProps) {
           {book.title}
         </h1>
         <p className="mt-4 text-lg text-muted-foreground">
-          {book.author}
+          {getAuthorName(book.author)}
         </p>
         <p className="mt-8 text-base leading-8 text-muted-foreground">
           {book.summary}
@@ -4287,7 +4425,8 @@ END_OF_FILE_CONTENT
 mkdir -p "src/components/books-list"
 echo "Creating src/components/books-list/View.tsx..."
 cat << 'END_OF_FILE_CONTENT' > "src/components/books-list/View.tsx"
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import { useLocation } from 'react-router-dom';
 import type { Libro } from '@/collections/libri';
 import type { BooksListData } from './types';
 
@@ -4299,14 +4438,50 @@ function toBooks(items: BooksListData['items']): Libro[] {
   return Object.values(items ?? {}).sort((a, b) => a.title.localeCompare(b.title));
 }
 
+function getAuthorName(author: Libro['author']): string {
+  if (typeof author === 'object' && author !== null && 'name' in author) {
+    return String(author.name);
+  }
+  return 'Autore';
+}
+
+function getAuthorId(author: Libro['author']): string | null {
+  if (typeof author === 'object' && author !== null && 'id' in author && typeof author.id === 'string') {
+    return author.id;
+  }
+  if (typeof author === 'object' && author !== null && '$ref' in author && typeof author.$ref === 'string') {
+    const pointer = author.$ref.split('#')[1]?.replace(/^\//, '') ?? '';
+    return pointer.split('/')[0] || null;
+  }
+  return null;
+}
+
+function getAuthorFilterFromPath(pathname: string): string | null {
+  const match = pathname.match(/^\/authors\/([^/]+)\/libri\/?$/);
+  return match?.[1] ? decodeURIComponent(match[1]) : null;
+}
+
 export function BooksListView({ data }: BooksListViewProps) {
+  const location = useLocation();
+  const authorFilter = useMemo(() => {
+    const queryAuthor = new URLSearchParams(location.search).get('author');
+    return queryAuthor || getAuthorFilterFromPath(location.pathname);
+  }, [location.pathname, location.search]);
   const books = useMemo(() => toBooks(data.items), [data.items]);
+  const filteredBooks = useMemo(
+    () => authorFilter ? books.filter((book) => getAuthorId(book.author) === authorFilter) : books,
+    [authorFilter, books]
+  );
   const pageSize = Math.max(1, Math.floor(data.pageSize || 10));
-  const totalPages = Math.max(1, Math.ceil(books.length / pageSize));
+  const totalPages = Math.max(1, Math.ceil(filteredBooks.length / pageSize));
   const [page, setPage] = useState(1);
   const currentPage = Math.min(page, totalPages);
   const startIndex = (currentPage - 1) * pageSize;
-  const visibleBooks = books.slice(startIndex, startIndex + pageSize);
+  const visibleBooks = filteredBooks.slice(startIndex, startIndex + pageSize);
+
+  useEffect(() => {
+    setPage(1);
+  }, [authorFilter]);
 
   return (
     <main className="min-h-screen bg-background text-foreground px-6 py-16">
@@ -4337,6 +4512,11 @@ export function BooksListView({ data }: BooksListViewProps) {
         </div>
 
         <div data-jp-field="items" className="grid gap-4">
+          {authorFilter && (
+            <p className="text-sm text-muted-foreground">
+              Filtro autore: {authorFilter} · {filteredBooks.length} libri
+            </p>
+          )}
           {visibleBooks.map((book) => (
             <article
               key={book.id}
@@ -4348,7 +4528,7 @@ export function BooksListView({ data }: BooksListViewProps) {
                 <div>
                   <h2 className="text-xl font-semibold">{book.title}</h2>
                   <p className="mt-1 text-sm text-muted-foreground">
-                    {book.author} · {book.year} · {book.genre}
+                    {getAuthorName(book.author)} · {book.year} · {book.genre}
                   </p>
                   <p className="mt-3 max-w-3xl text-sm leading-6 text-muted-foreground">
                     {book.summary}
@@ -4375,7 +4555,7 @@ export function BooksListView({ data }: BooksListViewProps) {
             Precedente
           </button>
           <span className="text-muted-foreground">
-            Pagina {currentPage} di {totalPages} · {books.length} libri
+            Pagina {currentPage} di {totalPages} · {filteredBooks.length} libri
           </span>
           <button
             type="button"
@@ -4409,7 +4589,7 @@ export const BooksListSchema = BaseSectionData.extend({
   eyebrow: z.string().optional().describe('ui:text'),
   title: z.string().describe('ui:text'),
   description: z.string().optional().describe('ui:textarea'),
-  items: z.record(z.string(), LibroSchema).describe('ui:collection-ref'),
+  items: z.record(z.string(), LibroSchema).describe('ui:collection-ref:libri'),
   pageSize: z.number().default(10).describe('ui:number'),
 });
 
@@ -9007,6 +9187,129 @@ END_OF_FILE_CONTENT
 # SKIP: src/components/ui/tooltip.tsx:Zone.Identifier is binary and cannot be embedded as text.
 mkdir -p "src/data"
 mkdir -p "src/data/collections"
+mkdir -p "src/data/collections/autori"
+echo "Creating src/data/collections/autori/autori.json..."
+cat << 'END_OF_FILE_CONTENT' > "src/data/collections/autori/autori.json"
+{
+  "george-orwell": {
+    "id": "george-orwell",
+    "name": "George Orwell"
+  },
+  "umberto-eco": {
+    "id": "umberto-eco",
+    "name": "Umberto Eco"
+  },
+  "primo-levi": {
+    "id": "primo-levi",
+    "name": "Primo Levi"
+  },
+  "italo-calvino": {
+    "id": "italo-calvino",
+    "name": "Italo Calvino"
+  },
+  "giuseppe-tomasi-di-lampedusa": {
+    "id": "giuseppe-tomasi-di-lampedusa",
+    "name": "Giuseppe Tomasi di Lampedusa"
+  },
+  "italo-svevo": {
+    "id": "italo-svevo",
+    "name": "Italo Svevo"
+  },
+  "alessandro-manzoni": {
+    "id": "alessandro-manzoni",
+    "name": "Alessandro Manzoni"
+  },
+  "roberto-saviano": {
+    "id": "roberto-saviano",
+    "name": "Roberto Saviano"
+  },
+  "alessandro-baricco": {
+    "id": "alessandro-baricco",
+    "name": "Alessandro Baricco"
+  },
+  "natalia-ginzburg": {
+    "id": "natalia-ginzburg",
+    "name": "Natalia Ginzburg"
+  },
+  "gabriel-garcia-marquez": {
+    "id": "gabriel-garcia-marquez",
+    "name": "Gabriel Garcia Marquez"
+  },
+  "ray-bradbury": {
+    "id": "ray-bradbury",
+    "name": "Ray Bradbury"
+  },
+  "frank-herbert": {
+    "id": "frank-herbert",
+    "name": "Frank Herbert"
+  },
+  "william-gibson": {
+    "id": "william-gibson",
+    "name": "William Gibson"
+  },
+  "j-r-r-tolkien": {
+    "id": "j-r-r-tolkien",
+    "name": "J. R. R. Tolkien"
+  },
+  "j-k-rowling": {
+    "id": "j-k-rowling",
+    "name": "J. K. Rowling"
+  },
+  "jane-austen": {
+    "id": "jane-austen",
+    "name": "Jane Austen"
+  },
+  "herman-melville": {
+    "id": "herman-melville",
+    "name": "Herman Melville"
+  },
+  "fedor-dostoevskij": {
+    "id": "fedor-dostoevskij",
+    "name": "Fedor Dostoevskij"
+  },
+  "lev-tolstoj": {
+    "id": "lev-tolstoj",
+    "name": "Lev Tolstoj"
+  },
+  "michail-bulgakov": {
+    "id": "michail-bulgakov",
+    "name": "Michail Bulgakov"
+  },
+  "cormac-mccarthy": {
+    "id": "cormac-mccarthy",
+    "name": "Cormac McCarthy"
+  },
+  "david-mitchell": {
+    "id": "david-mitchell",
+    "name": "David Mitchell"
+  },
+  "haruki-murakami": {
+    "id": "haruki-murakami",
+    "name": "Haruki Murakami"
+  },
+  "chimamanda-ngozi-adichie": {
+    "id": "chimamanda-ngozi-adichie",
+    "name": "Chimamanda Ngozi Adichie"
+  },
+  "isabel-allende": {
+    "id": "isabel-allende",
+    "name": "Isabel Allende"
+  },
+  "toni-morrison": {
+    "id": "toni-morrison",
+    "name": "Toni Morrison"
+  },
+  "junot-diaz": {
+    "id": "junot-diaz",
+    "name": "Junot Diaz"
+  },
+  "jonathan-franzen": {
+    "id": "jonathan-franzen",
+    "name": "Jonathan Franzen"
+  }
+}
+
+END_OF_FILE_CONTENT
 mkdir -p "src/data/collections/libri"
 echo "Creating src/data/collections/libri/libri.json..."
 cat << 'END_OF_FILE_CONTENT' > "src/data/collections/libri/libri.json"
@@ -9014,7 +9317,9 @@ cat << 'END_OF_FILE_CONTENT' > "src/data/collections/libri/libri.json"
   "1984": {
     "id": "1984",
     "title": "1984",
-    "author": "Guido Seiero",
+    "author": {
+      "$ref": "../autori/autori.json#/george-orwell"
+    },
     "year": 1949,
     "genre": "Distopia",
     "summary": "Un regime totalitario controlla linguaggio, memoria e pensiero."
@@ -9022,7 +9327,9 @@ cat << 'END_OF_FILE_CONTENT' > "src/data/collections/libri/libri.json"
   "il-nome-della-rosa": {
     "id": "il-nome-della-rosa",
     "title": "Il nome della rosa",
-    "author": "Umberto Eco",
+    "author": {
+      "$ref": "../autori/autori.json#/umberto-eco"
+    },
     "year": 1980,
     "genre": "Romanzo storico",
     "summary": "Un'indagine in un'abbazia medievale diventa una riflessione su conoscenza, potere e interpretazione."
@@ -9030,7 +9337,9 @@ cat << 'END_OF_FILE_CONTENT' > "src/data/collections/libri/libri.json"
   "se-questo-e-un-uomo": {
     "id": "se-questo-e-un-uomo",
     "title": "Se questo e un uomo",
-    "author": "Primo Levi",
+    "author": {
+      "$ref": "../autori/autori.json#/primo-levi"
+    },
     "year": 1947,
     "genre": "Memoria",
     "summary": "La testimonianza essenziale di Levi sull'esperienza del lager e sulla dignita umana."
@@ -9038,7 +9347,9 @@ cat << 'END_OF_FILE_CONTENT' > "src/data/collections/libri/libri.json"
   "le-citta-invisibili": {
     "id": "le-citta-invisibili",
     "title": "Le citta invisibili",
-    "author": "Italo Calvino",
+    "author": {
+      "$ref": "../autori/autori.json#/italo-calvino"
+    },
     "year": 1972,
     "genre": "Letteratura fantastica",
     "summary": "Marco Polo racconta a Kublai Khan citta immaginarie che parlano di memoria, desiderio e linguaggio."
@@ -9046,7 +9357,9 @@ cat << 'END_OF_FILE_CONTENT' > "src/data/collections/libri/libri.json"
   "il-gattopardo": {
     "id": "il-gattopardo",
     "title": "Il Gattopardo",
-    "author": "Giuseppe Tomasi di Lampedusa",
+    "author": {
+      "$ref": "../autori/autori.json#/giuseppe-tomasi-di-lampedusa"
+    },
     "year": 1958,
     "genre": "Romanzo storico",
     "summary": "Il tramonto dell'aristocrazia siciliana durante l'unificazione italiana."
@@ -9054,7 +9367,9 @@ cat << 'END_OF_FILE_CONTENT' > "src/data/collections/libri/libri.json"
   "la-coscienza-di-zeno": {
     "id": "la-coscienza-di-zeno",
     "title": "La coscienza di Zeno",
-    "author": "Italo Svevo",
+    "author": {
+      "$ref": "../autori/autori.json#/italo-svevo"
+    },
     "year": 1923,
     "genre": "Romanzo psicologico",
     "summary": "Un diario ironico e nevrotico attraversa memoria, terapia e autoinganno."
@@ -9062,7 +9377,9 @@ cat << 'END_OF_FILE_CONTENT' > "src/data/collections/libri/libri.json"
   "i-promessi-sposi": {
     "id": "i-promessi-sposi",
     "title": "I promessi sposi",
-    "author": "Alessandro Manzoni",
+    "author": {
+      "$ref": "../autori/autori.json#/alessandro-manzoni"
+    },
     "year": 1842,
     "genre": "Classico",
     "summary": "La vicenda di Renzo e Lucia dentro carestia, guerra, peste e provvidenza."
@@ -9070,7 +9387,9 @@ cat << 'END_OF_FILE_CONTENT' > "src/data/collections/libri/libri.json"
   "il-barone-rampante": {
     "id": "il-barone-rampante",
     "title": "Il barone rampante",
-    "author": "Italo Calvino",
+    "author": {
+      "$ref": "../autori/autori.json#/italo-calvino"
+    },
     "year": 1957,
     "genre": "Romanzo filosofico",
     "summary": "Cosimo sceglie di vivere sugli alberi e trasforma la distanza in una forma di liberta."
@@ -9078,7 +9397,9 @@ cat << 'END_OF_FILE_CONTENT' > "src/data/collections/libri/libri.json"
   "gomorra": {
     "id": "gomorra",
     "title": "Gomorra",
-    "author": "Roberto Saviano",
+    "author": {
+      "$ref": "../autori/autori.json#/roberto-saviano"
+    },
     "year": 2006,
     "genre": "Inchiesta",
     "summary": "Un reportage narrativo sulle economie e le violenze del sistema camorristico."
@@ -9086,7 +9407,9 @@ cat << 'END_OF_FILE_CONTENT' > "src/data/collections/libri/libri.json"
   "oceano-mare": {
     "id": "oceano-mare",
     "title": "Oceano mare",
-    "author": "Alessandro Baricco",
+    "author": {
+      "$ref": "../autori/autori.json#/alessandro-baricco"
+    },
     "year": 1993,
     "genre": "Romanzo letterario",
     "summary": "Storie diverse si incontrano in una locanda sul mare, tra cura, naufragio e mistero."
@@ -9094,7 +9417,9 @@ cat << 'END_OF_FILE_CONTENT' > "src/data/collections/libri/libri.json"
   "lessico-famigliare": {
     "id": "lessico-famigliare",
     "title": "Lessico famigliare",
-    "author": "Natalia Ginzburg",
+    "author": {
+      "$ref": "../autori/autori.json#/natalia-ginzburg"
+    },
     "year": 1963,
     "genre": "Memoria narrativa",
     "summary": "Una famiglia prende forma attraverso parole, tic linguistici e memoria civile."
@@ -9102,7 +9427,9 @@ cat << 'END_OF_FILE_CONTENT' > "src/data/collections/libri/libri.json"
   "cent-anni-di-solitudine": {
     "id": "cent-anni-di-solitudine",
     "title": "Cent'anni di solitudine",
-    "author": "Gabriel Garcia Marquez",
+    "author": {
+      "$ref": "../autori/autori.json#/gabriel-garcia-marquez"
+    },
     "year": 1967,
     "genre": "Realismo magico",
     "summary": "La saga dei Buendia e di Macondo intreccia mito, storia e destino."
@@ -9110,7 +9437,9 @@ cat << 'END_OF_FILE_CONTENT' > "src/data/collections/libri/libri.json"
   "fahrenheit-451": {
     "id": "fahrenheit-451",
     "title": "Fahrenheit 451",
-    "author": "Ray Bradbury",
+    "author": {
+      "$ref": "../autori/autori.json#/ray-bradbury"
+    },
     "year": 1953,
     "genre": "Distopia",
     "summary": "In un futuro dove i libri bruciano, leggere diventa un atto di resistenza."
@@ -9118,7 +9447,9 @@ cat << 'END_OF_FILE_CONTENT' > "src/data/collections/libri/libri.json"
   "dune": {
     "id": "dune",
     "title": "Dune",
-    "author": "Frank Herbert",
+    "author": {
+      "$ref": "../autori/autori.json#/frank-herbert"
+    },
     "year": 1965,
     "genre": "Fantascienza",
     "summary": "Politica, ecologia e messianismo si scontrano sul pianeta desertico Arrakis."
@@ -9126,7 +9457,9 @@ cat << 'END_OF_FILE_CONTENT' > "src/data/collections/libri/libri.json"
   "neuromancer": {
     "id": "neuromancer",
     "title": "Neuromancer",
-    "author": "William Gibson",
+    "author": {
+      "$ref": "../autori/autori.json#/william-gibson"
+    },
     "year": 1984,
     "genre": "Cyberpunk",
     "summary": "Un hacker decaduto viene trascinato in un colpo che attraversa cyberspazio e intelligenze artificiali."
@@ -9134,7 +9467,9 @@ cat << 'END_OF_FILE_CONTENT' > "src/data/collections/libri/libri.json"
   "il-signore-degli-anelli": {
     "id": "il-signore-degli-anelli",
     "title": "Il Signore degli Anelli",
-    "author": "J. R. R. Tolkien",
+    "author": {
+      "$ref": "../autori/autori.json#/j-r-r-tolkien"
+    },
     "year": 1954,
     "genre": "Fantasy",
     "summary": "La Compagnia affronta il potere dell'Anello in una delle grandi epopee moderne."
@@ -9142,7 +9477,9 @@ cat << 'END_OF_FILE_CONTENT' > "src/data/collections/libri/libri.json"
   "harry-potter-e-la-pietra-filosofale": {
     "id": "harry-potter-e-la-pietra-filosofale",
     "title": "Harry Potter e la pietra filosofale",
-    "author": "J. K. Rowling",
+    "author": {
+      "$ref": "../autori/autori.json#/j-k-rowling"
+    },
     "year": 1997,
     "genre": "Fantasy",
     "summary": "Un ragazzo scopre il mondo magico e il proprio posto in una storia piu grande."
@@ -9150,7 +9487,9 @@ cat << 'END_OF_FILE_CONTENT' > "src/data/collections/libri/libri.json"
   "orgoglio-e-pregiudizio": {
     "id": "orgoglio-e-pregiudizio",
     "title": "Orgoglio e pregiudizio",
-    "author": "Jane Austen",
+    "author": {
+      "$ref": "../autori/autori.json#/jane-austen"
+    },
     "year": 1813,
     "genre": "Classico",
     "summary": "Elizabeth Bennet e Mr. Darcy si misurano con classe, carattere e giudizio sociale."
@@ -9158,7 +9497,9 @@ cat << 'END_OF_FILE_CONTENT' > "src/data/collections/libri/libri.json"
   "moby-dick": {
     "id": "moby-dick",
     "title": "Moby Dick",
-    "author": "Herman Melville",
+    "author": {
+      "$ref": "../autori/autori.json#/herman-melville"
+    },
     "year": 1851,
     "genre": "Avventura",
     "summary": "La caccia alla balena bianca diventa ossessione metafisica e viaggio nell'abisso."
@@ -9166,7 +9507,9 @@ cat << 'END_OF_FILE_CONTENT' > "src/data/collections/libri/libri.json"
   "delitto-e-castigo": {
     "id": "delitto-e-castigo",
     "title": "Delitto e castigo",
-    "author": "Fedor Dostoevskij",
+    "author": {
+      "$ref": "../autori/autori.json#/fedor-dostoevskij"
+    },
     "year": 1866,
     "genre": "Romanzo psicologico",
     "summary": "Raskolnikov attraversa colpa, febbre morale e possibilita di redenzione."
@@ -9174,7 +9517,9 @@ cat << 'END_OF_FILE_CONTENT' > "src/data/collections/libri/libri.json"
   "anna-karenina": {
     "id": "anna-karenina",
     "title": "Anna Karenina",
-    "author": "Lev Tolstoj",
+    "author": {
+      "$ref": "../autori/autori.json#/lev-tolstoj"
+    },
     "year": 1877,
     "genre": "Classico",
     "summary": "Una storia d'amore e rovina dentro la societa russa dell'Ottocento."
@@ -9182,7 +9527,9 @@ cat << 'END_OF_FILE_CONTENT' > "src/data/collections/libri/libri.json"
   "il-maestro-e-margherita": {
     "id": "il-maestro-e-margherita",
     "title": "Il maestro e Margherita",
-    "author": "Michail Bulgakov",
+    "author": {
+      "$ref": "../autori/autori.json#/michail-bulgakov"
+    },
     "year": 1967,
     "genre": "Satira fantastica",
     "summary": "Il diavolo visita Mosca in un romanzo visionario su arte, censura e amore."
@@ -9190,7 +9537,9 @@ cat << 'END_OF_FILE_CONTENT' > "src/data/collections/libri/libri.json"
   "la-strada": {
     "id": "la-strada",
     "title": "La strada",
-    "author": "Cormac McCarthy",
+    "author": {
+      "$ref": "../autori/autori.json#/cormac-mccarthy"
+    },
     "year": 2006,
     "genre": "Post-apocalittico",
     "summary": "Padre e figlio attraversano un mondo bruciato portando con se una fragile idea di bene."
@@ -9198,7 +9547,9 @@ cat << 'END_OF_FILE_CONTENT' > "src/data/collections/libri/libri.json"
   "cloud-atlas": {
     "id": "cloud-atlas",
     "title": "Cloud Atlas",
-    "author": "David Mitchell",
+    "author": {
+      "$ref": "../autori/autori.json#/david-mitchell"
+    },
     "year": 2004,
     "genre": "Romanzo corale",
     "summary": "Sei storie in epoche diverse compongono una meditazione su potere, memoria e reincorrenza."
@@ -9206,7 +9557,9 @@ cat << 'END_OF_FILE_CONTENT' > "src/data/collections/libri/libri.json"
   "kafka-sulla-spiaggia": {
     "id": "kafka-sulla-spiaggia",
     "title": "Kafka sulla spiaggia",
-    "author": "Haruki Murakami",
+    "author": {
+      "$ref": "../autori/autori.json#/haruki-murakami"
+    },
     "year": 2002,
     "genre": "Surrealismo",
     "summary": "Fuga, destino e sogno si intrecciano in un romanzo sospeso tra reale e mitico."
@@ -9214,7 +9567,9 @@ cat << 'END_OF_FILE_CONTENT' > "src/data/collections/libri/libri.json"
   "americanah": {
     "id": "americanah",
     "title": "Americanah",
-    "author": "Chimamanda Ngozi Adichie",
+    "author": {
+      "$ref": "../autori/autori.json#/chimamanda-ngozi-adichie"
+    },
     "year": 2013,
     "genre": "Romanzo contemporaneo",
     "summary": "Migrazione, razza e identita raccontate attraverso una storia d'amore tra Nigeria e Stati Uniti."
@@ -9222,7 +9577,9 @@ cat << 'END_OF_FILE_CONTENT' > "src/data/collections/libri/libri.json"
   "la-casa-degli-spiriti": {
     "id": "la-casa-degli-spiriti",
     "title": "La casa degli spiriti",
-    "author": "Isabel Allende",
+    "author": {
+      "$ref": "../autori/autori.json#/isabel-allende"
+    },
     "year": 1982,
     "genre": "Saga familiare",
     "summary": "La storia della famiglia Trueba intreccia politica, memoria e realismo magico."
@@ -9230,7 +9587,9 @@ cat << 'END_OF_FILE_CONTENT' > "src/data/collections/libri/libri.json"
   "beloved": {
     "id": "beloved",
     "title": "Beloved",
-    "author": "Toni Morrison",
+    "author": {
+      "$ref": "../autori/autori.json#/toni-morrison"
+    },
     "year": 1987,
     "genre": "Romanzo storico",
     "summary": "Il trauma della schiavitu ritorna come presenza viva nella casa di Sethe."
@@ -9238,7 +9597,9 @@ cat << 'END_OF_FILE_CONTENT' > "src/data/collections/libri/libri.json"
   "la-breve-favolosa-vita-di-oscar-wao": {
     "id": "la-breve-favolosa-vita-di-oscar-wao",
     "title": "La breve favolosa vita di Oscar Wao",
-    "author": "Junot Diaz",
+    "author": {
+      "$ref": "../autori/autori.json#/junot-diaz"
+    },
     "year": 2007,
     "genre": "Romanzo contemporaneo",
     "summary": "Famiglia, diaspora dominicana e cultura pop si intrecciano nella storia di Oscar."
@@ -9246,7 +9607,9 @@ cat << 'END_OF_FILE_CONTENT' > "src/data/collections/libri/libri.json"
   "le-correzioni": {
     "id": "le-correzioni",
     "title": "Le correzioni",
-    "author": "Jonathan Franzen",
+    "author": {
+      "$ref": "../autori/autori.json#/jonathan-franzen"
+    },
     "year": 2001,
     "genre": "Romanzo familiare",
     "summary": "Una famiglia americana tenta di ritrovarsi mentre ciascuno affronta le proprie fratture."
@@ -9570,11 +9933,70 @@ cat << 'END_OF_FILE_CONTENT' > "src/data/config/theme.json"
 }
 END_OF_FILE_CONTENT
 mkdir -p "src/data/pages"
-echo "Creating src/data/pages/home.json..."
-cat << 'END_OF_FILE_CONTENT' > "src/data/pages/home.json"
+mkdir -p "src/data/pages/authors"
+echo "Creating src/data/pages/authors.json..."
+cat << 'END_OF_FILE_CONTENT' > "src/data/pages/authors.json"
 {
-  "id": "home-page",
-  "slug": "home",
+  "id": "authors-page",
+  "slug": "authors",
+  "meta": {
+    "title": "Authors",
+    "description": "Author directory powered by the autori collection."
+  },
+  "sections": [
+    {
+      "id": "authors-list-1",
+      "type": "authors-list",
+      "data": {
+        "anchorId": "authors",
+        "eyebrow": "Collection demo",
+        "title": "Authors",
+        "description": "A collection-backed directory of authors referenced by books.",
+        "items": {
+          "$ref": "../collections/autori/autori.json"
+        }
+      }
+    }
+  ],
+  "global-header": false
+}
+
+END_OF_FILE_CONTENT
+mkdir -p "src/data/pages/authors/[authorId]"
+echo "Creating src/data/pages/authors/[authorId]/libri.json..."
+cat << 'END_OF_FILE_CONTENT' > "src/data/pages/authors/[authorId]/libri.json"
+{
+  "id": "author-books-page",
+  "slug": "authors/[authorId]/libri",
+  "meta": {
+    "title": "Libri per autore",
+    "description": "Catalogo libri filtrato per autore."
+  },
+  "sections": [
+    {
+      "id": "books-list-author-filter",
+      "type": "books-list",
+      "data": {
+        "anchorId": "libri-autore",
+        "eyebrow": "Author books",
+        "title": "Libri",
+        "description": "Libri filtrati per autore dalla collection autori.",
+        "items": {
+          "$ref": "../../collections/libri/libri.json"
+        },
+        "pageSize": 10
+      }
+    }
+  ],
+  "global-header": false
+}
+
+END_OF_FILE_CONTENT
+echo "Creating src/data/pages/form.json..."
+cat << 'END_OF_FILE_CONTENT' > "src/data/pages/form.json"
+{
+  "id": "form-page",
+  "slug": "form",
   "meta": {
     "title": "Home",
     "description": "OlonJS tenant alpha — form smoke test"
@@ -9591,6 +10013,34 @@ cat << 'END_OF_FILE_CONTENT' > "src/data/pages/home.json"
         "submitLabel": "Invia",
         "successMessage": "Richiesta inviata con successo.",
         "icon": "mail"
+      }
+    }
+  ],
+  "global-header": false
+}
+END_OF_FILE_CONTENT
+echo "Creating src/data/pages/home.json..."
+cat << 'END_OF_FILE_CONTENT' > "src/data/pages/home.json"
+{
+  "id": "libri-page",
+  "slug": "home",
+  "meta": {
+    "title": "Libri",
+    "description": "Catalogo libri dimostrativo alimentato da COP collections."
+  },
+  "sections": [
+    {
+      "id": "books-list-1",
+      "type": "books-list",
+      "data": {
+        "anchorId": "catalogo-libri",
+        "eyebrow": "Collection demo",
+        "title": "Libri",
+        "description": "Una pagina collection con 30 titoli, paginazione lato componente e link alle schede dinamiche.",
+        "items": {
+          "$ref": "../collections/libri/libri.json"
+        },
+        "pageSize": 10
       }
     }
   ],
@@ -9615,7 +10065,7 @@ cat << 'END_OF_FILE_CONTENT' > "src/data/pages/libri.json"
         "anchorId": "catalogo-libri",
         "eyebrow": "Collection demo",
         "title": "Libri",
-        "description": "Una pagina collection con 30 titoli, paginazione lato componente e link alle schede dinamiche.",
+        "description": "Una pagina collection con titoli, paginazione lato componente e filtro autore.",
         "items": {
           "$ref": "../collections/libri/libri.json"
         },
@@ -11133,9 +11583,11 @@ END_OF_FILE_CONTENT
 mkdir -p "src/lib"
 echo "Creating src/lib/CollectionRegistry.ts..."
 cat << 'END_OF_FILE_CONTENT' > "src/lib/CollectionRegistry.ts"
+import { AutoriCollectionSchema } from '@/collections/autori';
 import { LibriCollectionSchema } from '@/collections/libri';
 
 export const CollectionRegistry = {
+  autori: AutoriCollectionSchema,
   libri: LibriCollectionSchema,
 } as const;
 
@@ -11146,6 +11598,7 @@ echo "Creating src/lib/ComponentRegistry.tsx..."
 cat << 'END_OF_FILE_CONTENT' > "src/lib/ComponentRegistry.tsx"
 import type { SectionType } from '@/types';
 import type { SectionComponentPropsMap } from '@/types';
+import { AuthorsListView } from '@/components/authors-list';
 import { BookDetailView } from '@/components/book-detail';
 import { BooksListView } from '@/components/books-list';
 import { EmptyTenantView } from '@/components/empty-tenant';
@@ -11155,6 +11608,7 @@ import { FormDemoView } from '@/components/form-demo';
 export const ComponentRegistry: {
   [K in SectionType]: React.FC<SectionComponentPropsMap[K]>;
 } = {
+  'authors-list': AuthorsListView as React.FC<SectionComponentPropsMap['authors-list']>,
   'book-detail': BookDetailView as React.FC<SectionComponentPropsMap['book-detail']>,
   'books-list': BooksListView as React.FC<SectionComponentPropsMap['books-list']>,
   'empty-tenant': EmptyTenantView as React.FC<SectionComponentPropsMap['empty-tenant']>,
@@ -11227,9 +11681,10 @@ echo "Creating src/lib/addSectionConfig.ts..."
 cat << 'END_OF_FILE_CONTENT' > "src/lib/addSectionConfig.ts"
 import type { AddSectionConfig } from '@olonjs/core';
 
-const addableSectionTypes = ['book-detail', 'books-list', 'empty-tenant', 'footer', 'form-demo'] as const;
+const addableSectionTypes = ['authors-list', 'book-detail', 'books-list', 'empty-tenant', 'footer', 'form-demo'] as const;
 
 const sectionTypeLabels: Record<string, string> = {
+  'authors-list': 'Authors List',
   'book-detail': 'Book Detail',
   'books-list': 'Books List',
   'empty-tenant': 'Empty Tenant',
@@ -11239,6 +11694,13 @@ const sectionTypeLabels: Record<string, string> = {
 
 function getDefaultSectionData(type: string): Record<string, unknown> {
   switch (type) {
+    case 'authors-list':
+      return {
+        eyebrow: 'Collection demo',
+        title: 'Authors',
+        description: 'Authors loaded from the autori collection.',
+        items: { $ref: '../collections/autori/autori.json' },
+      };
     case 'book-detail':
       return {
         item: { $ref: 'collection:current' },
@@ -11313,6 +11775,49 @@ export function getHydratedData(
 }
 
 END_OF_FILE_CONTENT
+echo "Creating src/lib/getFileCollections.ts..."
+cat << 'END_OF_FILE_CONTENT' > "src/lib/getFileCollections.ts"
+import type { JsonPagesConfig } from '@/types';
+
+type CollectionDocuments = NonNullable<JsonPagesConfig['collections']>;
+
+function collectionSourceFromPath(filePath: string): string | null {
+  const normalizedPath = filePath.replace(/\\/g, '/');
+  const match = normalizedPath.match(/\/data\/collections\/([^/]+)\/[^/]+\.json$/i);
+  return match?.[1]?.trim() || null;
+}
+
+export function getFileCollections(): CollectionDocuments {
+  const glob = import.meta.glob<{ default: unknown }>('@/data/collections/**/*.json', { eager: true });
+  const bySource = new Map<string, Record<string, unknown>>();
+  const entries = Object.entries(glob).sort(([a], [b]) => a.localeCompare(b));
+
+  for (const [path, mod] of entries) {
+    const source = collectionSourceFromPath(path);
+    const raw = mod?.default;
+    if (!source) {
+      console.warn(`[tenant-alpha:getFileCollections] Ignoring collection module with invalid path "${path}".`);
+      continue;
+    }
+    if (raw == null || typeof raw !== 'object' || Array.isArray(raw)) {
+      console.warn(`[tenant-alpha:getFileCollections] Ignoring invalid collection module at "${path}".`);
+      continue;
+    }
+    if (bySource.has(source)) {
+      console.warn(`[tenant-alpha:getFileCollections] Duplicate collection source "${source}" at "${path}". Keeping latest match.`);
+    }
+    bySource.set(source, raw as Record<string, unknown>);
+  }
+
+  const collections: CollectionDocuments = {};
+  for (const source of Array.from(bySource.keys()).sort((a, b) => a.localeCompare(b))) {
+    const collection = bySource.get(source);
+    if (collection) collections[source] = collection;
+  }
+  return collections;
+}
+
+END_OF_FILE_CONTENT
 echo "Creating src/lib/getFilePages.ts..."
 cat << 'END_OF_FILE_CONTENT' > "src/lib/getFilePages.ts"
 /**
@@ -11363,6 +11868,7 @@ export function getFilePages(): Record<string, PageConfig> {
 END_OF_FILE_CONTENT
 echo "Creating src/lib/schemas.ts..."
 cat << 'END_OF_FILE_CONTENT' > "src/lib/schemas.ts"
+import { AuthorsListSchema } from '@/components/authors-list';
 import { BookDetailSchema } from '@/components/book-detail';
 import { BooksListSchema } from '@/components/books-list';
 import { EmptyTenantSchema } from '@/components/empty-tenant';
@@ -11370,6 +11876,7 @@ import { FooterSchema } from '@/components/footer';
 import { FormDemoSchema, FormDemoSubmissionSchema } from '@/components/form-demo';
 
 export const SECTION_SCHEMAS = {
+  'authors-list': AuthorsListSchema,
   'book-detail': BookDetailSchema,
   'books-list': BooksListSchema,
   'empty-tenant': EmptyTenantSchema,
@@ -11654,19 +12161,17 @@ cat << 'END_OF_FILE_CONTENT' > "src/runtime.ts"
 import type { JsonPagesConfig, MenuConfig, PageConfig, SiteConfig, ThemeConfig } from '@/types';
 import { CollectionRegistry } from '@/lib/CollectionRegistry';
 import { SECTION_SCHEMAS } from '@/lib/schemas';
+import { getFileCollections } from '@/lib/getFileCollections';
 import { getFilePages } from '@/lib/getFilePages';
 import siteData from '@/data/config/site.json';
 import menuData from '@/data/config/menu.json';
 import themeData from '@/data/config/theme.json';
-import libriData from '@/data/collections/libri/libri.json';
 
 export const siteConfig = siteData as unknown as SiteConfig;
 export const themeConfig = themeData as unknown as ThemeConfig;
 export const menuConfig = menuData as unknown as MenuConfig;
 export const pages = getFilePages();
-export const collections = {
-  libri: libriData as unknown as Record<string, unknown>,
-} satisfies NonNullable<JsonPagesConfig['collections']>;
+export const collections = getFileCollections();
 export const collectionSchemas = CollectionRegistry as unknown as JsonPagesConfig['collectionSchemas'];
 export const refDocuments = {
   'menu.json': menuConfig,
@@ -11700,14 +12205,17 @@ END_OF_FILE_CONTENT
 # SKIP: src/runtime.ts:Zone.Identifier is binary and cannot be embedded as text.
 echo "Creating src/types.ts..."
 cat << 'END_OF_FILE_CONTENT' > "src/types.ts"
+import type { AuthorsListData, AuthorsListSettings } from '@/components/authors-list';
 import type { BookDetailData, BookDetailSettings } from '@/components/book-detail';
 import type { BooksListData, BooksListSettings } from '@/components/books-list';
 import type { EmptyTenantData, EmptyTenantSettings } from '@/components/empty-tenant';
 import type { FooterData, FooterSettings } from '@/components/footer';
 import type { FormDemoData, FormDemoSettings } from '@/components/form-demo';
+import type { Autore } from '@/collections/autori';
 import type { Libro } from '@/collections/libri';
 
 export type SectionComponentPropsMap = {
+  'authors-list': { data: AuthorsListData; settings?: AuthorsListSettings };
   'book-detail': { data: BookDetailData; settings?: BookDetailSettings };
   'books-list': { data: BooksListData; settings?: BooksListSettings };
   'empty-tenant': { data: EmptyTenantData; settings?: EmptyTenantSettings };
@@ -11717,6 +12225,7 @@ export type SectionComponentPropsMap = {
 
 declare module '@olonjs/core' {
   export interface SectionDataRegistry {
+    'authors-list': AuthorsListData;
     'book-detail': BookDetailData;
     'books-list': BooksListData;
     'empty-tenant': EmptyTenantData;
@@ -11724,6 +12233,7 @@ declare module '@olonjs/core' {
     'form-demo': FormDemoData;
   }
   export interface SectionSettingsRegistry {
+    'authors-list': AuthorsListSettings;
     'book-detail': BookDetailSettings;
     'books-list': BooksListSettings;
     'empty-tenant': EmptyTenantSettings;
@@ -11731,6 +12241,7 @@ declare module '@olonjs/core' {
     'form-demo': FormDemoSettings;
   }
   export interface CollectionItemRegistry {
+    autori: Autore;
     libri: Libro;
   }
 }

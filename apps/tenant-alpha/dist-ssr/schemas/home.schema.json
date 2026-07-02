@@ -2,13 +2,13 @@
   "version": "1.0.0",
   "kind": "olonjs-page-contract",
   "slug": "home",
-  "title": "Home",
-  "description": "OlonJS tenant alpha — form smoke test",
+  "title": "Libri",
+  "description": "Catalogo libri dimostrativo alimentato da COP collections.",
   "manifestHref": "/mcp-manifests/home.json",
-  "systemPrompt": "You are operating the \"Home\" page in OlonJS Studio. Use only the declared tools and keep mutations valid against the section schema.",
+  "systemPrompt": "You are operating the \"Libri\" page in OlonJS Studio. Use only the declared tools and keep mutations valid against the section schema.",
   "sectionTypes": [
     "footer",
-    "form-demo"
+    "books-list"
   ],
   "sectionInstances": [
     {
@@ -18,10 +18,10 @@
       "label": "footer"
     },
     {
-      "id": "form-demo-1",
-      "type": "form-demo",
+      "id": "books-list-1",
+      "type": "books-list",
       "scope": "local",
-      "label": "Contattaci"
+      "label": "Collections"
     }
   ],
   "sectionSchemas": {
@@ -88,7 +88,7 @@
         "copyright"
       ]
     },
-    "form-demo": {
+    "books-list": {
       "type": "object",
       "properties": {
         "id": {
@@ -98,13 +98,9 @@
           "type": "string",
           "description": "ui:text"
         },
-        "recipientEmail": {
+        "eyebrow": {
           "type": "string",
           "description": "ui:text"
-        },
-        "icon": {
-          "type": "string",
-          "description": "ui:icon-picker"
         },
         "title": {
           "type": "string",
@@ -114,18 +110,88 @@
           "type": "string",
           "description": "ui:textarea"
         },
-        "submitLabel": {
-          "type": "string",
-          "description": "ui:text",
-          "default": "Invia"
+        "items": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string"
+              },
+              "title": {
+                "type": "string",
+                "description": "ui:text"
+              },
+              "author": {
+                "anyOf": [
+                  {
+                    "type": "object",
+                    "properties": {
+                      "id": {
+                        "type": "string"
+                      },
+                      "name": {
+                        "type": "string",
+                        "description": "ui:text"
+                      }
+                    },
+                    "additionalProperties": false,
+                    "required": [
+                      "id",
+                      "name"
+                    ]
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "$ref": {
+                        "type": "string"
+                      }
+                    },
+                    "additionalProperties": false,
+                    "required": [
+                      "$ref"
+                    ]
+                  }
+                ],
+                "description": "ui:collection-ref:autori"
+              },
+              "year": {
+                "type": "number",
+                "description": "ui:number"
+              },
+              "genre": {
+                "type": "string",
+                "description": "ui:text"
+              },
+              "summary": {
+                "type": "string",
+                "description": "ui:textarea"
+              }
+            },
+            "additionalProperties": false,
+            "required": [
+              "id",
+              "title",
+              "author",
+              "year",
+              "genre",
+              "summary"
+            ]
+          },
+          "description": "ui:collection-ref:libri"
         },
-        "successMessage": {
-          "type": "string",
-          "description": "ui:text",
-          "default": "Richiesta inviata con successo."
+        "pageSize": {
+          "type": "number",
+          "description": "ui:number",
+          "default": 10
         }
       },
-      "additionalProperties": false
+      "additionalProperties": false,
+      "required": [
+        "title",
+        "items"
+      ]
     }
   },
   "tools": [

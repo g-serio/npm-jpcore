@@ -1,17 +1,50 @@
 {
   "version": "1.0.0",
   "kind": "olonjs-mcp-manifest-index",
-  "generatedAt": "2026-06-13T13:53:16.347Z",
+  "generatedAt": "2026-07-02T08:22:53.647Z",
   "pages": [
     {
-      "slug": "home",
+      "slug": "authors",
+      "title": "Authors",
+      "description": "Author directory powered by the autori collection.",
+      "manifestHref": "/mcp-manifests/authors.json",
+      "contractHref": "/schemas/authors.schema.json",
+      "sectionTypes": [
+        "footer",
+        "authors-list"
+      ]
+    },
+    {
+      "slug": "authors/[authorId]/libri",
+      "title": "Libri per autore",
+      "description": "Catalogo libri filtrato per autore.",
+      "manifestHref": "/mcp-manifests/authors/[authorId]/libri.json",
+      "contractHref": "/schemas/authors/[authorId]/libri.schema.json",
+      "sectionTypes": [
+        "footer",
+        "books-list"
+      ]
+    },
+    {
+      "slug": "form",
       "title": "Home",
       "description": "OlonJS tenant alpha — form smoke test",
+      "manifestHref": "/mcp-manifests/form.json",
+      "contractHref": "/schemas/form.schema.json",
+      "sectionTypes": [
+        "footer",
+        "form-demo"
+      ]
+    },
+    {
+      "slug": "home",
+      "title": "Libri",
+      "description": "Catalogo libri dimostrativo alimentato da COP collections.",
       "manifestHref": "/mcp-manifests/home.json",
       "contractHref": "/schemas/home.schema.json",
       "sectionTypes": [
         "footer",
-        "form-demo"
+        "books-list"
       ]
     },
     {

@@ -77,6 +77,33 @@ function normalizeManifestSlug(raw) {
     .replace(/(\.schema)?\.json$/i, '');
 }
 
+function applyDevSliceFilters(page, authored, params) {
+  if (!authored?.sections || !page?.sections) return page;
+  const at = (o, p) => p.split('.').reduce((a, k) => a?.[k], o);
+  return {
+    ...page,
+    sections: page.sections.map((section, i) => {
+      const src = authored.sections[i]?.data;
+      if (!src || !section.data) return section;
+      const data = { ...section.data };
+      for (const [key, ref] of Object.entries(src)) {
+        if (!ref?.$sliceFilter || typeof data[key] !== 'object') continue;
+        const filter = Object.fromEntries(
+          Object.entries(ref.$sliceFilter)
+            .map(([k, v]) => [k, typeof v === 'string' ? v : params[v?.$routeParam] ?? ''])
+            .filter(([, v]) => v),
+        );
+        data[key] = Object.fromEntries(
+          Object.entries(data[key]).filter(([, item]) =>
+            Object.entries(filter).every(([p, v]) => String(at(item, p) ?? '') === v),
+          ),
+        );
+      }
+      return { ...section, data };
+    }),
+  };
+}
+
 async function loadWebMcpBuilders() {
   const moduleUrl = import.meta.resolve('@olonjs/core');
   return import(moduleUrl);
@@ -128,6 +155,7 @@ export default defineConfig({
                 themeConfig: buildState.themeConfig,
                 menuConfig: buildState.menuConfig,
                 collections: buildState.collections,
+                collectionSchemas: buildState.collectionSchemas,
                 refDocuments: buildState.refDocuments,
               });
               if (!resolved) {
@@ -155,6 +183,7 @@ export default defineConfig({
                 themeConfig: buildState.themeConfig,
                 menuConfig: buildState.menuConfig,
                 collections: buildState.collections,
+                collectionSchemas: buildState.collectionSchemas,
                 refDocuments: buildState.refDocuments,
               });
               if (!resolved) {
@@ -220,13 +249,15 @@ export default defineConfig({
                 themeConfig: buildState.themeConfig,
                 menuConfig: buildState.menuConfig,
                 collections: buildState.collections,
+                collectionSchemas: buildState.collectionSchemas,
                 refDocuments: buildState.refDocuments,
               });
               if (!resolved) {
                 sendJson(res, 404, { error: 'Page JSON not found' });
                 return;
               }
-              sendJson(res, 200, resolved.page);
+              const authored = buildState.pages[resolved.pageMatch.registrySlug];
+              sendJson(res, 200, applyDevSliceFilters(resolved.page, authored, resolved.pageMatch.params ?? {}));
             })().catch((error) => {
               sendJson(res, 500, { error: error?.message || 'Page JSON resolution failed' });
             });
@@ -272,7 +303,7 @@ export default defineConfig({
             req.on('error', () => sendJson(res, 500, { error: 'Request error' }));
             return;
           }
-          if (req.method !== 'POST' || req.url !== '/api/upload-asset') return next();
+          if (req.method !== 'POST' || pathname !== '/api/upload-asset') return next();
           const chunks = [];
           req.on('data', (chunk) => chunks.push(chunk));
           req.on('end', () => {

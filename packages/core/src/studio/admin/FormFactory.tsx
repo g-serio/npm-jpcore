@@ -171,6 +171,7 @@ export const FormFactory: React.FC<FormFactoryProps> = ({
 
         // Editorial fields are edited directly on Stage and not in Inspector form.
         if (uiHint === 'ui:editorial-markdown') return null;
+        if (uiHint === 'ui:hidden') return null;
 
         if (uiHint.startsWith('ui:collection-ref')) {
           const isFocusedField = fieldKeyMatches(effectiveFocusedFieldKey, key);

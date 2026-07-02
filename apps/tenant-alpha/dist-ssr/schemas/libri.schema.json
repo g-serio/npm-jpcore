@@ -123,8 +123,38 @@
                 "description": "ui:text"
               },
               "author": {
-                "type": "string",
-                "description": "ui:text"
+                "anyOf": [
+                  {
+                    "type": "object",
+                    "properties": {
+                      "id": {
+                        "type": "string"
+                      },
+                      "name": {
+                        "type": "string",
+                        "description": "ui:text"
+                      }
+                    },
+                    "additionalProperties": false,
+                    "required": [
+                      "id",
+                      "name"
+                    ]
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "$ref": {
+                        "type": "string"
+                      }
+                    },
+                    "additionalProperties": false,
+                    "required": [
+                      "$ref"
+                    ]
+                  }
+                ],
+                "description": "ui:collection-ref:autori"
               },
               "year": {
                 "type": "number",
@@ -149,7 +179,7 @@
               "summary"
             ]
           },
-          "description": "ui:collection-ref"
+          "description": "ui:collection-ref:libri"
         },
         "pageSize": {
           "type": "number",

@@ -6,15 +6,87 @@
   <!-- ========================================== -->
   <url>
     <loc>http://localhost:5173/llms.txt</loc>
-    <lastmod>2026-06-13T13:53:16Z</lastmod>
+    <lastmod>2026-07-02T08:22:53Z</lastmod>
     <changefreq>weekly</changefreq>
     <priority>1.0</priority>
   </url>
   <url>
     <loc>http://localhost:5173/mcp-manifest.json</loc>
-    <lastmod>2026-06-13T13:53:16Z</lastmod>
+    <lastmod>2026-07-02T08:22:53Z</lastmod>
     <changefreq>weekly</changefreq>
     <priority>1.0</priority>
+  </url>
+  <!-- ========================================== -->
+  <!-- PAGE: AUTHORS/[AUTHORID]/LIBRI             -->
+  <!-- ========================================== -->
+  <!-- Human UI -->
+  <url>
+    <loc>http://localhost:5173/authors/[authorId]/libri</loc>
+    <lastmod>2026-06-14T09:57:51Z</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>0.9</priority>
+  </url>
+  <!-- Machine Payload -->
+  <url>
+    <loc>http://localhost:5173/authors/[authorId]/libri.json</loc>
+    <lastmod>2026-06-14T09:57:51Z</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>0.9</priority>
+  </url>
+  <!-- Machine Contract (Schema) -->
+  <url>
+    <loc>http://localhost:5173/schemas/authors/[authorId]/libri.schema.json</loc>
+    <lastmod>2026-07-02T08:22:53Z</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <!-- ========================================== -->
+  <!-- PAGE: AUTHORS                              -->
+  <!-- ========================================== -->
+  <!-- Human UI -->
+  <url>
+    <loc>http://localhost:5173/authors</loc>
+    <lastmod>2026-06-14T09:57:51Z</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>0.9</priority>
+  </url>
+  <!-- Machine Payload -->
+  <url>
+    <loc>http://localhost:5173/authors.json</loc>
+    <lastmod>2026-06-14T09:57:51Z</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>0.9</priority>
+  </url>
+  <!-- Machine Contract (Schema) -->
+  <url>
+    <loc>http://localhost:5173/schemas/authors.schema.json</loc>
+    <lastmod>2026-07-02T08:22:53Z</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <!-- ========================================== -->
+  <!-- PAGE: FORM                                 -->
+  <!-- ========================================== -->
+  <!-- Human UI -->
+  <url>
+    <loc>http://localhost:5173/form</loc>
+    <lastmod>2026-06-15T14:08:58Z</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>0.9</priority>
+  </url>
+  <!-- Machine Payload -->
+  <url>
+    <loc>http://localhost:5173/form.json</loc>
+    <lastmod>2026-06-15T14:08:58Z</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>0.9</priority>
+  </url>
+  <!-- Machine Contract (Schema) -->
+  <url>
+    <loc>http://localhost:5173/schemas/form.schema.json</loc>
+    <lastmod>2026-07-02T08:22:53Z</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
   </url>
   <!-- ========================================== -->
   <!-- PAGE: HOME                                 -->
@@ -22,21 +94,21 @@
   <!-- Human UI -->
   <url>
     <loc>http://localhost:5173/</loc>
-    <lastmod>2026-04-17T15:18:02Z</lastmod>
+    <lastmod>2026-07-02T07:55:51Z</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.9</priority>
   </url>
   <!-- Machine Payload -->
   <url>
     <loc>http://localhost:5173/home.json</loc>
-    <lastmod>2026-04-17T15:18:02Z</lastmod>
+    <lastmod>2026-07-02T07:55:51Z</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.9</priority>
   </url>
   <!-- Machine Contract (Schema) -->
   <url>
     <loc>http://localhost:5173/schemas/home.schema.json</loc>
-    <lastmod>2026-06-13T13:53:16Z</lastmod>
+    <lastmod>2026-07-02T08:22:53Z</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
@@ -46,21 +118,21 @@
   <!-- Human UI -->
   <url>
     <loc>http://localhost:5173/libri/[slug]</loc>
-    <lastmod>2026-06-13T13:51:13Z</lastmod>
+    <lastmod>2026-06-15T13:51:37Z</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.9</priority>
   </url>
   <!-- Machine Payload -->
   <url>
     <loc>http://localhost:5173/libri/[slug].json</loc>
-    <lastmod>2026-06-13T13:51:13Z</lastmod>
+    <lastmod>2026-06-15T13:51:37Z</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.9</priority>
   </url>
   <!-- Machine Contract (Schema) -->
   <url>
     <loc>http://localhost:5173/schemas/libri/[slug].schema.json</loc>
-    <lastmod>2026-06-13T13:53:16Z</lastmod>
+    <lastmod>2026-07-02T08:22:53Z</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
@@ -70,21 +142,21 @@
   <!-- Human UI -->
   <url>
     <loc>http://localhost:5173/libri</loc>
-    <lastmod>2026-06-13T08:14:30Z</lastmod>
+    <lastmod>2026-06-15T13:54:23Z</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.9</priority>
   </url>
   <!-- Machine Payload -->
   <url>
     <loc>http://localhost:5173/libri.json</loc>
-    <lastmod>2026-06-13T08:14:30Z</lastmod>
+    <lastmod>2026-06-15T13:54:23Z</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.9</priority>
   </url>
   <!-- Machine Contract (Schema) -->
   <url>
     <loc>http://localhost:5173/schemas/libri.schema.json</loc>
-    <lastmod>2026-06-13T13:53:16Z</lastmod>
+    <lastmod>2026-07-02T08:22:53Z</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>

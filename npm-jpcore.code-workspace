@@ -4,7 +4,16 @@
 			"path": "."
 		},
 		{
-			"path": "../platformos-olonjs"
+			"path": "../jsonpages-platform"
+		},
+		{
+			"path": "../temp/thebrief"
+		},
+		{
+			"path": "../temp/YDEMO/gumlon"
+		},
+		{
+			"path": "../temp/design-md-radice"
 		}
 	]
 }

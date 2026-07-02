@@ -502,6 +502,11 @@ export function applyCollectionRefBindingsToDraft(
     }
 
     const resolvedValue = nextData[binding.fieldKey];
+
+    if (isRefObject(resolvedValue)) {
+      continue;
+    }
+    
     if (binding.itemId) {
       const sourceCollection = isRecord(nextCollectionsDraft[binding.source])
         ? nextCollectionsDraft[binding.source]

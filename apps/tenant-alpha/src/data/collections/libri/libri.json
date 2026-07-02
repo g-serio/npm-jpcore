@@ -3,7 +3,7 @@
     "id": "1984",
     "title": "1984",
     "author": {
-      "$ref": "../autori/autori.json#/george-orwell"
+      "$ref": "../autori/autori.json#/alessandro-baricco"
     },
     "year": 1949,
     "genre": "Distopia",

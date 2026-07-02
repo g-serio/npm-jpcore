@@ -1,6 +1,6 @@
 # OlonJS
 
-OlonJS tenant alpha — form smoke test
+Catalogo libri dimostrativo alimentato da COP collections.
 
 > **AI Agents:** This site is built with OlonJS. It exposes a native Model Context Protocol (MCP) manifest for direct structural interaction. 
 > To read the site map or access structured content, use the URI `olon://pages` or `olon://pages/[slug]`.
@@ -8,8 +8,20 @@ OlonJS tenant alpha — form smoke test
 
 ## Pages
 
-- **[Home](/)** (`home`)
+- **[Authors](/authors)** (`authors`)
+  Author directory powered by the autori collection.
+  *Contract:* `/schemas/authors.schema.json` | *Manifest:* `/mcp-manifests/authors.json`
+
+- **[Libri per autore](/authors/[authorId]/libri)** (`authors/[authorId]/libri`)
+  Catalogo libri filtrato per autore.
+  *Contract:* `/schemas/authors/[authorId]/libri.schema.json` | *Manifest:* `/mcp-manifests/authors/[authorId]/libri.json`
+
+- **[Home](/form)** (`form`)
   OlonJS tenant alpha — form smoke test
+  *Contract:* `/schemas/form.schema.json` | *Manifest:* `/mcp-manifests/form.json`
+
+- **[Libri](/)** (`home`)
+  Catalogo libri dimostrativo alimentato da COP collections.
   *Contract:* `/schemas/home.schema.json` | *Manifest:* `/mcp-manifests/home.json`
 
 - **[Libri](/libri)** (`libri`)
