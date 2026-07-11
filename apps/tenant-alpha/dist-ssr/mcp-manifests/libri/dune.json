@@ -1,7 +1,7 @@
 {
   "version": "1.0.0",
   "kind": "olonjs-page-mcp-manifest",
-  "generatedAt": "2026-07-02T07:46:49.730Z",
+  "generatedAt": "2026-07-02T10:21:31.185Z",
   "slug": "libri/dune",
   "title": "Dettaglio libro",
   "description": "Pagina dinamica dettaglio libro alimentata dalla collection libri.",

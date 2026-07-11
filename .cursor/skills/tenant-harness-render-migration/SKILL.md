@@ -42,8 +42,9 @@ isCloudMode (VITE_OLONJS_* env)?
       │    → merge single page + context into engine state
       └─ /admin*
            → skip visitor single-path bootstrap
-           → useAdminStudioContent → fan-out GET /render per static slug
-           → required or Studio shows "Loading Studio..."
+           → useAdminStudioContent → GET /render for **active admin page only**
+           → on page change in inspector (URL `/admin/{slug}`) → another GET /render
+           → page list in Studio from `filePages` stubs; cloud content merged per slug
 ```
 
 ## Migration workflow (minimal diff)
@@ -87,9 +88,11 @@ In the hot-save `useEffect` only:
 4. `patchHistoryNavigation` → re-fetch render on route change
 5. Log `boot.spp_render.*` (not `boot.cloud.*`)
 
-### Step 4 — Admin: render fan-out via `useAdminStudioContent`
+### Step 4 — Admin: lazy `/render` via `useAdminStudioContent`
 
 Create `src/lib/cloud/useAdminStudioContent.ts` (reference: `design-md-radice`).
+
+Seed cloud `pages` with **stubs** from `filePages` (empty `sections`) so Studio page selector lists all slugs without loading every page.
 
 Wire in `App.tsx` when `isHotSaveMode`:
 
@@ -99,10 +102,10 @@ useAdminStudioContent({
   basePath: APP_BASE_PATH,
   apiCandidates: cloudApiCandidates,
   apiKey: CLOUD_API_KEY ?? '',
-  pageRegistry: filePages,
   setPages,
   setSiteConfig,
   setMenuConfig,
+  readCache: readCloudCache,
   writeCache: writeCachedCloudContent,
   onBootstrapResolved: () => setHasInitialCloudResolved(true),
 });
@@ -111,11 +114,10 @@ useAdminStudioContent({
 Hook behavior:
 
 - Runs only when `isAdminPath(window.location.pathname)`
-- `listAdminRenderPaths(filePages)` → `['/', '/menu', ...]` (skips slugs with `[`)
-- `Promise.allSettled` → `fetchRenderProjection` per path
-- Merge all `page` into `pages`; `siteConfig` + `menuConfig` from first ok response
-- `onBootstrapResolved` in `.finally()` — never block Studio on partial page failures
-- **Never** call `GET /content`
+- **One** `fetchRenderProjection` for the slug implied by the current `/admin` URL
+- `patchHistoryNavigation` → refetch when inspector navigates to another page (`/admin/menu`, etc.)
+- `context.siteConfig` + `context.menuConfig` from that render response
+- **Never** fan-out all pages; **never** call `GET /content`
 
 ### Step 5 — Clean up dead `/content` code
 
@@ -168,7 +170,7 @@ npm run dev   # VITE_OLONJS_CLOUD_URL + VITE_OLONJS_API_KEY
 |---|---|---|
 | Visitor `/` | `render?path=/` | Menu visible; `boot.spp_render.success` |
 | Visitor nav | `render?path=...` | Per-route fetch |
-| Admin `/admin` | N × `render?path=...` | Zero `content`; Studio loads all static pages |
+| Admin `/admin` | `render?path=...` (one per active page) | Zero `content`; refetch on page change |
 | Admin menu | from `context.menuConfig` | Not local `menu.json` seed after cloud load |
 
 ## Reference implementations

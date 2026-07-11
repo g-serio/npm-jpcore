@@ -1,7 +1,7 @@
 {
   "version": "1.0.0",
   "kind": "olonjs-page-mcp-manifest",
-  "generatedAt": "2026-07-02T08:22:53.637Z",
+  "generatedAt": "2026-07-02T10:22:03.433Z",
   "slug": "libri/le-correzioni",
   "title": "Dettaglio libro",
   "description": "Pagina dinamica dettaglio libro alimentata dalla collection libri.",

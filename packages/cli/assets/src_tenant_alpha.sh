@@ -1817,7 +1817,7 @@ cat << 'END_OF_FILE_CONTENT' > "package.json"
     "@tiptap/extension-link": "^2.11.5",
     "@tiptap/react": "^2.11.5",
     "@tiptap/starter-kit": "^2.11.5",
-    "@olonjs/core": "^1.1.12",
+    "@olonjs/core": "^1.1.13",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "lucide-react": "^0.474.0",
@@ -2408,7 +2408,6 @@ for (const { slug, out, depth } of targets) {
 console.log('\n[bake] All pages baked. OK\n');
 
 END_OF_FILE_CONTENT
-# SKIP: scripts/bake.mjs:Zone.Identifier is binary and cannot be embedded as text.
 echo "Creating scripts/generate-llms-txt.mjs..."
 cat << 'END_OF_FILE_CONTENT' > "scripts/generate-llms-txt.mjs"
 import fs from 'fs';
@@ -2940,22 +2939,18 @@ echo "Creating src/App.tsx..."
 cat << 'END_OF_FILE_CONTENT' > "src/App.tsx"
 /**
  * Thin Entry Point (Tenant).
- * Data from getHydratedData (file-backed or draft); assets from public/assets/images.
- * Supports Hybrid Persistence: Local Filesystem (Dev) or Cloud Bridge (Prod).
+ * Bootstrap, persistence, and engine wiring — logic lives in lib/hooks.
  */
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo } from 'react';
 import { JsonPagesEngine } from '@olonjs/core';
-import type { JsonPagesConfig, LibraryImageEntry, ProjectState } from '@olonjs/core';
-import { normalizeBasePath, withBasePath } from '@olonjs/core';
+import type { JsonPagesConfig, ProjectState } from '@olonjs/core';
+import { withBasePath } from '@olonjs/core';
+import { OlonFormsContext } from '@olonjs/core';
 import { ComponentRegistry } from '@/lib/ComponentRegistry';
 import { CollectionRegistry } from '@/lib/CollectionRegistry';
 import { SECTION_SCHEMAS } from '@/lib/schemas';
 import { addSectionConfig } from '@/lib/addSectionConfig';
-import { getHydratedData } from '@/lib/draftStorage';
-import type { SiteConfig, ThemeConfig, MenuConfig, PageConfig } from '@/types';
-import type { DeployPhase, StepId } from '@olonjs/core';
-import { DEPLOY_STEPS } from '@olonjs/core';
-import { startCloudSaveStream } from '@olonjs/core';
+import type { MenuConfig, SiteConfig, ThemeConfig } from '@/types';
 import siteData from '@/data/config/site.json';
 import themeData from '@/data/config/theme.json';
 import menuData from '@/data/config/menu.json';
@@ -2963,476 +2958,66 @@ import { getFileCollections } from '@/lib/getFileCollections';
 import { getFilePages } from '@/lib/getFilePages';
 import { DopaDrawer } from '@/components/save-drawer/DopaDrawer';
 import { EmptyTenantView } from '@/components/empty-tenant';
-import { Skeleton } from '@/components/ui/skeleton';
+import { TenantBootstrapChrome } from '@/components/TenantBootstrapChrome';
 import { ThemeProvider } from '@/components/ThemeProvider';
 import { useOlonForms } from '@/lib/useOlonForms';
-import { OlonFormsContext } from '@olonjs/core';
 import { iconMap } from '@/lib/IconResolver';
+import { uploadTenantAsset } from '@/lib/assetUpload';
+import {
+  cloudFingerprintFromUrl,
+  normalizeSlugForCache,
+  readCachedCloudContent,
+  writeCachedCloudContent,
+} from '@/lib/cloud/cloudCache';
+import {
+  buildThemeFontVarsCss,
+  extractLeadingRemoteCssImports,
+  setTenantPreviewReady,
+  useInjectedTenantCss,
+  useTenantFontsReady,
+} from '@/lib/tenantCss';
+import { APP_BASE_PATH, CLOUD_API_KEY, CLOUD_API_URL, TENANT_ID } from '@/lib/tenantEnv';
+import { useAssetsManifest } from '@/lib/useAssetsManifest';
+import { useCloudSave } from '@/lib/useCloudSave';
+import { useTenantBootstrap } from '@/lib/useTenantBootstrap';
+import { useAdminStudioContent } from '@/lib/cloud/useAdminStudioContent';
 
 import tenantCss from './index.css?inline';
 
-// Cloud Configuration (Injected by Vercel/Netlify Env Vars)
-const CLOUD_API_URL =
-  import.meta.env.VITE_OLONJS_CLOUD_URL ?? import.meta.env.VITE_JSONPAGES_CLOUD_URL;
-const CLOUD_API_KEY =
-  import.meta.env.VITE_OLONJS_API_KEY ?? import.meta.env.VITE_JSONPAGES_API_KEY;
-const SAVE2REPO_ENABLED = import.meta.env.VITE_SAVE2REPO === 'true';
-const APP_BASE_PATH = normalizeBasePath(import.meta.env.BASE_URL || '/');
-
-const themeConfig = themeData as unknown as ThemeConfig;
-const menuConfig = menuData as unknown as MenuConfig;
-const refDocuments = {
-  'menu.json': menuConfig,
-  'config/menu.json': menuConfig,
-  'src/data/config/menu.json': menuConfig,
-} satisfies NonNullable<JsonPagesConfig['refDocuments']>;
-
-const TENANT_ID = 'alpha';
-
-const filePages = getFilePages();
+const themeConfigSeed = themeData as unknown as ThemeConfig;
+const menuConfigSeed = menuData as unknown as MenuConfig;
 const fileSiteConfig = siteData as unknown as SiteConfig;
-const collections = getFileCollections();
-const MAX_UPLOAD_SIZE_BYTES = 5 * 1024 * 1024;
-const ASSET_UPLOAD_MAX_RETRIES = 2;
-const ASSET_UPLOAD_TIMEOUT_MS = 20_000;
-const ALLOWED_IMAGE_MIME_TYPES = new Set(['image/jpeg', 'image/png', 'image/webp', 'image/gif', 'image/avif']);
-
-interface CloudSaveUiState {
-  isOpen: boolean;
-  phase: DeployPhase;
-  currentStepId: StepId | null;
-  doneSteps: StepId[];
-  progress: number;
-  errorMessage?: string;
-  deployUrl?: string;
-}
-
-type ContentMode = 'cloud' | 'error';
-type ContentStatus = 'ok' | 'empty_namespace' | 'legacy_fallback';
-
-type ContentResponse = {
-  ok?: boolean;
-  siteConfig?: unknown;
-  pages?: unknown;
-  items?: unknown;
-  error?: string;
-  code?: string;
-  correlationId?: string;
-  contentStatus?: ContentStatus;
-  usedUnscopedFallback?: boolean;
-  namespace?: string;
-  namespaceMatchedKeys?: number;
-};
-
-type CachedCloudContent = {
-  keyFingerprint: string;
-  savedAt: number;
-  siteConfig: unknown | null;
-  pages: Record<string, unknown>;
-  collections?: JsonPagesConfig['collections'];
-};
-
-const CLOUD_CACHE_KEY = 'jp_cloud_content_cache_v1';
-const CLOUD_CACHE_TTL_MS = 5 * 60 * 1000;
-
-function normalizeApiBase(raw: string): string {
-  return raw.trim().replace(/\/+$/, '');
-}
-
-function buildApiCandidates(raw: string): string[] {
-  const base = normalizeApiBase(raw);
-  const withApi = /\/api\/v1$/i.test(base) ? base : `${base}/api/v1`;
-  const candidates = [withApi, base];
-  return Array.from(new Set(candidates.filter(Boolean)));
-}
-
-function getInitialData() {
-  return getHydratedData(TENANT_ID, filePages, fileSiteConfig);
-}
-
-function getInitialCloudSaveUiState(): CloudSaveUiState {
-  return {
-    isOpen: false,
-    phase: 'idle',
-    currentStepId: null,
-    doneSteps: [],
-    progress: 0,
-  };
-}
-
-function stepProgress(doneSteps: StepId[]): number {
-  return Math.round((doneSteps.length / DEPLOY_STEPS.length) * 100);
-}
-
-function isObjectRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null;
-}
-
-function asString(value: unknown, fallback: string): string {
-  return typeof value === 'string' && value.trim() ? value : fallback;
-}
-
-function normalizeRouteSlug(value: string): string {
-  return value
-    .toLowerCase()
-    .replace(/[^a-z0-9/_[\]-]/g, '-')
-    .replace(/^\/+|\/+$/g, '') || 'home';
-}
-
-function coercePageConfig(slug: string, value: unknown): PageConfig | null {
-  let input = value;
-  if (typeof input === 'string') {
-    try {
-      input = JSON.parse(input) as unknown;
-    } catch {
-      return null;
-    }
-  }
-  if (!isObjectRecord(input) || !Array.isArray(input.sections)) return null;
-
-  const inputMeta = isObjectRecord(input.meta) ? input.meta : {};
-  const normalizedSlug = asString(input.slug, slug);
-  const normalizedId = asString(input.id, `${normalizedSlug}-page`);
-  const title = asString(inputMeta.title, normalizedSlug);
-  const description = asString(inputMeta.description, '');
-
-  return {
-    id: normalizedId,
-    slug: normalizedSlug,
-    meta: { title, description },
-    sections: input.sections as PageConfig['sections'],
-    ...(isObjectRecord(input.collection) ? { collection: input.collection as unknown as PageConfig['collection'] } : {}),
-    ...(typeof input['global-header'] === 'boolean' ? { 'global-header': input['global-header'] } : {}),
-  };
-}
-
-function coerceSiteConfig(value: unknown): SiteConfig | null {
-  let input = value;
-  if (typeof input === 'string') {
-    try {
-      input = JSON.parse(input) as unknown;
-    } catch {
-      return null;
-    }
-  }
-  if (!isObjectRecord(input)) return null;
-  if (!isObjectRecord(input.identity)) return null;
-  if (!Array.isArray(input.pages)) return null;
-
-  return input as unknown as SiteConfig;
-}
-
-function toPagesRecord(value: unknown): Record<string, PageConfig> | null {
-  const directPage = coercePageConfig('home', value);
-  if (directPage) {
-    const directSlug = normalizeRouteSlug(asString(directPage.slug, 'home'));
-    return { [directSlug]: { ...directPage, slug: directSlug } };
-  }
-
-  if (!isObjectRecord(value)) return null;
-  const next: Record<string, PageConfig> = {};
-  for (const [rawKey, payload] of Object.entries(value)) {
-    const rawKeyTrimmed = rawKey.trim();
-    const slugFromNamespacedKey = rawKeyTrimmed.match(/^t_[a-z0-9-]+_page_(.+)$/i)?.[1];
-    const slug = normalizeRouteSlug(slugFromNamespacedKey ?? rawKeyTrimmed);
-    const page = coercePageConfig(slug, payload);
-    if (!page) continue;
-    next[slug] = { ...page, slug };
-  }
-  return next;
-}
-
-function normalizePageRegistry(value: unknown): Record<string, PageConfig> {
-  if (!isObjectRecord(value)) return {};
-  const normalized: Record<string, PageConfig> = {};
-
-  for (const [registrySlug, rawPageValue] of Object.entries(value)) {
-    const canonicalSlug = normalizeRouteSlug(registrySlug);
-    const direct = coercePageConfig(canonicalSlug, rawPageValue);
-    if (direct) {
-      // Canonical key comes from registry/path, not from page JSON internal slug.
-      normalized[canonicalSlug] = { ...direct, slug: canonicalSlug };
-      continue;
-    }
-
-    const nested = toPagesRecord(rawPageValue);
-    if (nested && Object.keys(nested).length > 0) {
-      Object.assign(normalized, nested);
-    }
-  }
-
-  return normalized;
-}
-
-function extractContentSources(payload: ContentResponse | Record<string, unknown>): {
-  pagesSource: unknown;
-  siteSource: unknown;
-} {
-  // Canonical contract: { pages, siteConfig }
-  if (isObjectRecord(payload) && isObjectRecord(payload.pages)) {
-    return { pagesSource: payload.pages, siteSource: payload.siteConfig };
-  }
-
-  // Edge public JSON contract: { digest, updatedAt, items: { ... } }
-  if (isObjectRecord(payload) && isObjectRecord(payload.items)) {
-    const items = payload.items;
-    let siteSource: unknown = null;
-    const pageEntries: Record<string, unknown> = {};
-    for (const [key, value] of Object.entries(items)) {
-      if (/(_config_site|config_site|config:site)$/i.test(key)) {
-        siteSource = value;
-        continue;
-      }
-      if (/(_page_|^page_|page:)/i.test(key)) {
-        pageEntries[key] = value;
-      }
-    }
-    return { pagesSource: pageEntries, siteSource };
-  }
-
-  // Raw map fallback: treat payload object itself as page map.
-  return { pagesSource: payload, siteSource: null };
-}
-
-type CloudLoadFailure = {
-  reasonCode: string;
-  message: string;
-  correlationId?: string;
-};
-
-function isCloudLoadFailure(value: unknown): value is CloudLoadFailure {
-  return (
-    isObjectRecord(value) &&
-    typeof value.reasonCode === 'string' &&
-    typeof value.message === 'string'
-  );
-}
-
-function toCloudLoadFailure(value: unknown): CloudLoadFailure {
-  if (isCloudLoadFailure(value)) return value;
-  if (value instanceof Error) {
-    return { reasonCode: 'CLOUD_LOAD_FAILED', message: value.message };
-  }
-  return { reasonCode: 'CLOUD_LOAD_FAILED', message: 'Cloud content unavailable.' };
-}
-
-function sleep(ms: number): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, ms));
-}
-
-function isRetryableStatus(status: number): boolean {
-  return status === 429 || status === 500 || status === 502 || status === 503 || status === 504;
-}
-
-function backoffDelayMs(attempt: number): number {
-  const base = 250 * Math.pow(2, attempt);
-  const jitter = Math.floor(Math.random() * 120);
-  return base + jitter;
-}
-
-function logBootstrapEvent(event: string, details: Record<string, unknown>) {
-  console.info('[boot]', { event, at: new Date().toISOString(), ...details });
-}
-
-function cloudFingerprint(apiBase: string, apiKey: string): string {
-  return `${normalizeApiBase(apiBase)}::${apiKey.slice(-8)}`;
-}
-
-function normalizeSlugForCache(slug: string): string {
-  return (
-    slug
-      .trim()
-      .toLowerCase()
-      .replace(/[^a-z0-9/_[\]-]/g, '-')
-      .replace(/^\/+|\/+$/g, '') || 'home'
-  );
-}
-
-function buildPublishedPageHref(slug: string): string {
-  return withBasePath(`/pages/${normalizeSlugForCache(slug)}.json`, APP_BASE_PATH);
-}
-
-async function loadPublishedStaticContent(
-  knownSlugs: string[]
-): Promise<{ pages: Record<string, PageConfig>; siteConfig: SiteConfig }> {
-  const siteResponse = await fetch(withBasePath('/config/site.json', APP_BASE_PATH), { cache: 'no-store' });
-  if (!siteResponse.ok) {
-    throw new Error(`Static site config unavailable: ${siteResponse.status}`);
-  }
-
-  const sitePayload = (await siteResponse.json().catch(() => null)) as unknown;
-  const nextSite = coerceSiteConfig(sitePayload);
-  if (!nextSite) {
-    throw new Error('Static site config is invalid.');
-  }
-
-  const pageEntries = await Promise.all(
-    knownSlugs.map(async (slug) => {
-      const response = await fetch(buildPublishedPageHref(slug), { cache: 'no-store' });
-      if (!response.ok) {
-        throw new Error(`Static page unavailable for slug "${slug}": ${response.status}`);
-      }
-      return [slug, (await response.json().catch(() => null)) as unknown] as const;
-    })
-  );
-
-  const nextPages = normalizePageRegistry(Object.fromEntries(pageEntries));
-  if (Object.keys(nextPages).length === 0) {
-    throw new Error('Static published pages are empty.');
-  }
-
-  return {
-    pages: nextPages,
-    siteConfig: nextSite,
-  };
-}
-
-function readCachedCloudContent(fingerprint: string): CachedCloudContent | null {
-  try {
-    const raw = localStorage.getItem(CLOUD_CACHE_KEY);
-    if (!raw) return null;
-    const parsed = JSON.parse(raw) as CachedCloudContent;
-    if (!parsed || parsed.keyFingerprint !== fingerprint) return null;
-    if (!parsed.savedAt || Date.now() - parsed.savedAt > CLOUD_CACHE_TTL_MS) return null;
-    return parsed;
-  } catch {
-    return null;
-  }
-}
-
-function writeCachedCloudContent(entry: CachedCloudContent): void {
-  try {
-    localStorage.setItem(CLOUD_CACHE_KEY, JSON.stringify(entry));
-  } catch {
-    // non-blocking cache path
-  }
-}
-
-function buildThemeFontVarsCss(input: unknown): string {
-  if (!isObjectRecord(input)) return '';
-  const tokens = isObjectRecord(input.tokens) ? input.tokens : null;
-  const typography = tokens && isObjectRecord(tokens.typography) ? tokens.typography : null;
-  const fontFamily = typography && isObjectRecord(typography.fontFamily) ? typography.fontFamily : null;
-  const primary = typeof fontFamily?.primary === 'string' ? fontFamily.primary : "'Instrument Sans', system-ui, sans-serif";
-  const serif = typeof fontFamily?.serif === 'string' ? fontFamily.serif : "'Instrument Serif', Georgia, serif";
-  const mono = typeof fontFamily?.mono === 'string' ? fontFamily.mono : "'JetBrains Mono', monospace";
-  return `:root{--theme-font-primary:${primary};--theme-font-serif:${serif};--theme-font-mono:${mono};}`;
-}
-
-const REMOTE_CSS_LINK_ATTR = 'data-jp-tenant-remote-css';
-
-function isRemoteStylesheetHref(value: string): boolean {
-  return /^https?:\/\//i.test(value.trim());
-}
-
-function extractLeadingRemoteCssImports(cssText: string): { hrefs: string[]; rest: string } {
-  const hrefs = new Set<string>();
-  const leadingTriviaPattern = /^(?:\s+|\/\*[\s\S]*?\*\/)*/;
-  const importPattern =
-    /^@import\s+url\(\s*(?:'([^']+)'|"([^"]+)"|([^'")\s][^)]*))\s*\)\s*([^;]*);/i;
-  let rest = cssText;
-
-  for (;;) {
-    const trivia = rest.match(leadingTriviaPattern);
-    if (trivia && trivia[0]) {
-      rest = rest.slice(trivia[0].length);
-    }
-
-    const match = rest.match(importPattern);
-    if (!match) break;
-
-    const href = (match[1] ?? match[2] ?? match[3] ?? '').trim();
-    const trailingDirectives = (match[4] ?? '').trim();
-
-    if (!isRemoteStylesheetHref(href) || trailingDirectives.length > 0) {
-      break;
-    }
-
-    hrefs.add(href);
-    rest = rest.slice(match[0].length);
-  }
-
-  return { hrefs: Array.from(hrefs), rest };
-}
-
-function setTenantPreviewReady(ready: boolean): void {
-  if (typeof window !== 'undefined') {
-    (window as Window & { __TENANT_PREVIEW_READY__?: boolean }).__TENANT_PREVIEW_READY__ = ready;
-  }
-  if (typeof document !== 'undefined' && document.body) {
-    document.body.dataset.previewReady = ready ? '1' : '0';
-  }
-}
+const filePages = getFilePages();
+const fileCollections = getFileCollections();
 
 function App() {
   const { states: formStates } = useOlonForms();
-  const isCloudMode = Boolean(CLOUD_API_URL && CLOUD_API_KEY);
-  const isSave2RepoMode = isCloudMode && SAVE2REPO_ENABLED;
-  const isHotSaveMode = isCloudMode && !isSave2RepoMode;
-  const localInitialData = useMemo(() => (isCloudMode ? null : getInitialData()), [isCloudMode]);
-  const localInitialPages = useMemo(() => {
-    if (!localInitialData) return {};
-    const normalized = normalizePageRegistry(localInitialData.pages as unknown);
-    return Object.keys(normalized).length > 0 ? normalized : localInitialData.pages;
-  }, [localInitialData]);
-  const [pages, setPages] = useState<Record<string, PageConfig>>(localInitialPages);
-  const [siteConfig, setSiteConfig] = useState<SiteConfig>(
-    localInitialData?.siteConfig ?? fileSiteConfig
+  const bootstrap = useTenantBootstrap({
+    tenantId: TENANT_ID,
+    filePages,
+    fileSiteConfig,
+    menuConfigSeed,
+    themeConfigSeed,
+  });
+  useAdminStudioContent({
+    enabled: bootstrap.isHotSaveMode,
+    apiCandidates: bootstrap.cloudApiCandidates,
+    apiKey: CLOUD_API_KEY,
+    setPages: bootstrap.setPages,
+    setSiteConfig: bootstrap.setSiteConfig,
+    setCollections: bootstrap.setCollections,
+  });
+  const { assetsManifest, loadAssetsManifest, cloudApiCandidates } = useAssetsManifest(bootstrap.isCloudMode);
+  const { cloudSaveUi, runCloudSave, closeCloudDrawer, retryCloudSave } = useCloudSave();
+
+  const tenantCssParts = useMemo(() => extractLeadingRemoteCssImports(tenantCss), []);
+  const resolvedTenantCss = useMemo(
+    () => [buildThemeFontVarsCss(bootstrap.themeConfig), tenantCssParts.rest].filter(Boolean).join('\n'),
+    [bootstrap.themeConfig, tenantCssParts],
   );
-  const [assetsManifest, setAssetsManifest] = useState<LibraryImageEntry[]>([]);
-  const [cloudSaveUi, setCloudSaveUi] = useState<CloudSaveUiState>(getInitialCloudSaveUiState);
-  const [contentMode, setContentMode] = useState<ContentMode>('cloud');
-  const [contentFallback, setContentFallback] = useState<CloudLoadFailure | null>(null);
-  const [showTopProgress, setShowTopProgress] = useState(false);
-  const [hasInitialCloudResolved, setHasInitialCloudResolved] = useState(!isCloudMode);
-  const [bootstrapRunId, setBootstrapRunId] = useState(0);
-  const activeCloudSaveController = useRef<AbortController | null>(null);
-  const contentLoadInFlight = useRef<Promise<void> | null>(null);
-  const pendingCloudSave = useRef<{ state: ProjectState; slug: string } | null>(null);
-  const cloudApiCandidates = useMemo(
-    () => (isCloudMode && CLOUD_API_URL ? buildApiCandidates(CLOUD_API_URL) : []),
-    [isCloudMode, CLOUD_API_URL]
-  );
-
-  const loadAssetsManifest = useCallback(async (): Promise<void> => {
-    if (isCloudMode && CLOUD_API_URL && CLOUD_API_KEY) {
-      const apiBases = cloudApiCandidates.length > 0 ? cloudApiCandidates : [normalizeApiBase(CLOUD_API_URL)];
-      for (const apiBase of apiBases) {
-        try {
-          const res = await fetch(`${apiBase}/assets/list?limit=200`, {
-            method: 'GET',
-            headers: {
-              Authorization: `Bearer ${CLOUD_API_KEY}`,
-            },
-          });
-          const body = (await res.json().catch(() => ({}))) as { items?: LibraryImageEntry[] };
-          if (!res.ok) continue;
-          const items = Array.isArray(body.items) ? body.items : [];
-          setAssetsManifest(items);
-          return;
-        } catch {
-          // try next candidate
-        }
-      }
-      setAssetsManifest([]);
-      return;
-    }
-
-    fetch('/api/list-assets')
-      .then((r) => (r.ok ? r.json() : []))
-      .then((list: LibraryImageEntry[]) => setAssetsManifest(Array.isArray(list) ? list : []))
-      .catch(() => setAssetsManifest([]));
-  }, [isCloudMode, CLOUD_API_URL, CLOUD_API_KEY, cloudApiCandidates]);
-
-  useEffect(() => {
-    void loadAssetsManifest();
-  }, [loadAssetsManifest]);
-
-  useEffect(() => {
-    return () => {
-      activeCloudSaveController.current?.abort();
-    };
-  }, []);
+  useInjectedTenantCss(resolvedTenantCss);
+  const fontsReady = useTenantFontsReady(tenantCssParts.hrefs);
+  const canPaintVisitor = bootstrap.shouldRenderEngine && fontsReady;
 
   useEffect(() => {
     setTenantPreviewReady(false);
@@ -3442,366 +3027,35 @@ function App() {
   }, []);
 
   useEffect(() => {
-    if (!isCloudMode || !CLOUD_API_URL || !CLOUD_API_KEY) {
-      setContentMode('cloud');
-      setContentFallback(null);
-      setShowTopProgress(false);
-      setHasInitialCloudResolved(true);
-      logBootstrapEvent('boot.local.ready', { mode: 'local' });
+    if (!canPaintVisitor) {
+      setTenantPreviewReady(false);
       return;
     }
-
-    if (isSave2RepoMode) {
-      if (contentLoadInFlight.current) {
-        return;
-      }
-
-      setContentMode('cloud');
-      setContentFallback(null);
-      setShowTopProgress(true);
-      setHasInitialCloudResolved(false);
-      logBootstrapEvent('boot.start', { mode: 'save2repo-static', pageCount: Object.keys(filePages).length });
-
-      let inFlight: Promise<void> | null = null;
-      inFlight = loadPublishedStaticContent(Object.keys(filePages))
-        .then(({ pages: nextPages, siteConfig: nextSite }) => {
-          setPages(nextPages);
-          setSiteConfig(nextSite);
-          setContentMode('cloud');
-          setContentFallback(null);
-          setHasInitialCloudResolved(true);
-          logBootstrapEvent('boot.save2repo.success', {
-            mode: 'save2repo-static',
-            pageCount: Object.keys(nextPages).length,
-          });
-        })
-        .catch((error: unknown) => {
-          const failure = toCloudLoadFailure(error);
-          setContentMode('error');
-          setContentFallback(failure);
-          setHasInitialCloudResolved(true);
-          logBootstrapEvent('boot.save2repo.error', {
-            mode: 'save2repo-static',
-            reasonCode: failure.reasonCode,
-            correlationId: failure.correlationId ?? null,
-          });
-        })
-        .finally(() => {
-          setShowTopProgress(false);
-          if (contentLoadInFlight.current === inFlight) {
-            contentLoadInFlight.current = null;
-          }
-        });
-      contentLoadInFlight.current = inFlight;
-      return () => {
-        contentLoadInFlight.current = null;
-      };
-    }
-
-    if (contentLoadInFlight.current) {
-      return;
-    }
-
-    const controller = new AbortController();
-    const maxRetryAttempts = 2;
-    const startedAt = Date.now();
-    const primaryApiBase = cloudApiCandidates[0] ?? normalizeApiBase(CLOUD_API_URL);
-    const fingerprint = cloudFingerprint(primaryApiBase, CLOUD_API_KEY);
-    const cached = readCachedCloudContent(fingerprint);
-    const cachedPages = cached ? toPagesRecord(cached.pages) : null;
-    const cachedSite = cached ? coerceSiteConfig(cached.siteConfig) : null;
-    const hasCachedFallback = Boolean((cachedPages && Object.keys(cachedPages).length > 0) || cachedSite);
-    if (cached) {
-      logBootstrapEvent('boot.cloud.cache_hit', { ageMs: Date.now() - cached.savedAt });
-    }
-    setContentMode('cloud');
-    setContentFallback(null);
-    setShowTopProgress(true);
-    setHasInitialCloudResolved(false);
-    logBootstrapEvent('boot.start', { mode: 'cloud', apiCandidates: cloudApiCandidates.length });
-
-    const loadCloudContent = async () => {
-      try {
-        let payload: ContentResponse | null = null;
-        let lastFailure: CloudLoadFailure | null = null;
-
-        for (const apiBase of cloudApiCandidates) {
-          for (let attempt = 0; attempt <= maxRetryAttempts; attempt += 1) {
-            try {
-              const res = await fetch(`${apiBase}/content`, {
-                method: 'GET',
-                cache: 'no-store',
-                headers: {
-                  Authorization: `Bearer ${CLOUD_API_KEY}`,
-                },
-                signal: controller.signal,
-              });
-
-              const contentType = (res.headers.get('content-type') || '').toLowerCase();
-              if (!contentType.includes('application/json')) {
-                lastFailure = {
-                  reasonCode: 'NON_JSON_RESPONSE',
-                  message: `Non-JSON response from ${apiBase}/content`,
-                };
-                break;
-              }
-
-              const parsed = (await res.json().catch(() => ({}))) as ContentResponse;
-              if (!res.ok) {
-                lastFailure = {
-                  reasonCode: parsed.code || `HTTP_${res.status}`,
-                  message: parsed.error || `Cloud content read failed: ${res.status} (${apiBase}/content)`,
-                  correlationId: parsed.correlationId,
-                };
-                if (isRetryableStatus(res.status) && attempt < maxRetryAttempts) {
-                  await sleep(backoffDelayMs(attempt));
-                  continue;
-                }
-                break;
-              }
-
-              payload = parsed;
-              break;
-            } catch (error: unknown) {
-              if (controller.signal.aborted) throw error;
-              const message = error instanceof Error ? error.message : 'Network error';
-              lastFailure = {
-                reasonCode: 'NETWORK_TRANSIENT',
-                message: `${message} (${apiBase}/content)`,
-              };
-              if (attempt < maxRetryAttempts) {
-                await sleep(backoffDelayMs(attempt));
-                continue;
-              }
-            }
-          }
-          if (payload) {
-            break;
-          }
-        }
-
-        if (!payload) {
-          throw (
-            lastFailure || {
-              reasonCode: 'CLOUD_ENDPOINT_UNREACHABLE',
-              message: 'Cloud content endpoint not reachable as JSON.',
-            }
-          );
-        }
-
-        const { pagesSource, siteSource } = extractContentSources(payload);
-        const remotePages = toPagesRecord(pagesSource);
-        const remoteSite = coerceSiteConfig(siteSource);
-        const remotePageCount = remotePages ? Object.keys(remotePages).length : 0;
-        if (remotePageCount === 0 && !remoteSite) {
-          throw {
-            reasonCode: payload.contentStatus === 'empty_namespace' ? 'EMPTY_NAMESPACE' : 'EMPTY_PAYLOAD',
-            message: 'Cloud payload is empty for this tenant namespace.',
-            correlationId: payload.correlationId,
-          } satisfies CloudLoadFailure;
-        }
-        if (import.meta.env.DEV) {
-          console.info('[content] cloud diagnostics', {
-            contentStatus: payload.contentStatus ?? 'ok',
-            namespace: payload.namespace,
-            namespaceMatchedKeys: payload.namespaceMatchedKeys,
-            usedUnscopedFallback: payload.usedUnscopedFallback,
-            correlationId: payload.correlationId,
-          });
-        }
-        if (remotePages && remotePageCount > 0) {
-          setPages(remotePages);
-        }
-        if (remoteSite) {
-          setSiteConfig(remoteSite);
-        }
-        writeCachedCloudContent({
-          keyFingerprint: fingerprint,
-          savedAt: Date.now(),
-          siteConfig: remoteSite ?? null,
-          pages: (remotePages ?? {}) as Record<string, unknown>,
-        });
-        setContentMode('cloud');
-        setContentFallback(null);
-        setHasInitialCloudResolved(true);
-        logBootstrapEvent('boot.cloud.success', {
-          mode: 'cloud',
-          elapsedMs: Date.now() - startedAt,
-          contentStatus: payload.contentStatus ?? 'ok',
-          correlationId: payload.correlationId ?? null,
-        });
-      } catch (error: unknown) {
-        if (controller.signal.aborted) return;
-        const failure = toCloudLoadFailure(error);
-        if (hasCachedFallback) {
-          if (cachedPages && Object.keys(cachedPages).length > 0) {
-            setPages(cachedPages);
-          }
-          if (cachedSite) {
-            setSiteConfig(cachedSite);
-          }
-          setContentMode('cloud');
-          setContentFallback({
-            reasonCode: 'CLOUD_REFRESH_FAILED',
-            message: failure.message,
-            correlationId: failure.correlationId,
-          });
-          setHasInitialCloudResolved(true);
-        } else {
-          setContentMode('error');
-          setContentFallback(failure);
-          setHasInitialCloudResolved(true);
-        }
-        logBootstrapEvent('boot.cloud.error', {
-          mode: 'cloud',
-          elapsedMs: Date.now() - startedAt,
-          reasonCode: failure.reasonCode,
-          correlationId: failure.correlationId ?? null,
-        });
-      }
-    };
-
-    let inFlight: Promise<void> | null = null;
-    inFlight = loadCloudContent().finally(() => {
-      setShowTopProgress(false);
-      if (contentLoadInFlight.current === inFlight) {
-        contentLoadInFlight.current = null;
-      }
-    });
-    contentLoadInFlight.current = inFlight;
-    return () => controller.abort();
-  }, [isCloudMode, isSave2RepoMode, CLOUD_API_KEY, CLOUD_API_URL, cloudApiCandidates, bootstrapRunId]);
-
-  const runCloudSave = useCallback(
-    async (
-      payload: { state: ProjectState; slug: string },
-      rejectOnError: boolean
-    ): Promise<void> => {
-      if (!CLOUD_API_URL || !CLOUD_API_KEY) {
-        const noCloudError = new Error('Cloud mode is not configured.');
-        if (rejectOnError) throw noCloudError;
-        return;
-      }
-
-      pendingCloudSave.current = payload;
-      activeCloudSaveController.current?.abort();
-      const controller = new AbortController();
-      activeCloudSaveController.current = controller;
-
-      setCloudSaveUi({
-        isOpen: true,
-        phase: 'running',
-        currentStepId: null,
-        doneSteps: [],
-        progress: 0,
+    let cancelled = false;
+    let raf1 = 0;
+    let raf2 = 0;
+    raf1 = window.requestAnimationFrame(() => {
+      raf2 = window.requestAnimationFrame(() => {
+        if (!cancelled) setTenantPreviewReady(true);
       });
-
-      try {
-        await startCloudSaveStream({
-          apiBaseUrl: CLOUD_API_URL,
-          apiKey: CLOUD_API_KEY,
-          path: `src/data/pages/${payload.slug}.json`,
-          content: payload.state.page,
-          message: `Content update for ${payload.slug} via Visual Editor`,
-          signal: controller.signal,
-          onStep: (event) => {
-            setCloudSaveUi((prev) => {
-              if (event.status === 'running') {
-                return {
-                  ...prev,
-                  isOpen: true,
-                  phase: 'running',
-                  currentStepId: event.id,
-                  errorMessage: undefined,
-                };
-              }
-
-              if (prev.doneSteps.includes(event.id)) {
-                return prev;
-              }
-
-              const nextDone = [...prev.doneSteps, event.id];
-              return {
-                ...prev,
-                isOpen: true,
-                phase: 'running',
-                currentStepId: event.id,
-                doneSteps: nextDone,
-                progress: stepProgress(nextDone),
-              };
-            });
-          },
-          onDone: (event) => {
-            const completed = DEPLOY_STEPS.map((step) => step.id);
-            setCloudSaveUi({
-              isOpen: true,
-              phase: 'done',
-              currentStepId: 'live',
-              doneSteps: completed,
-              progress: 100,
-              deployUrl: event.deployUrl,
-            });
-          },
-        });
-      } catch (error: unknown) {
-        const message = error instanceof Error ? error.message : 'Cloud save failed.';
-        setCloudSaveUi((prev) => ({
-          ...prev,
-          isOpen: true,
-          phase: 'error',
-          errorMessage: message,
-        }));
-        if (rejectOnError) throw new Error(message);
-      } finally {
-        if (activeCloudSaveController.current === controller) {
-          activeCloudSaveController.current = null;
-        }
-      }
-    },
-    []
-  );
-
-  const closeCloudDrawer = useCallback(() => {
-    setCloudSaveUi(getInitialCloudSaveUiState());
-  }, []);
-
-  const retryCloudSave = useCallback(() => {
-    if (!pendingCloudSave.current) return;
-    void runCloudSave(pendingCloudSave.current, false);
-  }, [runCloudSave]);
-
-  const tenantCssParts = useMemo(() => extractLeadingRemoteCssImports(tenantCss), [tenantCss]);
-  const resolvedTenantCss = useMemo(
-    () => [buildThemeFontVarsCss(themeConfig), tenantCssParts.rest].filter(Boolean).join('\n'),
-    [tenantCssParts],
-  );
-
-  useEffect(() => {
-    if (typeof document === 'undefined') return undefined;
-
-    const createdLinks: HTMLLinkElement[] = [];
-
-    tenantCssParts.hrefs.forEach((href) => {
-      const existing = Array.from(document.querySelectorAll('link[rel="stylesheet"]')).find(
-        (link) => (link as HTMLLinkElement).href === href,
-      ) as HTMLLinkElement | undefined;
-      if (existing) return;
-
-      const link = document.createElement('link');
-      link.rel = 'stylesheet';
-      link.href = href;
-      link.setAttribute(REMOTE_CSS_LINK_ATTR, href);
-      document.head.appendChild(link);
-      createdLinks.push(link);
     });
-
     return () => {
-      createdLinks.forEach((link) => {
-        if (link.getAttribute(REMOTE_CSS_LINK_ATTR) !== link.href) return;
-        if (link.parentNode) link.parentNode.removeChild(link);
-      });
+      cancelled = true;
+      window.cancelAnimationFrame(raf1);
+      window.cancelAnimationFrame(raf2);
+      setTenantPreviewReady(false);
     };
-  }, [tenantCssParts]);
+  }, [canPaintVisitor, bootstrap.enginePages, bootstrap.siteConfig]);
+
+  const engineCollections = bootstrap.isHotSaveMode ? bootstrap.collections : fileCollections;
+  const engineRefDocuments = useMemo(
+    () => ({
+      'menu.json': bootstrap.menuConfig,
+      'config/menu.json': bootstrap.menuConfig,
+      'src/data/config/menu.json': bootstrap.menuConfig,
+    }),
+    [bootstrap.menuConfig],
+  );
 
   const config: JsonPagesConfig = {
     tenantId: TENANT_ID,
@@ -3809,12 +3063,12 @@ function App() {
     registry: ComponentRegistry as JsonPagesConfig['registry'],
     schemas: SECTION_SCHEMAS as unknown as JsonPagesConfig['schemas'],
     collectionSchemas: CollectionRegistry as unknown as JsonPagesConfig['collectionSchemas'],
-    pages,
-    siteConfig,
-    themeConfig,
-    menuConfig,
-    collections,
-    refDocuments,
+    pages: bootstrap.enginePages,
+    siteConfig: bootstrap.siteConfig,
+    themeConfig: bootstrap.themeConfig,
+    menuConfig: bootstrap.menuConfig,
+    collections: engineCollections,
+    refDocuments: engineRefDocuments,
     themeCss: { tenant: resolvedTenantCss },
     iconRegistry: iconMap,
     addSection: addSectionConfig,
@@ -3824,19 +3078,16 @@ function App() {
     },
     persistence: {
       async saveToFile(state: ProjectState, slug: string): Promise<void> {
-        // 💻 LOCAL FILESYSTEM (development path)
-        console.log(`💻 Saving ${slug} to Local Filesystem...`);
         const res = await fetch('/api/save-to-file', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ projectState: state, slug }),
         });
-        
         const body = (await res.json().catch(() => ({}))) as { error?: string };
         if (!res.ok) throw new Error(body.error ?? `Save to file failed: ${res.status}`);
       },
       async hotSave(state: ProjectState, slug: string): Promise<void> {
-        if (!isCloudMode || !CLOUD_API_URL || !CLOUD_API_KEY) {
+        if (!bootstrap.isCloudMode || !CLOUD_API_URL || !CLOUD_API_KEY) {
           throw new Error('Cloud mode is not configured for hot save.');
         }
         const apiBase = CLOUD_API_URL.replace(/\/$/, '');
@@ -3857,7 +3108,7 @@ function App() {
         if (!res.ok) {
           throw new Error(body.error || body.code || `Hot save failed: ${res.status}`);
         }
-        const keyFingerprint = cloudFingerprint(apiBase, CLOUD_API_KEY);
+        const keyFingerprint = cloudFingerprintFromUrl(CLOUD_API_URL, CLOUD_API_KEY);
         const normalizedSlug = normalizeSlugForCache(slug);
         const existing = readCachedCloudContent(keyFingerprint);
         writeCachedCloudContent({
@@ -3874,234 +3125,53 @@ function App() {
       async coldSave(state: ProjectState, slug: string): Promise<void> {
         await runCloudSave({ state, slug }, true);
       },
-      showLocalSave: !isCloudMode,
-      showHotSave: isHotSaveMode,
-      showColdSave: isSave2RepoMode,
+      showLocalSave: !bootstrap.isCloudMode,
+      showHotSave: bootstrap.isHotSaveMode,
+      showColdSave: bootstrap.isSave2RepoMode,
     },
     assets: {
       assetsBaseUrl: withBasePath('/assets', APP_BASE_PATH),
       assetsManifest,
-      async onAssetUpload(file: File): Promise<string> {
-        if (!file.type.startsWith('image/')) throw new Error('Invalid file type.');
-        if (!ALLOWED_IMAGE_MIME_TYPES.has(file.type)) {
-          throw new Error('Unsupported image format. Allowed: jpeg, png, webp, gif, avif.');
-        }
-        if (file.size > MAX_UPLOAD_SIZE_BYTES) throw new Error(`File too large. Max ${MAX_UPLOAD_SIZE_BYTES / 1024 / 1024}MB.`);
-
-        if (isCloudMode && CLOUD_API_URL && CLOUD_API_KEY) {
-          const apiBases = cloudApiCandidates.length > 0 ? cloudApiCandidates : [normalizeApiBase(CLOUD_API_URL)];
-          let lastError: Error | null = null;
-          for (const apiBase of apiBases) {
-            for (let attempt = 0; attempt <= ASSET_UPLOAD_MAX_RETRIES; attempt += 1) {
-              try {
-                const formData = new FormData();
-                formData.append('file', file);
-                formData.append('filename', file.name);
-                const controller = new AbortController();
-                const timeout = window.setTimeout(() => controller.abort(), ASSET_UPLOAD_TIMEOUT_MS);
-                const res = await fetch(`${apiBase}/assets/upload`, {
-                  method: 'POST',
-                  headers: {
-                    Authorization: `Bearer ${CLOUD_API_KEY}`,
-                    'X-Correlation-Id': crypto.randomUUID(),
-                  },
-                  body: formData,
-                  signal: controller.signal,
-                }).finally(() => window.clearTimeout(timeout));
-                const body = (await res.json().catch(() => ({}))) as { url?: string; error?: string; code?: string };
-                if (res.ok && typeof body.url === 'string') {
-                  await loadAssetsManifest().catch(() => undefined);
-                  return body.url;
-                }
-                lastError = new Error(body.error || body.code || `Cloud upload failed: ${res.status}`);
-                if (isRetryableStatus(res.status) && attempt < ASSET_UPLOAD_MAX_RETRIES) {
-                  await sleep(backoffDelayMs(attempt));
-                  continue;
-                }
-                break;
-              } catch (error: unknown) {
-                const message = error instanceof Error ? error.message : 'Cloud upload failed.';
-                lastError = new Error(message);
-                if (attempt < ASSET_UPLOAD_MAX_RETRIES) {
-                  await sleep(backoffDelayMs(attempt));
-                  continue;
-                }
-                break;
-              }
-            }
-          }
-          throw lastError ?? new Error('Cloud upload failed.');
-        }
-
-        const base64 = await new Promise<string>((resolve, reject) => {
-          const reader = new FileReader();
-          reader.onload = () => resolve((reader.result as string).split(',')[1] ?? '');
-          reader.onerror = () => reject(reader.error);
-          reader.readAsDataURL(file);
-        });
-
-        const res = await fetch('/api/upload-asset', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ filename: file.name, mimeType: file.type || undefined, data: base64 }),
-        });
-        const body = (await res.json().catch(() => ({}))) as { url?: string; error?: string };
-        if (!res.ok) throw new Error(body.error || `Upload failed: ${res.status}`);
-        if (typeof body.url !== 'string') throw new Error('Invalid server response: missing url');
-        await loadAssetsManifest().catch(() => undefined);
-        return body.url;
-      },
+      onAssetUpload: (file) =>
+        uploadTenantAsset(file, {
+          basePath: APP_BASE_PATH,
+          isCloudMode: bootstrap.isCloudMode,
+          cloudApiUrl: CLOUD_API_URL,
+          cloudApiKey: CLOUD_API_KEY,
+          apiBases: cloudApiCandidates,
+          onUploaded: loadAssetsManifest,
+        }),
     },
   };
-
-  const shouldRenderEngine = !isCloudMode || hasInitialCloudResolved;
-  const isTenantEmpty = Object.keys(pages).length === 0;
-
-  useEffect(() => {
-    if (!shouldRenderEngine) {
-      setTenantPreviewReady(false);
-      return;
-    }
-    let cancelled = false;
-    let raf1 = 0;
-    let raf2 = 0;
-    raf1 = window.requestAnimationFrame(() => {
-      raf2 = window.requestAnimationFrame(() => {
-        if (!cancelled) setTenantPreviewReady(true);
-      });
-    });
-    return () => {
-      cancelled = true;
-      window.cancelAnimationFrame(raf1);
-      window.cancelAnimationFrame(raf2);
-      setTenantPreviewReady(false);
-    };
-  }, [shouldRenderEngine, pages, siteConfig]);
 
   return (
     <ThemeProvider>
       <OlonFormsContext.Provider value={formStates}>
-      <>
-      {isCloudMode && showTopProgress ? (
-        <>
-          <style>
-            {`@keyframes jp-top-progress-slide { 0% { transform: translateX(-120%); } 100% { transform: translateX(320%); } }`}
-          </style>
-          <div
-            role="status"
-            aria-live="polite"
-            aria-label="Cloud loading progress"
-            style={{
-              position: 'fixed',
-              top: 0,
-              left: 0,
-              right: 0,
-              height: 2,
-              zIndex: 1300,
-              background: 'rgba(255,255,255,0.08)',
-              overflow: 'hidden',
-            }}
-          >
-            <div
-              style={{
-                width: '32%',
-                height: '100%',
-                background: 'linear-gradient(90deg, rgba(88,166,255,0.15) 0%, rgba(88,166,255,0.85) 50%, rgba(88,166,255,0.15) 100%)',
-                animation: 'jp-top-progress-slide 1.15s ease-in-out infinite',
-                willChange: 'transform',
-              }}
-            />
-          </div>
-        </>
-      ) : null}
-      {isCloudMode && !hasInitialCloudResolved ? (
-        <div className="fixed inset-0 z-[1290] bg-background/80 backdrop-blur-sm">
-          <div className="mx-auto w-full max-w-[1600px] p-6">
-            <div className="grid gap-4 lg:grid-cols-[1fr_420px]">
-              <div className="space-y-4">
-                <Skeleton className="h-10 w-64" />
-                <Skeleton className="h-[220px] w-full rounded-xl" />
-                <Skeleton className="h-[220px] w-full rounded-xl" />
-              </div>
-              <div className="space-y-3 rounded-xl border border-border/50 bg-card/60 p-4">
-                <Skeleton className="h-8 w-32" />
-                <Skeleton className="h-5 w-full" />
-                <Skeleton className="h-5 w-5/6" />
-                <Skeleton className="h-5 w-4/6" />
-                <Skeleton className="h-24 w-full rounded-lg" />
-              </div>
-            </div>
-          </div>
-        </div>
-      ) : null}
-     {shouldRenderEngine ? (isTenantEmpty ? <EmptyTenantView /> : <JsonPagesEngine config={config} />) : null}
-      {isCloudMode && (contentMode === 'error' || contentFallback?.reasonCode === 'CLOUD_REFRESH_FAILED') ? (
-        <div
-          role="status"
-          aria-live="polite"
-          style={{
-            position: 'fixed',
-            top: 12,
-            right: 12,
-            zIndex: 1200,
-            background: 'rgba(179, 65, 24, 0.92)',
-            border: '1px solid rgba(255,255,255,0.18)',
-            color: '#fff',
-            padding: '8px 12px',
-            borderRadius: 10,
-            fontSize: 12,
-            maxWidth: 360,
-            boxShadow: '0 8px 24px rgba(0,0,0,0.25)',
-          }}
-        >
-          {contentMode === 'error' ? 'Cloud content unavailable.' : 'Cloud refresh failed, showing cached content.'}
-          {contentFallback ? (
-            <div style={{ opacity: 0.85, marginTop: 4 }}>
-              <div>{contentFallback.message}</div>
-              <div style={{ marginTop: 2 }}>
-                Reason: {contentFallback.reasonCode}
-                {contentFallback.correlationId ? ` | Correlation: ${contentFallback.correlationId}` : ''}
-              </div>
-              <div style={{ marginTop: 8 }}>
-                <button
-                  type="button"
-                  onClick={() => {
-                    contentLoadInFlight.current = null;
-                    setContentMode('cloud');
-                    setContentFallback(null);
-                    setHasInitialCloudResolved(false);
-                    setShowTopProgress(true);
-                    setBootstrapRunId((prev) => prev + 1);
-                  }}
-                  style={{
-                    border: '1px solid rgba(255,255,255,0.3)',
-                    borderRadius: 8,
-                    padding: '4px 10px',
-                    background: 'transparent',
-                    color: '#fff',
-                    cursor: 'pointer',
-                    fontSize: 12,
-                  }}
-                >
-                  Retry
-                </button>
-              </div>
-            </div>
-          ) : null}
-        </div>
-      ) : null}
-      <DopaDrawer
-        isOpen={cloudSaveUi.isOpen}
-        phase={cloudSaveUi.phase}
-        currentStepId={cloudSaveUi.currentStepId}
-        doneSteps={cloudSaveUi.doneSteps}
-        progress={cloudSaveUi.progress}
-        errorMessage={cloudSaveUi.errorMessage}
-        deployUrl={cloudSaveUi.deployUrl}
-        onClose={closeCloudDrawer}
-        onRetry={retryCloudSave}
-      />
-      </>
+        <TenantBootstrapChrome
+          isCloudMode={bootstrap.isCloudMode}
+          showTopProgress={bootstrap.showTopProgress || (bootstrap.shouldRenderEngine && !fontsReady)}
+          contentMode={bootstrap.contentMode}
+          contentFallback={bootstrap.contentFallback}
+          onRetry={bootstrap.retryBootstrap}
+        />
+        {canPaintVisitor ? (
+          bootstrap.isTenantEmpty ? (
+            <EmptyTenantView />
+          ) : (
+            <JsonPagesEngine config={config} />
+          )
+        ) : null}
+        <DopaDrawer
+          isOpen={cloudSaveUi.isOpen}
+          phase={cloudSaveUi.phase}
+          currentStepId={cloudSaveUi.currentStepId}
+          doneSteps={cloudSaveUi.doneSteps}
+          progress={cloudSaveUi.progress}
+          errorMessage={cloudSaveUi.errorMessage}
+          deployUrl={cloudSaveUi.deployUrl}
+          onClose={closeCloudDrawer}
+          onRetry={retryCloudSave}
+        />
       </OlonFormsContext.Provider>
     </ThemeProvider>
   );
@@ -4110,7 +3180,6 @@ function App() {
 export default App;
 
 END_OF_FILE_CONTENT
-# SKIP: src/App.tsx:Zone.Identifier is binary and cannot be embedded as text.
 mkdir -p "src/collections"
 mkdir -p "src/collections/autori"
 echo "Creating src/collections/autori/index.ts..."
@@ -4178,6 +3247,217 @@ export type LibriCollection = z.infer<typeof LibriCollectionSchema>;
 
 END_OF_FILE_CONTENT
 mkdir -p "src/components"
+echo "Creating src/components/TenantBootstrapChrome.tsx..."
+cat << 'END_OF_FILE_CONTENT' > "src/components/TenantBootstrapChrome.tsx"
+import type { CloudLoadFailure, ContentMode } from '@/lib/cloud/types';
+
+
+
+type TenantBootstrapChromeProps = {
+
+  isCloudMode: boolean;
+
+  showTopProgress: boolean;
+
+  contentMode: ContentMode;
+
+  contentFallback: CloudLoadFailure | null;
+
+  onRetry: () => void;
+
+};
+
+
+
+export function TenantBootstrapChrome({
+
+  isCloudMode,
+
+  showTopProgress,
+
+  contentMode,
+
+  contentFallback,
+
+  onRetry,
+
+}: TenantBootstrapChromeProps) {
+
+  return (
+
+    <>
+
+      {isCloudMode && showTopProgress ? (
+
+        <>
+
+          <style>
+
+            {`@keyframes jp-top-progress-slide { 0% { transform: translateX(-120%); } 100% { transform: translateX(320%); } }`}
+
+          </style>
+
+          <div
+
+            role="status"
+
+            aria-live="polite"
+
+            aria-label="Cloud loading progress"
+
+            style={{
+
+              position: 'fixed',
+
+              top: 0,
+
+              left: 0,
+
+              right: 0,
+
+              height: 2,
+
+              zIndex: 1300,
+
+              background: 'rgba(255,255,255,0.08)',
+
+              overflow: 'hidden',
+
+            }}
+
+          >
+
+            <div
+
+              style={{
+
+                width: '32%',
+
+                height: '100%',
+
+                background:
+
+                  'linear-gradient(90deg, rgba(88,166,255,0.15) 0%, rgba(88,166,255,0.85) 50%, rgba(88,166,255,0.15) 100%)',
+
+                animation: 'jp-top-progress-slide 1.15s ease-in-out infinite',
+
+                willChange: 'transform',
+
+              }}
+
+            />
+
+          </div>
+
+        </>
+
+      ) : null}
+
+      {isCloudMode && (contentMode === 'error' || contentFallback?.reasonCode === 'CLOUD_REFRESH_FAILED') ? (
+
+        <div
+
+          role="status"
+
+          aria-live="polite"
+
+          style={{
+
+            position: 'fixed',
+
+            top: 12,
+
+            right: 12,
+
+            zIndex: 1200,
+
+            background: 'rgba(179, 65, 24, 0.92)',
+
+            border: '1px solid rgba(255,255,255,0.18)',
+
+            color: '#fff',
+
+            padding: '8px 12px',
+
+            borderRadius: 10,
+
+            fontSize: 12,
+
+            maxWidth: 360,
+
+            boxShadow: '0 8px 24px rgba(0,0,0,0.25)',
+
+          }}
+
+        >
+
+          {contentMode === 'error' ? 'Cloud content unavailable.' : 'Cloud refresh failed, showing cached content.'}
+
+          {contentFallback ? (
+
+            <div style={{ opacity: 0.85, marginTop: 4 }}>
+
+              <div>{contentFallback.message}</div>
+
+              <div style={{ marginTop: 2 }}>
+
+                Reason: {contentFallback.reasonCode}
+
+                {contentFallback.correlationId ? ` | Correlation: ${contentFallback.correlationId}` : ''}
+
+              </div>
+
+              <div style={{ marginTop: 8 }}>
+
+                <button
+
+                  type="button"
+
+                  onClick={onRetry}
+
+                  style={{
+
+                    border: '1px solid rgba(255,255,255,0.3)',
+
+                    borderRadius: 8,
+
+                    padding: '4px 10px',
+
+                    background: 'transparent',
+
+                    color: '#fff',
+
+                    cursor: 'pointer',
+
+                    fontSize: 12,
+
+                  }}
+
+                >
+
+                  Retry
+
+                </button>
+
+              </div>
+
+            </div>
+
+          ) : null}
+
+        </div>
+
+      ) : null}
+
+    </>
+
+  );
+
+}
+
+
+
+END_OF_FILE_CONTENT
 echo "Creating src/components/ThemeProvider.tsx..."
 cat << 'END_OF_FILE_CONTENT' > "src/components/ThemeProvider.tsx"
 import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from 'react'
@@ -4585,6 +3865,8 @@ import { z } from 'zod';
 import { BaseSectionData } from '@olonjs/core';
 import { LibroSchema } from '@/collections/libri';
 
+
+
 export const BooksListSchema = BaseSectionData.extend({
   eyebrow: z.string().optional().describe('ui:text'),
   title: z.string().describe('ui:text'),
@@ -4594,7 +3876,6 @@ export const BooksListSchema = BaseSectionData.extend({
 });
 
 export const BooksListSettingsSchema = z.object({});
-
 END_OF_FILE_CONTENT
 echo "Creating src/components/books-list/types.ts..."
 cat << 'END_OF_FILE_CONTENT' > "src/components/books-list/types.ts"
@@ -6756,7 +6037,6 @@ export function OlonLogo({
 }
 
 END_OF_FILE_CONTENT
-# SKIP: src/components/ui/OlonMark.tsx:Zone.Identifier is binary and cannot be embedded as text.
 echo "Creating src/components/ui/accordion.tsx..."
 cat << 'END_OF_FILE_CONTENT' > "src/components/ui/accordion.tsx"
 import * as React from "react"
@@ -6841,7 +6121,6 @@ export { Accordion, AccordionItem, AccordionTrigger, AccordionContent }
 
 
 END_OF_FILE_CONTENT
-# SKIP: src/components/ui/accordion.tsx:Zone.Identifier is binary and cannot be embedded as text.
 echo "Creating src/components/ui/aspect-ratio.tsx..."
 cat << 'END_OF_FILE_CONTENT' > "src/components/ui/aspect-ratio.tsx"
 "use client"
@@ -6858,7 +6137,6 @@ export { AspectRatio }
 
 
 END_OF_FILE_CONTENT
-# SKIP: src/components/ui/aspect-ratio.tsx:Zone.Identifier is binary and cannot be embedded as text.
 echo "Creating src/components/ui/avatar.tsx..."
 cat << 'END_OF_FILE_CONTENT' > "src/components/ui/avatar.tsx"
 "use client"
@@ -6976,7 +6254,6 @@ export {
 
 
 END_OF_FILE_CONTENT
-# SKIP: src/components/ui/avatar.tsx:Zone.Identifier is binary and cannot be embedded as text.
 echo "Creating src/components/ui/badge.tsx..."
 cat << 'END_OF_FILE_CONTENT' > "src/components/ui/badge.tsx"
 import * as React from 'react'
@@ -7010,7 +6287,6 @@ function Badge({ className, variant, ...props }: BadgeProps) {
 export { Badge, badgeVariants }
 
 END_OF_FILE_CONTENT
-# SKIP: src/components/ui/badge.tsx:Zone.Identifier is binary and cannot be embedded as text.
 echo "Creating src/components/ui/breadcrumb.tsx..."
 cat << 'END_OF_FILE_CONTENT' > "src/components/ui/breadcrumb.tsx"
 import * as React from "react"
@@ -7138,7 +6414,6 @@ export {
 
 
 END_OF_FILE_CONTENT
-# SKIP: src/components/ui/breadcrumb.tsx:Zone.Identifier is binary and cannot be embedded as text.
 echo "Creating src/components/ui/button.tsx..."
 cat << 'END_OF_FILE_CONTENT' > "src/components/ui/button.tsx"
 import * as React from 'react'
@@ -7200,7 +6475,6 @@ Button.displayName = 'Button'
 export { Button, buttonVariants }
 
 END_OF_FILE_CONTENT
-# SKIP: src/components/ui/button.tsx:Zone.Identifier is binary and cannot be embedded as text.
 echo "Creating src/components/ui/card.tsx..."
 cat << 'END_OF_FILE_CONTENT' > "src/components/ui/card.tsx"
 import * as React from 'react'
@@ -7255,7 +6529,6 @@ CardFooter.displayName = 'CardFooter'
 export { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter }
 
 END_OF_FILE_CONTENT
-# SKIP: src/components/ui/card.tsx:Zone.Identifier is binary and cannot be embedded as text.
 echo "Creating src/components/ui/checkbox.tsx..."
 cat << 'END_OF_FILE_CONTENT' > "src/components/ui/checkbox.tsx"
 "use client"
@@ -7297,7 +6570,6 @@ export { Checkbox }
 
 
 END_OF_FILE_CONTENT
-# SKIP: src/components/ui/checkbox.tsx:Zone.Identifier is binary and cannot be embedded as text.
 echo "Creating src/components/ui/dialog.tsx..."
 cat << 'END_OF_FILE_CONTENT' > "src/components/ui/dialog.tsx"
 import * as React from "react"
@@ -7469,7 +6741,6 @@ export {
 
 
 END_OF_FILE_CONTENT
-# SKIP: src/components/ui/dialog.tsx:Zone.Identifier is binary and cannot be embedded as text.
 echo "Creating src/components/ui/dropdown-menu.tsx..."
 cat << 'END_OF_FILE_CONTENT' > "src/components/ui/dropdown-menu.tsx"
 import * as React from "react"
@@ -7742,7 +7013,6 @@ export {
 
 
 END_OF_FILE_CONTENT
-# SKIP: src/components/ui/dropdown-menu.tsx:Zone.Identifier is binary and cannot be embedded as text.
 echo "Creating src/components/ui/hover-card.tsx..."
 cat << 'END_OF_FILE_CONTENT' > "src/components/ui/hover-card.tsx"
 "use client"
@@ -7792,7 +7062,6 @@ export { HoverCard, HoverCardTrigger, HoverCardContent }
 
 
 END_OF_FILE_CONTENT
-# SKIP: src/components/ui/hover-card.tsx:Zone.Identifier is binary and cannot be embedded as text.
 echo "Creating src/components/ui/input.tsx..."
 cat << 'END_OF_FILE_CONTENT' > "src/components/ui/input.tsx"
 import * as React from 'react'
@@ -7823,7 +7092,6 @@ Input.displayName = 'Input'
 export { Input }
 
 END_OF_FILE_CONTENT
-# SKIP: src/components/ui/input.tsx:Zone.Identifier is binary and cannot be embedded as text.
 echo "Creating src/components/ui/label.tsx..."
 cat << 'END_OF_FILE_CONTENT' > "src/components/ui/label.tsx"
 import * as React from 'react'
@@ -7844,7 +7112,6 @@ Label.displayName = 'Label'
 export { Label }
 
 END_OF_FILE_CONTENT
-# SKIP: src/components/ui/label.tsx:Zone.Identifier is binary and cannot be embedded as text.
 echo "Creating src/components/ui/navigation-menu.tsx..."
 cat << 'END_OF_FILE_CONTENT' > "src/components/ui/navigation-menu.tsx"
 import * as React from "react"
@@ -8014,7 +7281,6 @@ export {
 
 
 END_OF_FILE_CONTENT
-# SKIP: src/components/ui/navigation-menu.tsx:Zone.Identifier is binary and cannot be embedded as text.
 echo "Creating src/components/ui/progress.tsx..."
 cat << 'END_OF_FILE_CONTENT' > "src/components/ui/progress.tsx"
 import * as React from "react"
@@ -8049,7 +7315,6 @@ export { Progress }
 
 
 END_OF_FILE_CONTENT
-# SKIP: src/components/ui/progress.tsx:Zone.Identifier is binary and cannot be embedded as text.
 echo "Creating src/components/ui/scroll-area.tsx..."
 cat << 'END_OF_FILE_CONTENT' > "src/components/ui/scroll-area.tsx"
 import * as React from "react"
@@ -8108,7 +7373,6 @@ export { ScrollArea, ScrollBar }
 
 
 END_OF_FILE_CONTENT
-# SKIP: src/components/ui/scroll-area.tsx:Zone.Identifier is binary and cannot be embedded as text.
 echo "Creating src/components/ui/select.tsx..."
 cat << 'END_OF_FILE_CONTENT' > "src/components/ui/select.tsx"
 import * as React from "react"
@@ -8302,7 +7566,6 @@ export {
 
 
 END_OF_FILE_CONTENT
-# SKIP: src/components/ui/select.tsx:Zone.Identifier is binary and cannot be embedded as text.
 echo "Creating src/components/ui/select.txt..."
 cat << 'END_OF_FILE_CONTENT' > "src/components/ui/select.txt"
 import * as React from "react"
@@ -8496,7 +7759,6 @@ export {
 
 
 END_OF_FILE_CONTENT
-# SKIP: src/components/ui/select.txt:Zone.Identifier is binary and cannot be embedded as text.
 echo "Creating src/components/ui/separator.tsx..."
 cat << 'END_OF_FILE_CONTENT' > "src/components/ui/separator.tsx"
 import * as React from 'react'
@@ -8521,7 +7783,6 @@ Separator.displayName = 'Separator'
 export { Separator }
 
 END_OF_FILE_CONTENT
-# SKIP: src/components/ui/separator.tsx:Zone.Identifier is binary and cannot be embedded as text.
 echo "Creating src/components/ui/sheet.tsx..."
 cat << 'END_OF_FILE_CONTENT' > "src/components/ui/sheet.tsx"
 "use client"
@@ -8674,7 +7935,6 @@ export {
 
 
 END_OF_FILE_CONTENT
-# SKIP: src/components/ui/sheet.tsx:Zone.Identifier is binary and cannot be embedded as text.
 echo "Creating src/components/ui/skeleton.tsx..."
 cat << 'END_OF_FILE_CONTENT' > "src/components/ui/skeleton.tsx"
 import { cn } from '@olonjs/core';
@@ -8695,7 +7955,6 @@ function Skeleton({
 export { Skeleton };
 
 END_OF_FILE_CONTENT
-# SKIP: src/components/ui/skeleton.tsx:Zone.Identifier is binary and cannot be embedded as text.
 echo "Creating src/components/ui/switch.tsx..."
 cat << 'END_OF_FILE_CONTENT' > "src/components/ui/switch.tsx"
 import * as React from "react"
@@ -8732,7 +7991,6 @@ export { Switch }
 
 
 END_OF_FILE_CONTENT
-# SKIP: src/components/ui/switch.tsx:Zone.Identifier is binary and cannot be embedded as text.
 echo "Creating src/components/ui/table.tsx..."
 cat << 'END_OF_FILE_CONTENT' > "src/components/ui/table.tsx"
 import * as React from "react"
@@ -8852,7 +8110,6 @@ export {
 
 
 END_OF_FILE_CONTENT
-# SKIP: src/components/ui/table.tsx:Zone.Identifier is binary and cannot be embedded as text.
 echo "Creating src/components/ui/tabs.tsx..."
 cat << 'END_OF_FILE_CONTENT' > "src/components/ui/tabs.tsx"
 "use client"
@@ -8948,7 +8205,6 @@ export { Tabs, TabsList, TabsTrigger, TabsContent, tabsListVariants }
 
 
 END_OF_FILE_CONTENT
-# SKIP: src/components/ui/tabs.tsx:Zone.Identifier is binary and cannot be embedded as text.
 echo "Creating src/components/ui/textarea.tsx..."
 cat << 'END_OF_FILE_CONTENT' > "src/components/ui/textarea.tsx"
 import * as React from "react"
@@ -8975,7 +8231,6 @@ export { Textarea }
 
 
 END_OF_FILE_CONTENT
-# SKIP: src/components/ui/textarea.tsx:Zone.Identifier is binary and cannot be embedded as text.
 echo "Creating src/components/ui/toggle-group.tsx..."
 cat << 'END_OF_FILE_CONTENT' > "src/components/ui/toggle-group.tsx"
 import * as React from "react"
@@ -9068,7 +8323,6 @@ export { ToggleGroup, ToggleGroupItem }
 
 
 END_OF_FILE_CONTENT
-# SKIP: src/components/ui/toggle-group.tsx:Zone.Identifier is binary and cannot be embedded as text.
 echo "Creating src/components/ui/toggle.tsx..."
 cat << 'END_OF_FILE_CONTENT' > "src/components/ui/toggle.tsx"
 "use client"
@@ -9121,7 +8375,6 @@ export { Toggle, toggleVariants }
 
 
 END_OF_FILE_CONTENT
-# SKIP: src/components/ui/toggle.tsx:Zone.Identifier is binary and cannot be embedded as text.
 echo "Creating src/components/ui/tooltip.tsx..."
 cat << 'END_OF_FILE_CONTENT' > "src/components/ui/tooltip.tsx"
 "use client"
@@ -9184,7 +8437,6 @@ export { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger }
 
 
 END_OF_FILE_CONTENT
-# SKIP: src/components/ui/tooltip.tsx:Zone.Identifier is binary and cannot be embedded as text.
 mkdir -p "src/data"
 mkdir -p "src/data/collections"
 mkdir -p "src/data/collections/autori"
@@ -9308,7 +8560,6 @@ cat << 'END_OF_FILE_CONTENT' > "src/data/collections/autori/autori.json"
     "name": "Jonathan Franzen"
   }
 }
-
 END_OF_FILE_CONTENT
 mkdir -p "src/data/collections/libri"
 echo "Creating src/data/collections/libri/libri.json..."
@@ -9318,7 +8569,7 @@ cat << 'END_OF_FILE_CONTENT' > "src/data/collections/libri/libri.json"
     "id": "1984",
     "title": "1984",
     "author": {
-      "$ref": "../autori/autori.json#/george-orwell"
+      "$ref": "../autori/autori.json#/alessandro-baricco"
     },
     "year": 1949,
     "genre": "Distopia",
@@ -10007,12 +9258,12 @@ cat << 'END_OF_FILE_CONTENT' > "src/data/pages/form.json"
       "type": "form-demo",
       "data": {
         "anchorId": "form-demo",
-        "title": "Contattaci",
-        "description": "Compila il modulo e ti risponderemo al più presto.",
         "recipientEmail": "test@olonjs.io",
+        "icon": "mail",
+        "title": "contact us",
+        "description": "Compila il modulo e ti risponderemo al più presto.",
         "submitLabel": "Invia",
-        "successMessage": "Richiesta inviata con successo.",
-        "icon": "mail"
+        "successMessage": "Richiesta inviata con successo."
       }
     }
   ],
@@ -10035,7 +9286,7 @@ cat << 'END_OF_FILE_CONTENT' > "src/data/pages/home.json"
       "data": {
         "anchorId": "catalogo-libri",
         "eyebrow": "Collection demo",
-        "title": "Libri",
+        "title": "Collections",
         "description": "Una pagina collection con 30 titoli, paginazione lato componente e link alle schede dinamiche.",
         "items": {
           "$ref": "../collections/libri/libri.json"
@@ -10075,7 +9326,6 @@ cat << 'END_OF_FILE_CONTENT' > "src/data/pages/libri.json"
   ],
   "global-header": false
 }
-
 END_OF_FILE_CONTENT
 echo "Creating src/data/pages/libri/[slug].json..."
 cat << 'END_OF_FILE_CONTENT' > "src/data/pages/libri/[slug].json"
@@ -10638,7 +9888,6 @@ export function getWebMcpBuildState(): {
 }
 
 END_OF_FILE_CONTENT
-# SKIP: src/entry-ssg.tsx:Zone.Identifier is binary and cannot be embedded as text.
 echo "Creating src/fonts.css..."
 cat << 'END_OF_FILE_CONTENT' > "src/fonts.css"
 @import url('https://fonts.googleapis.com/css2?family=Instrument+Sans:ital,wght@0,400;0,500;0,600;0,700;1,400&family=JetBrains+Mono:wght@400;500&display=swap');
@@ -11747,6 +10996,681 @@ export const addSectionConfig: AddSectionConfig = {
 };
 
 END_OF_FILE_CONTENT
+echo "Creating src/lib/assetUpload.ts..."
+cat << 'END_OF_FILE_CONTENT' > "src/lib/assetUpload.ts"
+import { withBasePath } from '@olonjs/core';
+import { backoffDelayMs, isRetryableStatus, sleep } from '@/lib/cloud/cloudHttp';
+
+const MAX_UPLOAD_SIZE_BYTES = 5 * 1024 * 1024;
+const ASSET_UPLOAD_MAX_RETRIES = 2;
+const ASSET_UPLOAD_TIMEOUT_MS = 20_000;
+const ALLOWED_IMAGE_MIME_TYPES = new Set(['image/jpeg', 'image/png', 'image/webp', 'image/gif', 'image/avif']);
+
+function resolveImageMimeType(file: File): string {
+  if (file.type.startsWith('image/')) return file.type;
+  const ext = file.name.split('.').pop()?.toLowerCase();
+  const byExt: Record<string, string> = {
+    jpg: 'image/jpeg',
+    jpeg: 'image/jpeg',
+    png: 'image/png',
+    webp: 'image/webp',
+    gif: 'image/gif',
+    avif: 'image/avif',
+  };
+  return ext ? (byExt[ext] ?? '') : '';
+}
+
+export function normalizeUploadedAssetUrl(rawUrl: string, basePath: string): string {
+  const trimmed = rawUrl.trim();
+  if (!trimmed) return trimmed;
+  if (/^(?:https?:)?\/\//i.test(trimmed) || /^data:/i.test(trimmed)) return trimmed;
+  const normalizedPath = trimmed.startsWith('/') ? trimmed : `/${trimmed}`;
+  return withBasePath(normalizedPath, basePath);
+}
+
+async function normalizeImageForRendering(file: File): Promise<File> {
+  if (typeof window === 'undefined') return file;
+  const mimeType = resolveImageMimeType(file);
+  if (!mimeType.startsWith('image/')) return file;
+
+  const objectUrl = URL.createObjectURL(file);
+  try {
+    const imageEl = await new Promise<HTMLImageElement>((resolve, reject) => {
+      const img = new Image();
+      img.decoding = 'async';
+      img.onload = () => resolve(img);
+      img.onerror = () => reject(new Error('Image decode failed before upload.'));
+      img.src = objectUrl;
+    });
+
+    const width = imageEl.naturalWidth;
+    const height = imageEl.naturalHeight;
+    if (!width || !height) throw new Error('Image decode failed before upload.');
+
+    const canvas = document.createElement('canvas');
+    canvas.width = width;
+    canvas.height = height;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) throw new Error('Canvas context unavailable.');
+    ctx.drawImage(imageEl, 0, 0);
+
+    const blob =
+      await new Promise<Blob | null>((resolve) => canvas.toBlob((value) => resolve(value), 'image/webp', 0.92))
+      ?? await new Promise<Blob | null>((resolve) => canvas.toBlob((value) => resolve(value), 'image/jpeg', 0.92));
+
+    if (!blob) throw new Error('Image re-encode failed.');
+    const baseName = file.name.replace(/\.[^.]+$/, '') || `image-${Date.now()}`;
+    const ext = blob.type === 'image/webp' ? 'webp' : 'jpg';
+    return new File([blob], `${baseName}.${ext}`, {
+      type: blob.type,
+      lastModified: Date.now(),
+    });
+  } finally {
+    URL.revokeObjectURL(objectUrl);
+  }
+}
+
+export async function uploadTenantAsset(
+  file: File,
+  options: {
+    basePath: string;
+    isCloudMode: boolean;
+    cloudApiUrl?: string;
+    cloudApiKey?: string;
+    apiBases: string[];
+    onUploaded?: () => Promise<void>;
+  }
+): Promise<string> {
+  const preparedFile = await normalizeImageForRendering(file);
+  const mimeType = resolveImageMimeType(preparedFile);
+  if (!mimeType) throw new Error('Invalid file type.');
+  if (!ALLOWED_IMAGE_MIME_TYPES.has(mimeType)) {
+    throw new Error('Unsupported image format. Allowed: jpeg, png, webp, gif, avif.');
+  }
+  if (preparedFile.size > MAX_UPLOAD_SIZE_BYTES) {
+    throw new Error(`File too large. Max ${MAX_UPLOAD_SIZE_BYTES / 1024 / 1024}MB.`);
+  }
+
+  if (options.isCloudMode && options.cloudApiUrl && options.cloudApiKey) {
+    let lastError: Error | null = null;
+    for (const apiBase of options.apiBases) {
+      for (let attempt = 0; attempt <= ASSET_UPLOAD_MAX_RETRIES; attempt += 1) {
+        try {
+          const formData = new FormData();
+          formData.append('file', preparedFile);
+          formData.append('filename', preparedFile.name);
+          const controller = new AbortController();
+          const timeout = window.setTimeout(() => controller.abort(), ASSET_UPLOAD_TIMEOUT_MS);
+          const res = await fetch(`${apiBase}/assets/upload`, {
+            method: 'POST',
+            headers: {
+              Authorization: `Bearer ${options.cloudApiKey}`,
+              'X-Correlation-Id': crypto.randomUUID(),
+            },
+            body: formData,
+            signal: controller.signal,
+          }).finally(() => window.clearTimeout(timeout));
+          const body = (await res.json().catch(() => ({}))) as { url?: string; error?: string; code?: string };
+          if (res.ok && typeof body.url === 'string') {
+            await options.onUploaded?.().catch(() => undefined);
+            return normalizeUploadedAssetUrl(body.url, options.basePath);
+          }
+          lastError = new Error(body.error || body.code || `Cloud upload failed: ${res.status}`);
+          if (isRetryableStatus(res.status) && attempt < ASSET_UPLOAD_MAX_RETRIES) {
+            await sleep(backoffDelayMs(attempt));
+            continue;
+          }
+          break;
+        } catch (error: unknown) {
+          const message = error instanceof Error ? error.message : 'Cloud upload failed.';
+          lastError = new Error(message);
+          if (attempt < ASSET_UPLOAD_MAX_RETRIES) {
+            await sleep(backoffDelayMs(attempt));
+            continue;
+          }
+          break;
+        }
+      }
+    }
+    throw lastError ?? new Error('Cloud upload failed.');
+  }
+
+  const base64 = await new Promise<string>((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve((reader.result as string).split(',')[1] ?? '');
+    reader.onerror = () => reject(reader.error);
+    reader.readAsDataURL(preparedFile);
+  });
+
+  const res = await fetch('/api/upload-asset', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ filename: preparedFile.name, mimeType, data: base64 }),
+  });
+  const body = (await res.json().catch(() => ({}))) as { url?: string; error?: string };
+  if (!res.ok) throw new Error(body.error || `Upload failed: ${res.status}`);
+  if (typeof body.url !== 'string' || !body.url.trim()) {
+    throw new Error('Invalid server response: missing url');
+  }
+  await options.onUploaded?.().catch(() => undefined);
+  return normalizeUploadedAssetUrl(body.url, options.basePath);
+}
+
+END_OF_FILE_CONTENT
+echo "Creating src/lib/base-schemas.ts..."
+cat << 'END_OF_FILE_CONTENT' > "src/lib/base-schemas.ts"
+export {
+  BaseSectionData,
+  BaseArrayItem,
+  BaseSectionSettingsSchema,
+  CtaSchema,
+  ImageSelectionSchema,
+} from '@olonjs/core';
+
+END_OF_FILE_CONTENT
+mkdir -p "src/lib/cloud"
+echo "Creating src/lib/cloud/bootstrapTelemetry.ts..."
+cat << 'END_OF_FILE_CONTENT' > "src/lib/cloud/bootstrapTelemetry.ts"
+import type { CloudLoadFailure } from '@/lib/cloud/types';
+
+export function logBootstrapEvent(event: string, details: Record<string, unknown>) {
+  console.info('[boot]', { event, at: new Date().toISOString(), ...details });
+}
+
+function isObjectRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null;
+}
+
+export function isCloudLoadFailure(value: unknown): value is CloudLoadFailure {
+  return (
+    isObjectRecord(value) &&
+    typeof value.reasonCode === 'string' &&
+    typeof value.message === 'string'
+  );
+}
+
+export function toCloudLoadFailure(value: unknown): CloudLoadFailure {
+  if (isCloudLoadFailure(value)) return value;
+  if (value instanceof Error) {
+    return { reasonCode: 'CLOUD_LOAD_FAILED', message: value.message };
+  }
+  return { reasonCode: 'CLOUD_LOAD_FAILED', message: 'Cloud content unavailable.' };
+}
+
+END_OF_FILE_CONTENT
+echo "Creating src/lib/cloud/cloudCache.ts..."
+cat << 'END_OF_FILE_CONTENT' > "src/lib/cloud/cloudCache.ts"
+import { buildApiCandidates } from '@/lib/spp';
+import type { CachedCloudContent } from '@/lib/cloud/types';
+import { coerceSiteConfig, normalizeRouteSlug, toPagesRecord } from '@/lib/cloud/contentCoercion';
+
+const CLOUD_CACHE_KEY = 'jp_cloud_content_cache_v1';
+const CLOUD_CACHE_TTL_MS = 5 * 60 * 1000;
+
+export function cloudFingerprint(apiBase: string, apiKey: string): string {
+  const normalized = apiBase.trim().replace(/\/+$/, '');
+  return `${normalized}::${apiKey.slice(-8)}`;
+}
+
+export function cloudFingerprintFromUrl(cloudApiUrl: string, apiKey: string): string {
+  const primaryApiBase = buildApiCandidates(cloudApiUrl)[0] ?? cloudApiUrl.trim().replace(/\/+$/, '');
+  return cloudFingerprint(primaryApiBase, apiKey);
+}
+
+export function normalizeSlugForCache(slug: string): string {
+  return normalizeRouteSlug(slug);
+}
+
+export function readCachedCloudContent(fingerprint: string): CachedCloudContent | null {
+  try {
+    const raw = localStorage.getItem(CLOUD_CACHE_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as CachedCloudContent;
+    if (!parsed || parsed.keyFingerprint !== fingerprint) return null;
+    if (!parsed.savedAt || Date.now() - parsed.savedAt > CLOUD_CACHE_TTL_MS) return null;
+    return parsed;
+  } catch {
+    return null;
+  }
+}
+
+export function writeCachedCloudContent(entry: CachedCloudContent): void {
+  try {
+    localStorage.setItem(CLOUD_CACHE_KEY, JSON.stringify(entry));
+  } catch {
+    // non-blocking cache path
+  }
+}
+
+export function readCachedPages(fingerprint: string) {
+  const cached = readCachedCloudContent(fingerprint);
+  return {
+    cached,
+    cachedPages: cached ? toPagesRecord(cached.pages) : null,
+    cachedSite: cached ? coerceSiteConfig(cached.siteConfig) : null,
+  };
+}
+
+END_OF_FILE_CONTENT
+echo "Creating src/lib/cloud/cloudContentClient.ts..."
+cat << 'END_OF_FILE_CONTENT' > "src/lib/cloud/cloudContentClient.ts"
+import { backoffDelayMs, isRetryableStatus, sleep } from '@/lib/cloud/cloudHttp';
+import { extractContentSources, coerceSiteConfig, toPagesRecord } from '@/lib/cloud/contentCoercion';
+import type { CloudLoadFailure, ContentResponse } from '@/lib/cloud/types';
+import type { PageConfig, SiteConfig } from '@/types';
+
+export async function fetchLegacyCloudContentPayload(
+  apiCandidates: string[],
+  apiKey: string,
+  signal: AbortSignal,
+  maxRetryAttempts: number
+): Promise<ContentResponse> {
+  let payload: ContentResponse | null = null;
+  let lastFailure: CloudLoadFailure | null = null;
+
+  for (const apiBase of apiCandidates) {
+    for (let attempt = 0; attempt <= maxRetryAttempts; attempt += 1) {
+      try {
+        const res = await fetch(`${apiBase}/content`, {
+          method: 'GET',
+          cache: 'no-store',
+          headers: { Authorization: `Bearer ${apiKey}` },
+          signal,
+        });
+
+        const contentType = (res.headers.get('content-type') || '').toLowerCase();
+        if (!contentType.includes('application/json')) {
+          lastFailure = {
+            reasonCode: 'NON_JSON_RESPONSE',
+            message: `Non-JSON response from ${apiBase}/content`,
+          };
+          break;
+        }
+
+        const parsed = (await res.json().catch(() => ({}))) as ContentResponse;
+        if (!res.ok) {
+          lastFailure = {
+            reasonCode: parsed.code || `HTTP_${res.status}`,
+            message: parsed.error || `Cloud content read failed: ${res.status} (${apiBase}/content)`,
+            correlationId: parsed.correlationId,
+          };
+          if (isRetryableStatus(res.status) && attempt < maxRetryAttempts) {
+            await sleep(backoffDelayMs(attempt));
+            continue;
+          }
+          break;
+        }
+
+        payload = parsed;
+        break;
+      } catch (error: unknown) {
+        if (signal.aborted) throw error;
+        const message = error instanceof Error ? error.message : 'Network error';
+        lastFailure = {
+          reasonCode: 'NETWORK_TRANSIENT',
+          message: `${message} (${apiBase}/content)`,
+        };
+        if (attempt < maxRetryAttempts) {
+          await sleep(backoffDelayMs(attempt));
+          continue;
+        }
+      }
+    }
+    if (payload) break;
+  }
+
+  if (!payload) {
+    throw (
+      lastFailure || {
+        reasonCode: 'CLOUD_ENDPOINT_UNREACHABLE',
+        message: 'Cloud content endpoint not reachable as JSON.',
+      }
+    );
+  }
+
+  return payload;
+}
+
+export function applyLegacyCloudPayload(
+  payload: ContentResponse,
+  setters: {
+    setPages: (pages: Record<string, PageConfig>) => void;
+    setSiteConfig: (site: SiteConfig) => void;
+  }
+): { remotePages: Record<string, PageConfig> | null; remoteSite: SiteConfig | null } {
+  const { pagesSource, siteSource } = extractContentSources(payload);
+  const remotePages = toPagesRecord(pagesSource);
+  const remoteSite = coerceSiteConfig(siteSource);
+  const remotePageCount = remotePages ? Object.keys(remotePages).length : 0;
+  if (remotePageCount === 0 && !remoteSite) {
+    throw {
+      reasonCode: payload.contentStatus === 'empty_namespace' ? 'EMPTY_NAMESPACE' : 'EMPTY_PAYLOAD',
+      message: 'Cloud payload is empty for this tenant namespace.',
+      correlationId: payload.correlationId,
+    } satisfies CloudLoadFailure;
+  }
+  if (remotePages && remotePageCount > 0) {
+    setters.setPages(remotePages);
+  }
+  if (remoteSite) {
+    setters.setSiteConfig(remoteSite);
+  }
+  return { remotePages, remoteSite };
+}
+
+END_OF_FILE_CONTENT
+echo "Creating src/lib/cloud/cloudHttp.ts..."
+cat << 'END_OF_FILE_CONTENT' > "src/lib/cloud/cloudHttp.ts"
+export function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+export function isRetryableStatus(status: number): boolean {
+  return status === 429 || status === 500 || status === 502 || status === 503 || status === 504;
+}
+
+export function backoffDelayMs(attempt: number): number {
+  return 250 * Math.pow(2, attempt) + Math.floor(Math.random() * 120);
+}
+
+END_OF_FILE_CONTENT
+echo "Creating src/lib/cloud/contentCoercion.ts..."
+cat << 'END_OF_FILE_CONTENT' > "src/lib/cloud/contentCoercion.ts"
+import type { PageConfig, SiteConfig } from '@/types';
+import type { ContentResponse } from '@/lib/cloud/types';
+
+function isObjectRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null;
+}
+
+function asString(value: unknown, fallback: string): string {
+  return typeof value === 'string' && value.trim() ? value : fallback;
+}
+
+export function normalizeRouteSlug(value: string): string {
+  return value
+    .toLowerCase()
+    .replace(/[^a-z0-9/_[\]-]/g, '-')
+    .replace(/^\/+|\/+$/g, '') || 'home';
+}
+
+export function coercePageConfig(slug: string, value: unknown): PageConfig | null {
+  let input = value;
+  if (typeof input === 'string') {
+    try {
+      input = JSON.parse(input) as unknown;
+    } catch {
+      return null;
+    }
+  }
+  if (!isObjectRecord(input) || !Array.isArray(input.sections)) return null;
+
+  const inputMeta = isObjectRecord(input.meta) ? input.meta : {};
+  const normalizedSlug = asString(input.slug, slug);
+  const normalizedId = asString(input.id, `${normalizedSlug}-page`);
+  const title = asString(inputMeta.title, normalizedSlug);
+  const description = asString(inputMeta.description, '');
+
+  return {
+    id: normalizedId,
+    slug: normalizedSlug,
+    meta: { title, description },
+    sections: input.sections as PageConfig['sections'],
+    ...(isObjectRecord(input.collection) ? { collection: input.collection as unknown as PageConfig['collection'] } : {}),
+    ...(typeof input['global-header'] === 'boolean' ? { 'global-header': input['global-header'] } : {}),
+  };
+}
+
+export function coerceSiteConfig(value: unknown): SiteConfig | null {
+  let input = value;
+  if (typeof input === 'string') {
+    try {
+      input = JSON.parse(input) as unknown;
+    } catch {
+      return null;
+    }
+  }
+  if (!isObjectRecord(input)) return null;
+  if (!isObjectRecord(input.identity)) return null;
+  if (!Array.isArray(input.pages)) return null;
+
+  return input as unknown as SiteConfig;
+}
+
+export function toPagesRecord(value: unknown): Record<string, PageConfig> | null {
+  const directPage = coercePageConfig('home', value);
+  if (directPage) {
+    const directSlug = normalizeRouteSlug(asString(directPage.slug, 'home'));
+    return { [directSlug]: { ...directPage, slug: directSlug } };
+  }
+
+  if (!isObjectRecord(value)) return null;
+  const next: Record<string, PageConfig> = {};
+  for (const [rawKey, payload] of Object.entries(value)) {
+    const rawKeyTrimmed = rawKey.trim();
+    const slugFromNamespacedKey = rawKeyTrimmed.match(/^t_[a-z0-9-]+_page_(.+)$/i)?.[1];
+    const slug = normalizeRouteSlug(slugFromNamespacedKey ?? rawKeyTrimmed);
+    const page = coercePageConfig(slug, payload);
+    if (!page) continue;
+    next[slug] = { ...page, slug };
+  }
+  return next;
+}
+
+export function normalizePageRegistry(value: unknown): Record<string, PageConfig> {
+  if (!isObjectRecord(value)) return {};
+  const normalized: Record<string, PageConfig> = {};
+
+  for (const [registrySlug, rawPageValue] of Object.entries(value)) {
+    const canonicalSlug = normalizeRouteSlug(registrySlug);
+    const direct = coercePageConfig(canonicalSlug, rawPageValue);
+    if (direct) {
+      normalized[canonicalSlug] = { ...direct, slug: canonicalSlug };
+      continue;
+    }
+
+    const nested = toPagesRecord(rawPageValue);
+    if (nested && Object.keys(nested).length > 0) {
+      Object.assign(normalized, nested);
+    }
+  }
+
+  return normalized;
+}
+
+export function extractContentSources(payload: ContentResponse | Record<string, unknown>): {
+  pagesSource: unknown;
+  siteSource: unknown;
+} {
+  if (isObjectRecord(payload) && isObjectRecord(payload.pages)) {
+    return { pagesSource: payload.pages, siteSource: payload.siteConfig };
+  }
+
+  if (isObjectRecord(payload) && isObjectRecord(payload.items)) {
+    const items = payload.items;
+    let siteSource: unknown = null;
+    const pageEntries: Record<string, unknown> = {};
+    for (const [key, value] of Object.entries(items)) {
+      if (/(_config_site|config_site|config:site)$/i.test(key)) {
+        siteSource = value;
+        continue;
+      }
+      if (/(_page_|^page_|page:)/i.test(key)) {
+        pageEntries[key] = value;
+      }
+    }
+    return { pagesSource: pageEntries, siteSource };
+  }
+
+  return { pagesSource: payload, siteSource: null };
+}
+
+END_OF_FILE_CONTENT
+echo "Creating src/lib/cloud/staticContent.ts..."
+cat << 'END_OF_FILE_CONTENT' > "src/lib/cloud/staticContent.ts"
+import { withBasePath } from '@olonjs/core';
+import { coerceSiteConfig, normalizePageRegistry } from '@/lib/cloud/contentCoercion';
+import { normalizeSlugForCache } from '@/lib/cloud/cloudCache';
+import type { PageConfig, SiteConfig } from '@/types';
+
+function buildPublishedPageHref(slug: string, basePath: string): string {
+  return withBasePath(`/pages/${normalizeSlugForCache(slug)}.json`, basePath);
+}
+
+export async function loadPublishedStaticContent(
+  knownSlugs: string[],
+  basePath: string
+): Promise<{ pages: Record<string, PageConfig>; siteConfig: SiteConfig }> {
+  const siteResponse = await fetch(withBasePath('/config/site.json', basePath), { cache: 'no-store' });
+  if (!siteResponse.ok) {
+    throw new Error(`Static site config unavailable: ${siteResponse.status}`);
+  }
+
+  const sitePayload = (await siteResponse.json().catch(() => null)) as unknown;
+  const nextSite = coerceSiteConfig(sitePayload);
+  if (!nextSite) {
+    throw new Error('Static site config is invalid.');
+  }
+
+  const pageEntries = await Promise.all(
+    knownSlugs.map(async (slug) => {
+      const response = await fetch(buildPublishedPageHref(slug, basePath), { cache: 'no-store' });
+      if (!response.ok) {
+        throw new Error(`Static page unavailable for slug "${slug}": ${response.status}`);
+      }
+      return [slug, (await response.json().catch(() => null)) as unknown] as const;
+    })
+  );
+
+  const nextPages = normalizePageRegistry(Object.fromEntries(pageEntries));
+  if (Object.keys(nextPages).length === 0) {
+    throw new Error('Static published pages are empty.');
+  }
+
+  return { pages: nextPages, siteConfig: nextSite };
+}
+
+END_OF_FILE_CONTENT
+echo "Creating src/lib/cloud/types.ts..."
+cat << 'END_OF_FILE_CONTENT' > "src/lib/cloud/types.ts"
+import type { JsonPagesConfig } from '@olonjs/core';
+
+export type ContentMode = 'cloud' | 'error';
+
+export type ContentStatus = 'ok' | 'empty_namespace' | 'legacy_fallback';
+
+export type ContentResponse = {
+  ok?: boolean;
+  siteConfig?: unknown;
+  pages?: unknown;
+  items?: unknown;
+  error?: string;
+  code?: string;
+  correlationId?: string;
+  contentStatus?: ContentStatus;
+  usedUnscopedFallback?: boolean;
+  namespace?: string;
+  namespaceMatchedKeys?: number;
+};
+
+export type CachedCloudContent = {
+  keyFingerprint: string;
+  savedAt: number;
+  siteConfig: unknown | null;
+  pages: Record<string, unknown>;
+  collections?: JsonPagesConfig['collections'];
+};
+
+export type CloudLoadFailure = {
+  reasonCode: string;
+  message: string;
+  correlationId?: string;
+};
+
+END_OF_FILE_CONTENT
+echo "Creating src/lib/cloud/useAdminStudioContent.ts..."
+cat << 'END_OF_FILE_CONTENT' > "src/lib/cloud/useAdminStudioContent.ts"
+import { useEffect, useRef } from 'react';
+import type { Dispatch, SetStateAction } from 'react';
+import type { JsonPagesConfig } from '@olonjs/core';
+import { applyLegacyCloudPayload, fetchLegacyCloudContentPayload } from '@/lib/cloud/cloudContentClient';
+import { cloudFingerprint, writeCachedCloudContent } from '@/lib/cloud/cloudCache';
+import { isAdminPath, patchHistoryNavigation } from '@/lib/spp';
+import { APP_BASE_PATH } from '@/lib/tenantEnv';
+import type { PageConfig, SiteConfig } from '@/types';
+
+const MAX_RETRIES = 2;
+
+type UseAdminStudioContentOptions = {
+  enabled: boolean;
+  apiCandidates: string[];
+  apiKey: string;
+  setPages: Dispatch<SetStateAction<Record<string, PageConfig>>>;
+  setSiteConfig: Dispatch<SetStateAction<SiteConfig>>;
+  setCollections: Dispatch<SetStateAction<NonNullable<JsonPagesConfig['collections']>>>;
+};
+
+/** Studio `/admin` sync via legacy `/content` — never mixed into visitor `/render` bootstrap. */
+export function useAdminStudioContent({
+  enabled,
+  apiCandidates,
+  apiKey,
+  setPages,
+  setSiteConfig,
+  setCollections,
+}: UseAdminStudioContentOptions) {
+  const loadedRef = useRef(false);
+  const inFlightRef = useRef<Promise<void> | null>(null);
+
+  useEffect(() => {
+    if (!enabled || apiCandidates.length === 0 || !apiKey.trim()) return;
+
+    const syncIfAdmin = () => {
+      if (!isAdminPath(window.location.pathname, APP_BASE_PATH)) return;
+      if (loadedRef.current || inFlightRef.current) return;
+
+      const controller = new AbortController();
+      const fingerprint = cloudFingerprint(apiCandidates[0]!, apiKey);
+
+      inFlightRef.current = fetchLegacyCloudContentPayload(
+        apiCandidates,
+        apiKey,
+        controller.signal,
+        MAX_RETRIES,
+      )
+        .then((payload) => {
+          const { remotePages, remoteSite } = applyLegacyCloudPayload(payload, {
+            setPages,
+            setSiteConfig,
+          });
+          writeCachedCloudContent({
+            keyFingerprint: fingerprint,
+            savedAt: Date.now(),
+            siteConfig: remoteSite ?? null,
+            pages: (remotePages ?? {}) as Record<string, unknown>,
+          });
+          loadedRef.current = true;
+        })
+        .catch((error: unknown) => {
+          if (import.meta.env.DEV) {
+            console.warn('[admin-studio] legacy content sync failed', error);
+          }
+        })
+        .finally(() => {
+          inFlightRef.current = null;
+        });
+    };
+
+    syncIfAdmin();
+    const unpatch = patchHistoryNavigation(syncIfAdmin);
+    return () => {
+      unpatch();
+      inFlightRef.current = null;
+    };
+  }, [enabled, apiCandidates, apiKey, setPages, setSiteConfig, setCollections]);
+}
+
+END_OF_FILE_CONTENT
 echo "Creating src/lib/draftStorage.ts..."
 cat << 'END_OF_FILE_CONTENT' > "src/lib/draftStorage.ts"
 /**
@@ -11775,6 +11699,7 @@ export function getHydratedData(
 }
 
 END_OF_FILE_CONTENT
+mkdir -p "src/lib/editorial"
 echo "Creating src/lib/getFileCollections.ts..."
 cat << 'END_OF_FILE_CONTENT' > "src/lib/getFileCollections.ts"
 import type { JsonPagesConfig } from '@/types';
@@ -11905,6 +11830,1404 @@ export {
   CtaSchema,
   ImageSelectionSchema,
 } from '@olonjs/core';
+
+END_OF_FILE_CONTENT
+mkdir -p "src/lib/spp"
+echo "Creating src/lib/spp/cloudConfig.ts..."
+cat << 'END_OF_FILE_CONTENT' > "src/lib/spp/cloudConfig.ts"
+function normalizeApiBase(raw: string): string {
+  return raw.trim().replace(/\/+$/, '');
+}
+
+export function buildApiCandidates(raw: string): string[] {
+  const base = normalizeApiBase(raw);
+  const withApi = /\/api\/v1$/i.test(base) ? base : `${base}/api/v1`;
+  return Array.from(new Set([withApi, base].filter(Boolean)));
+}
+
+export function getSppCloudConfig(): {
+  enabled: boolean;
+  apiBases: string[];
+  apiKey: string;
+} {
+  const apiUrl =
+    import.meta.env.VITE_OLONJS_CLOUD_URL?.trim() ||
+    import.meta.env.VITE_JSONPAGES_CLOUD_URL?.trim() ||
+    '';
+  const apiKey =
+    import.meta.env.VITE_OLONJS_API_KEY?.trim() ||
+    import.meta.env.VITE_JSONPAGES_API_KEY?.trim() ||
+    '';
+  const save2Repo = import.meta.env.VITE_SAVE2REPO === 'true';
+
+  // SSG/bake: local resolved JSON only. Cloud slices are browser-runtime (SPP §3).
+  if (import.meta.env.SSR || !apiUrl || !apiKey || save2Repo) {
+    return { enabled: false, apiBases: [], apiKey: '' };
+  }
+
+  return {
+    enabled: true,
+    apiBases: buildApiCandidates(apiUrl),
+    apiKey,
+  };
+}
+
+END_OF_FILE_CONTENT
+echo "Creating src/lib/spp/collectionRef.ts..."
+cat << 'END_OF_FILE_CONTENT' > "src/lib/spp/collectionRef.ts"
+import type { CollectionSliceDescriptor, CollectionSliceSort } from './types';
+
+/** SPP §2.3 — sibling keys on a collection `$ref`; never collection entities. */
+export const COLLECTION_REF_SIBLING_KEYS = new Set([
+  '$ref',
+  'limit',
+  'pageSize',
+  '$sliceSort',
+  '$sliceFilter',
+]);
+
+export function isCollectionRef(value: unknown): value is Record<string, unknown> & { $ref: string } {
+  return (
+    typeof value === 'object' &&
+    value !== null &&
+    !Array.isArray(value) &&
+    typeof (value as { $ref?: unknown }).$ref === 'string' &&
+    (value as { $ref: string }).$ref.trim().length > 0
+  );
+}
+
+export function isCollectionItem(value: unknown): value is Record<string, unknown> & { id: string } {
+  return (
+    typeof value === 'object' &&
+    value !== null &&
+    !Array.isArray(value) &&
+    typeof (value as { id?: unknown }).id === 'string' &&
+    (value as { id: string }).id.trim().length > 0
+  );
+}
+
+function readSliceSort(value: unknown): CollectionSliceSort | undefined {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return undefined;
+  const record = value as Record<string, unknown>;
+  if (typeof record.field !== 'string' || !record.field.trim()) return undefined;
+  if (record.direction !== 'asc' && record.direction !== 'desc') return undefined;
+  return { field: record.field.trim(), direction: record.direction };
+}
+
+function readPositiveInt(value: unknown): number | undefined {
+  if (typeof value !== 'number' || !Number.isFinite(value)) return undefined;
+  const next = Math.floor(value);
+  return next > 0 ? next : undefined;
+}
+
+/** Read SPP slice descriptor from an unresolved `$ref` or a resolved record polluted by ref siblings. */
+export function readCollectionSliceDescriptor(
+  value: unknown,
+  fallback?: { limit?: number; pageSize?: number },
+): CollectionSliceDescriptor {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) {
+    return { limit: fallback?.limit ?? fallback?.pageSize };
+  }
+
+  const record = value as Record<string, unknown>;
+  const limit =
+    readPositiveInt(record.limit) ??
+    readPositiveInt(record.pageSize) ??
+    fallback?.limit ??
+    fallback?.pageSize;
+
+  const sort = readSliceSort(record.$sliceSort);
+  const filter =
+    record.$sliceFilter &&
+    typeof record.$sliceFilter === 'object' &&
+    !Array.isArray(record.$sliceFilter)
+      ? (record.$sliceFilter as Record<string, string>)
+      : undefined;
+
+  return { limit, sort, filter };
+}
+
+/** Normalize any keyed collection payload; strips SPP ref siblings and non-entity entries. */
+export function normalizeCollectionRecord<T extends Record<string, unknown> & { id: string }>(
+  value: unknown,
+  isItem: (candidate: unknown) => candidate is T = isCollectionItem as (candidate: unknown) => candidate is T,
+): Record<string, T> | undefined {
+  if (!value || typeof value !== 'object') return undefined;
+  if (isCollectionRef(value)) return undefined;
+
+  if (Array.isArray(value)) {
+    const entries = value.filter(isItem).map((item) => [item.id, item] as const);
+    return entries.length > 0 ? Object.fromEntries(entries) : undefined;
+  }
+
+  const entries = Object.entries(value as Record<string, unknown>)
+    .filter(([key]) => !COLLECTION_REF_SIBLING_KEYS.has(key))
+    .filter((entry): entry is [string, T] => isItem(entry[1]));
+
+  return entries.length > 0 ? Object.fromEntries(entries) : undefined;
+}
+
+END_OF_FILE_CONTENT
+echo "Creating src/lib/spp/collectionTotalQueue.ts..."
+cat << 'END_OF_FILE_CONTENT' > "src/lib/spp/collectionTotalQueue.ts"
+import { fetchCollectionTotal } from './collectionsClient';
+import type { CollectionSliceSort } from './types';
+
+type TotalCacheKey = string;
+
+const totalCache = new Map<TotalCacheKey, number>();
+const pendingResolvers = new Map<TotalCacheKey, Promise<number>>();
+
+const queue: Array<() => Promise<void>> = [];
+let activeWorkers = 0;
+
+const MAX_CONCURRENT = 2;
+const MAX_RETRIES = 2;
+const RETRY_DELAY_MS = 400;
+
+function cacheKey(collection: string, filter: Record<string, string>): TotalCacheKey {
+  return `${collection}::${JSON.stringify(filter)}`;
+}
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+function pumpQueue(): void {
+  while (activeWorkers < MAX_CONCURRENT && queue.length > 0) {
+    const job = queue.shift();
+    if (!job) return;
+    activeWorkers += 1;
+    void job().finally(() => {
+      activeWorkers -= 1;
+      pumpQueue();
+    });
+  }
+}
+
+function enqueue(job: () => Promise<void>): void {
+  queue.push(job);
+  pumpQueue();
+}
+
+async function fetchWithRetry(
+  collection: string,
+  filter: Record<string, string>,
+  sort?: CollectionSliceSort,
+): Promise<number> {
+  let lastError: unknown;
+  for (let attempt = 0; attempt <= MAX_RETRIES; attempt += 1) {
+    try {
+      return await fetchCollectionTotal(collection, { filter, sort });
+    } catch (error: unknown) {
+      lastError = error;
+      if (attempt < MAX_RETRIES) {
+        await sleep(RETRY_DELAY_MS * (attempt + 1));
+      }
+    }
+  }
+  throw lastError instanceof Error ? lastError : new Error('Collection total fetch failed');
+}
+
+export function requestCollectionTotal(
+  collection: string,
+  filter: Record<string, string>,
+  sort?: CollectionSliceSort,
+): Promise<number> {
+  const key = cacheKey(collection, filter);
+  const cached = totalCache.get(key);
+  if (cached != null) return Promise.resolve(cached);
+
+  const pending = pendingResolvers.get(key);
+  if (pending) return pending;
+
+  const promise = new Promise<number>((resolve, reject) => {
+    enqueue(async () => {
+      try {
+        const total = await fetchWithRetry(collection, filter, sort);
+        totalCache.set(key, total);
+        resolve(total);
+      } catch (error: unknown) {
+        pendingResolvers.delete(key);
+        reject(error instanceof Error ? error : new Error('Collection total fetch failed'));
+      }
+    });
+  });
+
+  pendingResolvers.set(key, promise);
+  return promise;
+}
+
+export function readCachedCollectionTotal(
+  collection: string,
+  filter: Record<string, string>,
+): number | undefined {
+  return totalCache.get(cacheKey(collection, filter));
+}
+
+END_OF_FILE_CONTENT
+echo "Creating src/lib/spp/collectionsClient.ts..."
+cat << 'END_OF_FILE_CONTENT' > "src/lib/spp/collectionsClient.ts"
+import { getSppCloudConfig } from './cloudConfig';
+import type { CollectionSliceResult, CollectionSliceSort } from './types';
+
+type CollectionSliceResponse<T> = {
+  ok: boolean;
+  error?: string;
+  code?: string;
+  items?: Record<string, T>;
+  pagination?: {
+    total?: number;
+    hasMore?: boolean;
+    nextOffset?: number | null;
+  };
+};
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+export async function fetchCollectionSlice<T extends Record<string, unknown> = Record<string, unknown>>(
+  collectionName: string,
+  options: {
+    limit: number;
+    offset: number;
+    filter?: Record<string, string>;
+    sort?: CollectionSliceSort;
+    signal?: AbortSignal;
+  },
+): Promise<CollectionSliceResult<T>> {
+  const cloud = getSppCloudConfig();
+  if (!cloud.enabled) {
+    throw new Error('SPP collections API is not configured');
+  }
+
+  const params = new URLSearchParams({
+    limit: String(options.limit),
+    offset: String(options.offset),
+  });
+  if (options.filter && Object.keys(options.filter).length > 0) {
+    params.set('filter', JSON.stringify(options.filter));
+  }
+  if (options.sort) {
+    params.set('sort', JSON.stringify(options.sort));
+  }
+
+  let lastError = 'Collection slice failed';
+
+  for (const apiBase of cloud.apiBases) {
+    try {
+      const res = await fetch(`${apiBase}/collections/${encodeURIComponent(collectionName)}?${params}`, {
+        method: 'GET',
+        cache: 'no-store',
+        headers: {
+          Authorization: `Bearer ${cloud.apiKey}`,
+        },
+        signal: options.signal,
+      });
+
+      const body = (await res.json().catch(() => ({}))) as CollectionSliceResponse<T>;
+      if (!res.ok || !body.ok) {
+        lastError = body.error || body.code || `HTTP ${res.status}`;
+        continue;
+      }
+
+      return {
+        items: body.items ?? {},
+        pagination: {
+          total: body.pagination?.total ?? Object.keys(body.items ?? {}).length,
+          hasMore: body.pagination?.hasMore ?? false,
+          nextOffset: body.pagination?.nextOffset ?? null,
+        },
+      };
+    } catch (error: unknown) {
+      if (options.signal?.aborted) throw error;
+      lastError = error instanceof Error ? error.message : lastError;
+    }
+    await sleep(120);
+  }
+
+  throw new Error(lastError);
+}
+
+/** Fetch server-side total for a filtered collection without loading the full dataset. */
+export async function fetchCollectionTotal(
+  collectionName: string,
+  options?: {
+    filter?: Record<string, string>;
+    sort?: CollectionSliceSort;
+    signal?: AbortSignal;
+  },
+): Promise<number> {
+  const result = await fetchCollectionSlice(collectionName, {
+    limit: 1,
+    offset: 0,
+    filter: options?.filter,
+    sort: options?.sort,
+    signal: options?.signal,
+  });
+  return result.pagination.total;
+}
+
+END_OF_FILE_CONTENT
+echo "Creating src/lib/spp/index.ts..."
+cat << 'END_OF_FILE_CONTENT' > "src/lib/spp/index.ts"
+export { buildApiCandidates, getSppCloudConfig } from './cloudConfig';
+export { fetchCollectionSlice, fetchCollectionTotal } from './collectionsClient';
+export {
+  readCachedCollectionTotal,
+  requestCollectionTotal,
+} from './collectionTotalQueue';
+export { useLazyAuthorPostTotal } from './useLazyAuthorPostTotal';
+export { useTagPostTotals } from './useTagPostTotals';
+export {
+  fetchRenderProjection,
+  isAdminPath,
+  normalizeRenderPath,
+  patchHistoryNavigation,
+  resolveRegistrySlugFromRender,
+} from './renderClient';
+export { useCollectionSlice } from './useCollectionSlice';
+export {
+  COLLECTION_REF_SIBLING_KEYS,
+  isCollectionItem,
+  isCollectionRef,
+  normalizeCollectionRecord,
+  readCollectionSliceDescriptor,
+} from './collectionRef';
+export type {
+  CollectionItem,
+  CollectionPagination,
+  CollectionSliceDescriptor,
+  CollectionSliceResult,
+  CollectionSliceSort,
+} from './types';
+export type { RenderProjectionResponse } from './renderClient';
+
+END_OF_FILE_CONTENT
+echo "Creating src/lib/spp/lazyCollectionTotalQueue.ts..."
+cat << 'END_OF_FILE_CONTENT' > "src/lib/spp/lazyCollectionTotalQueue.ts"
+type QueueTask<T> = {
+  id: string;
+  signal: AbortSignal;
+  execute: () => Promise<T>;
+  onDone: (value: T) => void;
+  onCancelled: () => void;
+};
+
+export class LazyFetchQueue {
+  private readonly maxConcurrent: number;
+  private active = 0;
+  private readonly waiting: QueueTask<unknown>[] = [];
+  private readonly removed = new Set<string>();
+
+  constructor(maxConcurrent: number) {
+    this.maxConcurrent = Math.max(1, maxConcurrent);
+  }
+
+  schedule<T>(task: QueueTask<T>) {
+    if (this.removed.has(task.id)) return;
+    this.waiting.push(task as QueueTask<unknown>);
+    void this.pump();
+  }
+
+  remove(id: string) {
+    this.removed.add(id);
+    for (let index = this.waiting.length - 1; index >= 0; index -= 1) {
+      if (this.waiting[index]?.id === id) {
+        this.waiting.splice(index, 1);
+      }
+    }
+  }
+
+  clearRemoved(id: string) {
+    this.removed.delete(id);
+  }
+
+  private async pump() {
+    while (this.active < this.maxConcurrent && this.waiting.length > 0) {
+      const task = this.waiting.shift();
+      if (!task || this.removed.has(task.id) || task.signal.aborted) {
+        continue;
+      }
+
+      this.active += 1;
+      void this.runTask(task);
+    }
+  }
+
+  private async runTask(task: QueueTask<unknown>) {
+    try {
+      const value = await task.execute();
+      if (!task.signal.aborted && !this.removed.has(task.id)) {
+        task.onDone(value);
+      } else {
+        task.onCancelled();
+      }
+    } catch {
+      if (task.signal.aborted || this.removed.has(task.id)) {
+        task.onCancelled();
+      } else {
+        task.onCancelled();
+      }
+    } finally {
+      this.active = Math.max(0, this.active - 1);
+      void this.pump();
+    }
+  }
+}
+
+export const authorPostTotalCache = new Map<string, number>();
+export const authorPostTotalQueue = new LazyFetchQueue(6);
+
+END_OF_FILE_CONTENT
+echo "Creating src/lib/spp/renderClient.ts..."
+cat << 'END_OF_FILE_CONTENT' > "src/lib/spp/renderClient.ts"
+import type { MenuConfig, PageConfig, SiteConfig } from '@/types';
+
+export type RenderProjectionResponse = {
+  ok: boolean;
+  error?: string;
+  code?: string;
+  correlationId?: string;
+  route?: {
+    path: string;
+    template: string;
+    params: Record<string, string>;
+  };
+  context?: {
+    siteConfig: SiteConfig;
+    menuConfig: MenuConfig;
+  };
+  page?: PageConfig;
+  diagnostics?: {
+    projectionMode: 'atomic' | 'legacy_fallback';
+    unresolvedRefs: string[];
+  };
+};
+
+export function normalizeRenderPath(pathname: string, basePath: string): string {
+  const normalizedBase = basePath.replace(/\/+$/, '') || '';
+  let path = pathname.trim() || '/';
+  if (normalizedBase && normalizedBase !== '/' && path.startsWith(normalizedBase)) {
+    path = path.slice(normalizedBase.length) || '/';
+  }
+  if (!path.startsWith('/')) path = `/${path}`;
+  return path === '' ? '/' : path;
+}
+
+export function isAdminPath(pathname: string, basePath: string): boolean {
+  const path = normalizeRenderPath(pathname, basePath);
+  return path === '/admin' || path.startsWith('/admin/');
+}
+
+export function resolveRegistrySlugFromRender(page: PageConfig): string {
+  const slug = typeof page.slug === 'string' ? page.slug.trim() : '';
+  if (slug.includes('[')) return slug;
+  if (slug) return slug;
+  return 'home';
+}
+
+function isRetryableStatus(status: number): boolean {
+  return status === 429 || status === 500 || status === 502 || status === 503 || status === 504;
+}
+
+async function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+function backoffDelayMs(attempt: number): number {
+  return 250 * Math.pow(2, attempt) + Math.floor(Math.random() * 120);
+}
+
+export async function fetchRenderProjection(
+  apiBases: string[],
+  apiKey: string,
+  path: string,
+  options?: { signal?: AbortSignal; maxRetryAttempts?: number },
+): Promise<RenderProjectionResponse> {
+  const maxRetryAttempts = options?.maxRetryAttempts ?? 2;
+  const query = new URLSearchParams({ path });
+  let lastFailure: RenderProjectionResponse | null = null;
+
+  for (const apiBase of apiBases) {
+    for (let attempt = 0; attempt <= maxRetryAttempts; attempt += 1) {
+      try {
+        const res = await fetch(`${apiBase}/render?${query.toString()}`, {
+          method: 'GET',
+          cache: 'no-store',
+          headers: {
+            Authorization: `Bearer ${apiKey}`,
+          },
+          signal: options?.signal,
+        });
+
+        const contentType = (res.headers.get('content-type') || '').toLowerCase();
+        if (!contentType.includes('application/json')) {
+          lastFailure = {
+            ok: false,
+            code: 'NON_JSON_RESPONSE',
+            error: `Non-JSON response from ${apiBase}/render`,
+          };
+          break;
+        }
+
+        const parsed = (await res.json().catch(() => ({}))) as RenderProjectionResponse;
+        if (!res.ok) {
+          lastFailure = {
+            ok: false,
+            code: parsed.code || `HTTP_${res.status}`,
+            error: parsed.error || `Render failed: ${res.status}`,
+            correlationId: parsed.correlationId,
+          };
+          if (isRetryableStatus(res.status) && attempt < maxRetryAttempts) {
+            await sleep(backoffDelayMs(attempt));
+            continue;
+          }
+          break;
+        }
+
+        if (!parsed.ok || !parsed.page) {
+          lastFailure = {
+            ok: false,
+            code: parsed.code || 'ERR_RENDER_PROJECTION_FAILED',
+            error: parsed.error || 'Render payload missing page',
+            correlationId: parsed.correlationId,
+          };
+          break;
+        }
+
+        return parsed;
+      } catch (error: unknown) {
+        if (options?.signal?.aborted) throw error;
+        const message = error instanceof Error ? error.message : 'Network error';
+        lastFailure = {
+          ok: false,
+          code: 'NETWORK_TRANSIENT',
+          error: `${message} (${apiBase}/render)`,
+        };
+        if (attempt < maxRetryAttempts) {
+          await sleep(backoffDelayMs(attempt));
+          continue;
+        }
+      }
+    }
+    if (lastFailure?.ok === false && lastFailure.code !== 'NETWORK_TRANSIENT') {
+      break;
+    }
+  }
+
+  return (
+    lastFailure ?? {
+      ok: false,
+      code: 'RENDER_ENDPOINT_UNREACHABLE',
+      error: 'Render endpoint not reachable.',
+    }
+  );
+}
+
+export function patchHistoryNavigation(onNavigate: () => void): () => void {
+  const notify = () => {
+    window.queueMicrotask(onNavigate);
+  };
+
+  window.addEventListener('popstate', notify);
+  const originalPushState = history.pushState.bind(history);
+  const originalReplaceState = history.replaceState.bind(history);
+
+  history.pushState = (...args: Parameters<History['pushState']>) => {
+    originalPushState(...args);
+    notify();
+  };
+  history.replaceState = (...args: Parameters<History['replaceState']>) => {
+    originalReplaceState(...args);
+    notify();
+  };
+
+  return () => {
+    window.removeEventListener('popstate', notify);
+    history.pushState = originalPushState;
+    history.replaceState = originalReplaceState;
+  };
+}
+
+END_OF_FILE_CONTENT
+echo "Creating src/lib/spp/types.ts..."
+cat << 'END_OF_FILE_CONTENT' > "src/lib/spp/types.ts"
+export type CollectionSliceSort = {
+  field: string;
+  direction: 'asc' | 'desc';
+};
+
+export type CollectionPagination = {
+  total: number;
+  hasMore: boolean;
+  nextOffset: number | null;
+};
+
+export type CollectionSliceResult<T extends Record<string, unknown> = Record<string, unknown>> = {
+  items: Record<string, T>;
+  pagination: CollectionPagination;
+};
+
+export type CollectionSliceDescriptor = {
+  limit?: number;
+  sort?: CollectionSliceSort;
+  filter?: Record<string, string>;
+};
+
+export type CollectionItem = Record<string, unknown> & { id: string };
+
+END_OF_FILE_CONTENT
+echo "Creating src/lib/spp/useCollectionSlice.ts..."
+cat << 'END_OF_FILE_CONTENT' > "src/lib/spp/useCollectionSlice.ts"
+import { useCallback, useEffect, useRef, useState } from 'react';
+import {
+  isCollectionItem,
+  isCollectionRef,
+  normalizeCollectionRecord,
+  readCollectionSliceDescriptor,
+} from './collectionRef';
+import { fetchCollectionSlice } from './collectionsClient';
+import { getSppCloudConfig } from './cloudConfig';
+import type { CollectionItem, CollectionPagination, CollectionSliceSort } from './types';
+
+function initialPagination(
+  loadedCount: number,
+  pageSize: number,
+  cloudEnabled: boolean,
+  unresolvedRef: boolean,
+): CollectionPagination {
+  if (!cloudEnabled || pageSize <= 0) {
+    return { total: 0, hasMore: false, nextOffset: null };
+  }
+  if (unresolvedRef || loadedCount === 0) {
+    return { total: 0, hasMore: true, nextOffset: 0 };
+  }
+  if (loadedCount < pageSize) {
+    return { total: 0, hasMore: true, nextOffset: loadedCount };
+  }
+  return {
+    total: 0,
+    hasMore: true,
+    nextOffset: loadedCount,
+  };
+}
+
+export function useCollectionSlice<T extends CollectionItem>(options: {
+  collectionName: string;
+  initialItems: unknown;
+  pageSize: number;
+  filter?: Record<string, string> | null;
+  sort?: CollectionSliceSort;
+  resetKey?: string | null;
+  isItem?: (value: unknown) => value is T;
+}) {
+  const cloud = getSppCloudConfig();
+  const isItem = options.isItem ?? (isCollectionItem as (value: unknown) => value is T);
+  const descriptor = readCollectionSliceDescriptor(options.initialItems, { pageSize: options.pageSize });
+  const sort = options.sort ?? descriptor.sort;
+  const filterKey = options.filter ? JSON.stringify(options.filter) : '';
+  const resetKey = options.resetKey ?? filterKey;
+
+  const normalize = useCallback(
+    (value: unknown) => normalizeCollectionRecord<T>(value, isItem) ?? {},
+    [isItem],
+  );
+
+  const unresolvedRef = isCollectionRef(options.initialItems);
+
+  const [mergedItems, setMergedItems] = useState<Record<string, T>>(() => normalize(options.initialItems));
+  const [pagination, setPagination] = useState<CollectionPagination>(() => {
+    const count = Object.keys(normalize(options.initialItems)).length;
+    return initialPagination(count, options.pageSize, cloud.enabled, unresolvedRef);
+  });
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const inFlightRef = useRef(false);
+  const mergedItemsRef = useRef(mergedItems);
+  const paginationRef = useRef(pagination);
+  mergedItemsRef.current = mergedItems;
+  paginationRef.current = pagination;
+
+  useEffect(() => {
+    const base = normalize(options.initialItems);
+    const count = Object.keys(base).length;
+    mergedItemsRef.current = base;
+    setMergedItems(base);
+    const nextPagination = initialPagination(
+      count,
+      options.pageSize,
+      cloud.enabled,
+      isCollectionRef(options.initialItems),
+    );
+    paginationRef.current = nextPagination;
+    setPagination(nextPagination);
+    setError(null);
+  }, [options.initialItems, options.pageSize, resetKey, cloud.enabled, normalize]);
+
+  const loadMore = useCallback(async () => {
+    if (!cloud.enabled || inFlightRef.current) return false;
+
+    const loadedCount = Object.keys(mergedItemsRef.current).length;
+    const currentPagination = paginationRef.current;
+    if (!currentPagination.hasMore) return false;
+    if (currentPagination.total > 0 && loadedCount >= currentPagination.total) {
+      return false;
+    }
+
+    inFlightRef.current = true;
+    setLoading(true);
+    setError(null);
+
+    try {
+      const offset = currentPagination.nextOffset ?? loadedCount;
+
+      const result = await fetchCollectionSlice<T>(options.collectionName, {
+        limit: options.pageSize,
+        offset,
+        filter: options.filter ?? undefined,
+        sort,
+      });
+
+      const nextItems = { ...mergedItemsRef.current, ...result.items };
+      mergedItemsRef.current = nextItems;
+      setMergedItems(nextItems);
+      const mergedCount = Object.keys(nextItems).length;
+      const total = result.pagination.total;
+      const nextPagination: CollectionPagination = {
+        total,
+        hasMore: total > 0 ? mergedCount < total : result.pagination.hasMore,
+        nextOffset: result.pagination.nextOffset ?? (Object.keys(result.items).length > 0 ? offset + Object.keys(result.items).length : null),
+      };
+      paginationRef.current = nextPagination;
+      setPagination(nextPagination);
+      return Object.keys(result.items).length > 0;
+    } catch (fetchError: unknown) {
+      setError(fetchError instanceof Error ? fetchError.message : 'Failed to load collection slice');
+      return false;
+    } finally {
+      inFlightRef.current = false;
+      setLoading(false);
+    }
+  }, [cloud.enabled, options.collectionName, options.filter, options.pageSize, sort]);
+
+  useEffect(() => {
+    if (!cloud.enabled) return;
+    const loadedCount = Object.keys(mergedItemsRef.current).length;
+    if (loadedCount >= options.pageSize) return;
+    if (!paginationRef.current.hasMore) return;
+    void loadMore();
+  }, [cloud.enabled, options.pageSize, resetKey, loadMore]);
+
+  useEffect(() => {
+    if (!cloud.enabled) return;
+    let cancelled = false;
+
+    (async () => {
+      if (paginationRef.current.total > 0) return;
+
+      try {
+        const result = await fetchCollectionSlice<T>(options.collectionName, {
+          limit: 1,
+          offset: 0,
+          filter: options.filter ?? undefined,
+          sort,
+        });
+        if (cancelled) return;
+
+        const loadedCount = Object.keys(mergedItemsRef.current).length;
+        const total = result.pagination.total;
+        const nextPagination: CollectionPagination = {
+          total,
+          hasMore: loadedCount < total,
+          nextOffset: loadedCount > 0 ? loadedCount : Object.keys(result.items).length,
+        };
+        paginationRef.current = nextPagination;
+        setPagination(nextPagination);
+
+        if (loadedCount === 0 && Object.keys(result.items).length > 0) {
+          mergedItemsRef.current = result.items;
+          setMergedItems(result.items);
+        }
+      } catch {
+        // Total stays unknown until loadMore succeeds.
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [cloud.enabled, options.collectionName, options.filter, options.pageSize, sort, resetKey]);
+
+  const ensureLoadedCount = useCallback(
+    async (requiredCount: number) => {
+      if (!cloud.enabled) return;
+      for (let guard = 0; guard < 20; guard += 1) {
+        const loadedCount = Object.keys(mergedItemsRef.current).length;
+        const currentPagination = paginationRef.current;
+        if (loadedCount >= requiredCount) return;
+        if (currentPagination.total > 0 && loadedCount >= currentPagination.total) return;
+        if (!currentPagination.hasMore) return;
+        const loaded = await loadMore();
+        if (!loaded) return;
+      }
+    },
+    [cloud.enabled, loadMore],
+  );
+
+  return {
+    cloudEnabled: cloud.enabled,
+    sliceDescriptor: descriptor,
+    mergedItems,
+    pagination,
+    loading,
+    error,
+    loadMore,
+    ensureLoadedCount,
+  };
+}
+
+END_OF_FILE_CONTENT
+echo "Creating src/lib/spp/useLazyAuthorPostTotal.ts..."
+cat << 'END_OF_FILE_CONTENT' > "src/lib/spp/useLazyAuthorPostTotal.ts"
+import { useEffect, useRef, useState } from 'react';
+import { fetchCollectionTotal } from './collectionsClient';
+import { getSppCloudConfig } from './cloudConfig';
+import { authorPostTotalCache, authorPostTotalQueue } from './lazyCollectionTotalQueue';
+
+export function useLazyAuthorPostTotal(authorId: string) {
+  const cloud = getSppCloudConfig();
+  const elementRef = useRef<HTMLAnchorElement>(null);
+  const [total, setTotal] = useState<number | null>(() => authorPostTotalCache.get(authorId) ?? null);
+  const [loading, setLoading] = useState(false);
+  const abortRef = useRef<AbortController | null>(null);
+
+  useEffect(() => {
+    setTotal(authorPostTotalCache.get(authorId) ?? null);
+  }, [authorId]);
+
+  useEffect(() => {
+    if (!cloud.enabled) return;
+    const node = elementRef.current;
+    if (!node) return;
+
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (!entry) return;
+
+        if (!entry.isIntersecting) {
+          authorPostTotalQueue.remove(authorId);
+          abortRef.current?.abort();
+          abortRef.current = null;
+          if (!authorPostTotalCache.has(authorId)) {
+            setLoading(false);
+          }
+          return;
+        }
+
+        authorPostTotalQueue.clearRemoved(authorId);
+
+        if (authorPostTotalCache.has(authorId)) {
+          setTotal(authorPostTotalCache.get(authorId)!);
+          setLoading(false);
+          return;
+        }
+
+        abortRef.current?.abort();
+        const controller = new AbortController();
+        abortRef.current = controller;
+        setLoading(true);
+
+        authorPostTotalQueue.schedule({
+          id: authorId,
+          signal: controller.signal,
+          execute: () =>
+            fetchCollectionTotal('posts', {
+              filter: { 'author.id': authorId },
+              signal: controller.signal,
+            }),
+          onDone: (value) => {
+            authorPostTotalCache.set(authorId, value);
+            setTotal(value);
+            setLoading(false);
+          },
+          onCancelled: () => {
+            if (!authorPostTotalCache.has(authorId)) {
+              setLoading(false);
+            }
+          },
+        });
+      },
+      { rootMargin: '120px 0px' },
+    );
+
+    observer.observe(node);
+    return () => {
+      observer.disconnect();
+      authorPostTotalQueue.remove(authorId);
+      abortRef.current?.abort();
+      abortRef.current = null;
+    };
+  }, [authorId, cloud.enabled]);
+
+  return { elementRef, total, loading, cloudEnabled: cloud.enabled };
+}
+
+END_OF_FILE_CONTENT
+echo "Creating src/lib/spp/useTagPostTotals.ts..."
+cat << 'END_OF_FILE_CONTENT' > "src/lib/spp/useTagPostTotals.ts"
+import { useEffect, useState } from 'react';
+import { getSppCloudConfig } from './cloudConfig';
+import { readCachedCollectionTotal, requestCollectionTotal } from './collectionTotalQueue';
+
+function tagFilter(slug: string): Record<string, string> {
+  return { 'tag.slug': slug };
+}
+
+export function useTagPostTotals(tagSlugs: string[]) {
+  const cloud = getSppCloudConfig();
+  const tagSlugsKey = tagSlugs.join('|');
+  const [totals, setTotals] = useState<Record<string, number>>(() => {
+    const initial: Record<string, number> = {};
+    for (const slug of tagSlugs) {
+      const cached = readCachedCollectionTotal('posts', tagFilter(slug));
+      if (cached != null) initial[slug] = cached;
+    }
+    return initial;
+  });
+
+  useEffect(() => {
+    if (!cloud.enabled || tagSlugs.length === 0) return;
+    let cancelled = false;
+
+    for (const slug of tagSlugs) {
+      const cached = readCachedCollectionTotal('posts', tagFilter(slug));
+      if (cached != null) {
+        setTotals((prev) => (prev[slug] === cached ? prev : { ...prev, [slug]: cached }));
+        continue;
+      }
+
+      void requestCollectionTotal('posts', tagFilter(slug))
+        .then((total) => {
+          if (!cancelled) {
+            setTotals((prev) => (prev[slug] === total ? prev : { ...prev, [slug]: total }));
+          }
+        })
+        .catch(() => {
+          // requestCollectionTotal already retried; a remount or slug change can retry.
+        });
+    }
+
+    return () => {
+      cancelled = true;
+    };
+  }, [tagSlugsKey, cloud.enabled, tagSlugs]);
+
+  return totals;
+}
+
+END_OF_FILE_CONTENT
+echo "Creating src/lib/sppCloudConfig.ts..."
+cat << 'END_OF_FILE_CONTENT' > "src/lib/sppCloudConfig.ts"
+export { buildApiCandidates, getSppCloudConfig } from '@/lib/spp';
+
+END_OF_FILE_CONTENT
+echo "Creating src/lib/sppCollectionsClient.ts..."
+cat << 'END_OF_FILE_CONTENT' > "src/lib/sppCollectionsClient.ts"
+import { readCollectionSliceDescriptor } from '@/lib/spp';
+
+export function readCollectionRefLimit(value: unknown, fallback?: number): number | undefined {
+  const { limit } = readCollectionSliceDescriptor(value, { limit: fallback, pageSize: fallback });
+  return limit;
+}
+
+export { fetchCollectionSlice, readCollectionSliceDescriptor } from '@/lib/spp';
+export type { CollectionPagination, CollectionSliceSort } from '@/lib/spp';
+
+END_OF_FILE_CONTENT
+echo "Creating src/lib/sppRenderClient.ts..."
+cat << 'END_OF_FILE_CONTENT' > "src/lib/sppRenderClient.ts"
+export * from './spp/renderClient';
+
+END_OF_FILE_CONTENT
+echo "Creating src/lib/tenantCss.ts..."
+cat << 'END_OF_FILE_CONTENT' > "src/lib/tenantCss.ts"
+function isObjectRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null;
+}
+
+export function buildThemeFontVarsCss(input: unknown): string {
+  if (!isObjectRecord(input)) return '';
+  const tokens = isObjectRecord(input.tokens) ? input.tokens : null;
+  const typography = tokens && isObjectRecord(tokens.typography) ? tokens.typography : null;
+  const fontFamily = typography && isObjectRecord(typography.fontFamily) ? typography.fontFamily : null;
+  const primary = typeof fontFamily?.primary === 'string' ? fontFamily.primary : "'Instrument Sans', system-ui, sans-serif";
+  const serif = typeof fontFamily?.serif === 'string' ? fontFamily.serif : "'Instrument Serif', Georgia, serif";
+  const mono = typeof fontFamily?.mono === 'string' ? fontFamily.mono : "'JetBrains Mono', monospace";
+  return `:root{--theme-font-primary:${primary};--theme-font-serif:${serif};--theme-font-mono:${mono};}`;
+}
+
+const REMOTE_CSS_LINK_ATTR = 'data-jp-tenant-remote-css';
+const TENANT_SHELL_STYLE_ATTR = 'data-jp-tenant-shell-css';
+
+function isRemoteStylesheetHref(value: string): boolean {
+  return /^https?:\/\//i.test(value.trim());
+}
+
+export function extractLeadingRemoteCssImports(cssText: string): { hrefs: string[]; rest: string } {
+  const hrefs = new Set<string>();
+  const leadingTriviaPattern = /^(?:\s+|\/\*[\s\S]*?\*\/)*/;
+  const importPattern =
+    /^@import\s+url\(\s*(?:'([^']+)'|"([^"]+)"|([^'")\s][^)]*))\s*\)\s*([^;]*);/i;
+  let rest = cssText;
+
+  for (;;) {
+    const trivia = rest.match(leadingTriviaPattern);
+    if (trivia && trivia[0]) {
+      rest = rest.slice(trivia[0].length);
+    }
+
+    const match = rest.match(importPattern);
+    if (!match) break;
+
+    const href = (match[1] ?? match[2] ?? match[3] ?? '').trim();
+    const trailingDirectives = (match[4] ?? '').trim();
+
+    if (!isRemoteStylesheetHref(href) || trailingDirectives.length > 0) {
+      break;
+    }
+
+    hrefs.add(href);
+    rest = rest.slice(match[0].length);
+  }
+
+  return { hrefs: Array.from(hrefs), rest };
+}
+
+export function setTenantPreviewReady(ready: boolean): void {
+  if (typeof window !== 'undefined') {
+    (window as Window & { __TENANT_PREVIEW_READY__?: boolean }).__TENANT_PREVIEW_READY__ = ready;
+  }
+  if (typeof document !== 'undefined' && document.body) {
+    document.body.dataset.previewReady = ready ? '1' : '0';
+  }
+}
+
+import { useEffect, useState } from 'react';
+
+export function useInjectedTenantCss(css: string): void {
+  useEffect(() => {
+    if (typeof document === 'undefined' || !css.trim()) return;
+
+    let style = document.querySelector(`style[${TENANT_SHELL_STYLE_ATTR}]`) as HTMLStyleElement | null;
+    if (!style) {
+      style = document.createElement('style');
+      style.setAttribute(TENANT_SHELL_STYLE_ATTR, '1');
+      document.head.appendChild(style);
+    }
+    style.textContent = css;
+  }, [css]);
+}
+
+function ensureFontPreconnects(): void {
+  if (typeof document === 'undefined') return;
+
+  const targets = [
+    { href: 'https://fonts.googleapis.com', crossOrigin: null },
+    { href: 'https://fonts.gstatic.com', crossOrigin: 'anonymous' },
+  ] as const;
+
+  targets.forEach(({ href, crossOrigin }) => {
+    const existing = Array.from(document.querySelectorAll('link[rel="preconnect"]')).find(
+      (link) => (link as HTMLLinkElement).href === href,
+    );
+    if (existing) return;
+
+    const link = document.createElement('link');
+    link.rel = 'preconnect';
+    link.href = href;
+    if (crossOrigin) link.crossOrigin = crossOrigin;
+    document.head.appendChild(link);
+  });
+}
+
+export function ensureRemoteStylesheetLinks(hrefs: string[]): void {
+  if (typeof document === 'undefined') return;
+
+  ensureFontPreconnects();
+
+  hrefs.forEach((href) => {
+    const existing = Array.from(document.querySelectorAll('link[rel="stylesheet"]')).find(
+      (link) => (link as HTMLLinkElement).href === href,
+    ) as HTMLLinkElement | undefined;
+    if (existing) return;
+
+    const link = document.createElement('link');
+    link.rel = 'stylesheet';
+    link.href = href;
+    link.setAttribute(REMOTE_CSS_LINK_ATTR, href);
+    document.head.appendChild(link);
+  });
+}
+
+export function waitForTenantFonts(hrefs: string[]): Promise<void> {
+  if (typeof document === 'undefined') return Promise.resolve();
+
+  ensureRemoteStylesheetLinks(hrefs);
+  if (hrefs.length === 0 || !document.fonts?.ready) return Promise.resolve();
+
+  return document.fonts.ready.then(() => undefined);
+}
+
+export function useTenantFontsReady(hrefs: string[]): boolean {
+  const [ready, setReady] = useState(false);
+  const hrefKey = hrefs.join('\0');
+
+  useEffect(() => {
+    let cancelled = false;
+    setReady(false);
+
+    void waitForTenantFonts(hrefs).then(() => {
+      if (!cancelled) setReady(true);
+    });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [hrefKey, hrefs]);
+
+  return ready;
+}
+
+export function useRemoteStylesheetLinks(hrefs: string[]): void {
+  const hrefKey = hrefs.join('\0');
+
+  useEffect(() => {
+    ensureRemoteStylesheetLinks(hrefs);
+
+    if (typeof document === 'undefined') return undefined;
+
+    const createdLinks = Array.from(
+      document.querySelectorAll(`link[${REMOTE_CSS_LINK_ATTR}]`),
+    ) as HTMLLinkElement[];
+
+    return () => {
+      createdLinks.forEach((link) => {
+        if (link.getAttribute(REMOTE_CSS_LINK_ATTR) !== link.href) return;
+        link.parentNode?.removeChild(link);
+      });
+    };
+  }, [hrefKey, hrefs]);
+}
+
+END_OF_FILE_CONTENT
+echo "Creating src/lib/tenantEnv.ts..."
+cat << 'END_OF_FILE_CONTENT' > "src/lib/tenantEnv.ts"
+import { normalizeBasePath } from '@olonjs/core';
+
+export const CLOUD_API_URL =
+  import.meta.env.VITE_OLONJS_CLOUD_URL ?? import.meta.env.VITE_JSONPAGES_CLOUD_URL;
+export const CLOUD_API_KEY =
+  import.meta.env.VITE_OLONJS_API_KEY ?? import.meta.env.VITE_JSONPAGES_API_KEY;
+export const SAVE2REPO_ENABLED = import.meta.env.VITE_SAVE2REPO === 'true';
+export const APP_BASE_PATH = normalizeBasePath(import.meta.env.BASE_URL || '/');
+export const TENANT_ID = 'alpha';
+
+END_OF_FILE_CONTENT
+echo "Creating src/lib/useAssetsManifest.ts..."
+cat << 'END_OF_FILE_CONTENT' > "src/lib/useAssetsManifest.ts"
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import type { LibraryImageEntry } from '@olonjs/core';
+import { buildApiCandidates } from '@/lib/sppCloudConfig';
+import { CLOUD_API_KEY, CLOUD_API_URL } from '@/lib/tenantEnv';
+
+function normalizeApiBase(raw: string): string {
+  return raw.trim().replace(/\/+$/, '');
+}
+
+export function useAssetsManifest(isCloudMode: boolean) {
+  const [assetsManifest, setAssetsManifest] = useState<LibraryImageEntry[]>([]);
+  const cloudApiCandidates = useMemo(
+    () => (isCloudMode && CLOUD_API_URL ? buildApiCandidates(CLOUD_API_URL) : []),
+    [isCloudMode],
+  );
+
+  const loadAssetsManifest = useCallback(async (): Promise<void> => {
+    if (isCloudMode && CLOUD_API_URL && CLOUD_API_KEY) {
+      const apiBases = cloudApiCandidates.length > 0 ? cloudApiCandidates : [normalizeApiBase(CLOUD_API_URL)];
+      for (const apiBase of apiBases) {
+        try {
+          const res = await fetch(`${apiBase}/assets/list?limit=200`, {
+            method: 'GET',
+            headers: { Authorization: `Bearer ${CLOUD_API_KEY}` },
+          });
+          const body = (await res.json().catch(() => ({}))) as { items?: LibraryImageEntry[] };
+          if (!res.ok) continue;
+          const items = Array.isArray(body.items) ? body.items : [];
+          setAssetsManifest(items);
+          return;
+        } catch {
+          // try next candidate
+        }
+      }
+      setAssetsManifest([]);
+      return;
+    }
+
+    fetch('/api/list-assets')
+      .then((r) => (r.ok ? r.json() : []))
+      .then((list: LibraryImageEntry[]) => setAssetsManifest(Array.isArray(list) ? list : []))
+      .catch(() => setAssetsManifest([]));
+  }, [isCloudMode, cloudApiCandidates]);
+
+  useEffect(() => {
+    void loadAssetsManifest();
+  }, [loadAssetsManifest]);
+
+  return { assetsManifest, loadAssetsManifest, cloudApiCandidates };
+}
+
+END_OF_FILE_CONTENT
+echo "Creating src/lib/useCloudSave.ts..."
+cat << 'END_OF_FILE_CONTENT' > "src/lib/useCloudSave.ts"
+import { useCallback, useEffect, useRef, useState } from 'react';
+import type { DeployPhase, ProjectState, StepId } from '@olonjs/core';
+import { DEPLOY_STEPS, startCloudSaveStream } from '@olonjs/core';
+import { CLOUD_API_KEY, CLOUD_API_URL } from '@/lib/tenantEnv';
+
+interface CloudSaveUiState {
+  isOpen: boolean;
+  phase: DeployPhase;
+  currentStepId: StepId | null;
+  doneSteps: StepId[];
+  progress: number;
+  errorMessage?: string;
+  deployUrl?: string;
+}
+
+function getInitialCloudSaveUiState(): CloudSaveUiState {
+  return {
+    isOpen: false,
+    phase: 'idle',
+    currentStepId: null,
+    doneSteps: [],
+    progress: 0,
+  };
+}
+
+function stepProgress(doneSteps: StepId[]): number {
+  return Math.round((doneSteps.length / DEPLOY_STEPS.length) * 100);
+}
+
+export function useCloudSave() {
+  const [cloudSaveUi, setCloudSaveUi] = useState<CloudSaveUiState>(getInitialCloudSaveUiState);
+  const activeCloudSaveController = useRef<AbortController | null>(null);
+  const pendingCloudSave = useRef<{ state: ProjectState; slug: string } | null>(null);
+
+  useEffect(() => {
+    return () => {
+      activeCloudSaveController.current?.abort();
+    };
+  }, []);
+
+  const runCloudSave = useCallback(
+    async (payload: { state: ProjectState; slug: string }, rejectOnError: boolean): Promise<void> => {
+      if (!CLOUD_API_URL || !CLOUD_API_KEY) {
+        const noCloudError = new Error('Cloud mode is not configured.');
+        if (rejectOnError) throw noCloudError;
+        return;
+      }
+
+      pendingCloudSave.current = payload;
+      activeCloudSaveController.current?.abort();
+      const controller = new AbortController();
+      activeCloudSaveController.current = controller;
+
+      setCloudSaveUi({
+        isOpen: true,
+        phase: 'running',
+        currentStepId: null,
+        doneSteps: [],
+        progress: 0,
+      });
+
+      try {
+        await startCloudSaveStream({
+          apiBaseUrl: CLOUD_API_URL,
+          apiKey: CLOUD_API_KEY,
+          path: `src/data/pages/${payload.slug}.json`,
+          content: payload.state.page,
+          message: `Content update for ${payload.slug} via Visual Editor`,
+          signal: controller.signal,
+          onStep: (event) => {
+            setCloudSaveUi((prev) => {
+              if (event.status === 'running') {
+                return {
+                  ...prev,
+                  isOpen: true,
+                  phase: 'running',
+                  currentStepId: event.id,
+                  errorMessage: undefined,
+                };
+              }
+
+              if (prev.doneSteps.includes(event.id)) {
+                return prev;
+              }
+
+              const nextDone = [...prev.doneSteps, event.id];
+              return {
+                ...prev,
+                isOpen: true,
+                phase: 'running',
+                currentStepId: event.id,
+                doneSteps: nextDone,
+                progress: stepProgress(nextDone),
+              };
+            });
+          },
+          onDone: (event) => {
+            const completed = DEPLOY_STEPS.map((step) => step.id);
+            setCloudSaveUi({
+              isOpen: true,
+              phase: 'done',
+              currentStepId: 'live',
+              doneSteps: completed,
+              progress: 100,
+              deployUrl: event.deployUrl,
+            });
+          },
+        });
+      } catch (error: unknown) {
+        const message = error instanceof Error ? error.message : 'Cloud save failed.';
+        setCloudSaveUi((prev) => ({
+          ...prev,
+          isOpen: true,
+          phase: 'error',
+          errorMessage: message,
+        }));
+        if (rejectOnError) throw new Error(message);
+      } finally {
+        if (activeCloudSaveController.current === controller) {
+          activeCloudSaveController.current = null;
+        }
+      }
+    },
+    [],
+  );
+
+  const closeCloudDrawer = useCallback(() => {
+    setCloudSaveUi(getInitialCloudSaveUiState());
+  }, []);
+
+  const retryCloudSave = useCallback(() => {
+    if (!pendingCloudSave.current) return;
+    void runCloudSave(pendingCloudSave.current, false);
+  }, [runCloudSave]);
+
+  return { cloudSaveUi, runCloudSave, closeCloudDrawer, retryCloudSave };
+}
 
 END_OF_FILE_CONTENT
 echo "Creating src/lib/useFormSubmit.ts..."
@@ -12127,6 +13450,701 @@ export function useOlonForms(options?: UseOlonFormsOptions): { states: Record<st
 }
 
 END_OF_FILE_CONTENT
+echo "Creating src/lib/useTenantBootstrap.ts..."
+cat << 'END_OF_FILE_CONTENT' > "src/lib/useTenantBootstrap.ts"
+import { useEffect, useMemo, useRef, useState } from 'react';
+
+import { logBootstrapEvent, toCloudLoadFailure } from '@/lib/cloud/bootstrapTelemetry';
+
+import { cloudFingerprint, readCachedPages, writeCachedCloudContent } from '@/lib/cloud/cloudCache';
+
+import type { CloudLoadFailure, ContentMode } from '@/lib/cloud/types';
+
+import { getHydratedData } from '@/lib/draftStorage';
+
+import {
+
+  buildApiCandidates,
+
+  fetchRenderProjection,
+
+  isAdminPath,
+
+  normalizeRenderPath,
+
+  patchHistoryNavigation,
+
+  resolveRegistrySlugFromRender,
+
+  type RenderProjectionResponse,
+
+} from '@/lib/spp';
+
+import type { JsonPagesConfig } from '@olonjs/core';
+
+import { APP_BASE_PATH, CLOUD_API_KEY, CLOUD_API_URL, SAVE2REPO_ENABLED } from '@/lib/tenantEnv';
+
+import type { MenuConfig, PageConfig, SiteConfig, ThemeConfig } from '@/types';
+
+import { loadPublishedStaticContent } from '@/lib/cloud/staticContent';
+
+
+
+const EMPTY_COLLECTIONS = {} as NonNullable<JsonPagesConfig['collections']>;
+
+const MAX_BOOTSTRAP_RETRIES = 2;
+
+
+
+type UseTenantBootstrapOptions = {
+
+  tenantId: string;
+
+  filePages: Record<string, PageConfig>;
+
+  fileSiteConfig: SiteConfig;
+
+  menuConfigSeed: MenuConfig;
+
+  themeConfigSeed: ThemeConfig;
+
+};
+
+
+
+function applyCachedBootstrap(params: {
+
+  cachedPages: Record<string, PageConfig> | null;
+
+  cachedSite: SiteConfig | null;
+
+  cachedCollections?: JsonPagesConfig['collections'];
+
+  setPages: (pages: Record<string, PageConfig>) => void;
+
+  setSiteConfig: (site: SiteConfig) => void;
+
+  setCollections: (collections: NonNullable<JsonPagesConfig['collections']>) => void;
+
+}): boolean {
+
+  const { cachedPages, cachedSite, cachedCollections, setPages, setSiteConfig, setCollections } = params;
+
+  const hasPages = Boolean(cachedPages && Object.keys(cachedPages).length > 0);
+
+  const hasSite = Boolean(cachedSite);
+
+  if (!hasPages && !hasSite) return false;
+
+
+
+  if (cachedPages && hasPages) setPages(cachedPages);
+
+  if (cachedSite) setSiteConfig(cachedSite);
+
+  if (cachedCollections) setCollections(cachedCollections);
+
+  return true;
+
+}
+
+
+
+export function useTenantBootstrap({
+
+  tenantId,
+
+  filePages,
+
+  fileSiteConfig,
+
+  menuConfigSeed,
+
+  themeConfigSeed,
+
+}: UseTenantBootstrapOptions) {
+
+  const isCloudMode = Boolean(CLOUD_API_URL && CLOUD_API_KEY);
+
+  const isSave2RepoMode = isCloudMode && SAVE2REPO_ENABLED;
+
+  const isHotSaveMode = isCloudMode && !isSave2RepoMode;
+
+  const useRenderBootstrap = isHotSaveMode;
+
+
+
+  const localInitialData = useMemo(
+
+    () => (isCloudMode ? null : getHydratedData(tenantId, filePages, fileSiteConfig)),
+
+    [isCloudMode, tenantId, filePages, fileSiteConfig],
+
+  );
+
+  const localInitialPages = useMemo(() => {
+
+    if (!localInitialData) return {};
+
+    return localInitialData.pages;
+
+  }, [localInitialData]);
+
+
+
+  const [pages, setPages] = useState<Record<string, PageConfig>>(localInitialPages);
+
+  const [siteConfig, setSiteConfig] = useState<SiteConfig>(localInitialData?.siteConfig ?? fileSiteConfig);
+
+  const [menuConfig, setMenuConfig] = useState<MenuConfig>(menuConfigSeed);
+
+  const [themeConfig] = useState<ThemeConfig>(themeConfigSeed);
+
+  const [collections, setCollections] = useState<NonNullable<JsonPagesConfig['collections']>>(EMPTY_COLLECTIONS);
+
+  const [contentMode, setContentMode] = useState<ContentMode>('cloud');
+
+  const [contentFallback, setContentFallback] = useState<CloudLoadFailure | null>(null);
+
+  const [showTopProgress, setShowTopProgress] = useState(false);
+
+  const [hasInitialCloudResolved, setHasInitialCloudResolved] = useState(!isCloudMode);
+
+  const [bootstrapRunId, setBootstrapRunId] = useState(0);
+
+
+
+  const contentLoadInFlight = useRef<Promise<void> | null>(null);
+
+  const sppRenderInFlightRef = useRef<string | null>(null);
+
+  const sppBootstrappedRef = useRef(false);
+
+
+
+  const cloudApiCandidates = useMemo(
+
+    () => (isCloudMode && CLOUD_API_URL ? buildApiCandidates(CLOUD_API_URL) : []),
+
+    [isCloudMode],
+
+  );
+
+
+
+  const isTenantEmpty = Object.keys(pages).length === 0;
+
+
+
+  const retryBootstrap = () => {
+
+    contentLoadInFlight.current = null;
+
+    setContentMode('cloud');
+
+    setContentFallback(null);
+
+    setHasInitialCloudResolved(false);
+
+    setShowTopProgress(true);
+
+    setBootstrapRunId((prev) => prev + 1);
+
+  };
+
+
+
+  useEffect(() => {
+
+    if (!isCloudMode || !CLOUD_API_URL || !CLOUD_API_KEY) {
+
+      setContentMode('cloud');
+
+      setContentFallback(null);
+
+      setShowTopProgress(false);
+
+      setHasInitialCloudResolved(true);
+
+      logBootstrapEvent('boot.local.ready', { mode: 'local' });
+
+      return;
+
+    }
+
+
+
+    if (isSave2RepoMode) {
+
+      if (contentLoadInFlight.current) return;
+
+
+
+      setContentMode('cloud');
+
+      setContentFallback(null);
+
+      setShowTopProgress(true);
+
+      setHasInitialCloudResolved(false);
+
+      logBootstrapEvent('boot.start', { mode: 'save2repo-static', pageCount: Object.keys(filePages).length });
+
+
+
+      let inFlight: Promise<void> | null = null;
+
+      inFlight = loadPublishedStaticContent(Object.keys(filePages), APP_BASE_PATH)
+
+        .then(({ pages: nextPages, siteConfig: nextSite }) => {
+
+          setPages(nextPages);
+
+          setSiteConfig(nextSite);
+
+          setContentMode('cloud');
+
+          setContentFallback(null);
+
+          setHasInitialCloudResolved(true);
+
+          logBootstrapEvent('boot.save2repo.success', {
+
+            mode: 'save2repo-static',
+
+            pageCount: Object.keys(nextPages).length,
+
+          });
+
+        })
+
+        .catch((error: unknown) => {
+
+          const failure = toCloudLoadFailure(error);
+
+          setContentMode('error');
+
+          setContentFallback(failure);
+
+          setHasInitialCloudResolved(true);
+
+          logBootstrapEvent('boot.save2repo.error', {
+
+            mode: 'save2repo-static',
+
+            reasonCode: failure.reasonCode,
+
+            correlationId: failure.correlationId ?? null,
+
+          });
+
+        })
+
+        .finally(() => {
+
+          setShowTopProgress(false);
+
+          if (contentLoadInFlight.current === inFlight) {
+
+            contentLoadInFlight.current = null;
+
+          }
+
+        });
+
+      contentLoadInFlight.current = inFlight;
+
+      return () => {
+
+        contentLoadInFlight.current = null;
+
+      };
+
+    }
+
+
+
+    if (!useRenderBootstrap) return;
+
+    if (contentLoadInFlight.current) return;
+
+
+
+    if (isAdminPath(window.location.pathname, APP_BASE_PATH)) {
+
+      setContentMode('cloud');
+
+      setContentFallback(null);
+
+      setShowTopProgress(false);
+
+      setHasInitialCloudResolved(true);
+
+      return;
+
+    }
+
+
+
+    const controller = new AbortController();
+
+    const startedAt = Date.now();
+
+    const primaryApiBase = cloudApiCandidates[0] ?? CLOUD_API_URL.trim().replace(/\/+$/, '');
+
+    const fingerprint = cloudFingerprint(primaryApiBase, CLOUD_API_KEY);
+
+    const { cached, cachedSite } = readCachedPages(fingerprint);
+
+    sppBootstrappedRef.current = false;
+
+    setContentMode('cloud');
+
+    setContentFallback(null);
+
+    setShowTopProgress(true);
+
+    setHasInitialCloudResolved(false);
+
+    logBootstrapEvent('boot.start', {
+
+      mode: 'spp-render',
+
+      apiCandidates: cloudApiCandidates.length,
+
+    });
+
+
+
+    const applyRenderPayload = (result: RenderProjectionResponse) => {
+
+      if (!result.page) return;
+
+      const registrySlug = resolveRegistrySlugFromRender(result.page);
+
+      setPages((prev) => ({ ...prev, [registrySlug]: result.page! }));
+
+      if (result.context?.siteConfig) setSiteConfig(result.context.siteConfig);
+
+      if (result.context?.menuConfig) setMenuConfig(result.context.menuConfig);
+
+      writeCachedCloudContent({
+
+        keyFingerprint: fingerprint,
+
+        savedAt: Date.now(),
+
+        siteConfig: result.context?.siteConfig ?? cachedSite ?? null,
+
+        pages: {
+
+          ...(cached?.pages ?? {}),
+
+          [registrySlug]: result.page,
+
+        },
+
+        collections: cached?.collections,
+
+      });
+
+    };
+
+
+
+    const loadRenderPath = async (pathname: string, options?: { initial?: boolean }) => {
+
+      if (controller.signal.aborted) return;
+
+      if (isAdminPath(pathname, APP_BASE_PATH)) return;
+
+
+
+      const renderPath = normalizeRenderPath(pathname, APP_BASE_PATH);
+
+      const inFlightKey = renderPath;
+
+      if (sppRenderInFlightRef.current === inFlightKey) return;
+
+      sppRenderInFlightRef.current = inFlightKey;
+
+
+
+      try {
+
+        const result = await fetchRenderProjection(
+
+          cloudApiCandidates,
+
+          CLOUD_API_KEY,
+
+          renderPath,
+
+          { signal: controller.signal, maxRetryAttempts: MAX_BOOTSTRAP_RETRIES },
+
+        );
+
+
+
+        if (!result.ok) {
+
+          if (options?.initial) {
+
+            throw {
+
+              reasonCode: result.code || 'RENDER_FAILED',
+
+              message: result.error || 'Render projection failed',
+
+              correlationId: result.correlationId,
+
+            } satisfies CloudLoadFailure;
+
+          }
+
+          logBootstrapEvent('boot.spp_render.route_error', {
+
+            path: renderPath,
+
+            code: result.code ?? null,
+
+          });
+
+          return;
+
+        }
+
+
+
+        applyRenderPayload(result);
+
+        if (options?.initial) {
+
+          sppBootstrappedRef.current = true;
+
+          setContentMode('cloud');
+
+          setContentFallback(null);
+
+          setHasInitialCloudResolved(true);
+
+          logBootstrapEvent('boot.spp_render.success', {
+
+            elapsedMs: Date.now() - startedAt,
+
+            projectionMode: result.diagnostics?.projectionMode ?? null,
+
+            correlationId: result.correlationId ?? null,
+
+          });
+
+        } else {
+
+          logBootstrapEvent('boot.spp_render.route_success', {
+
+            path: renderPath,
+
+            correlationId: result.correlationId ?? null,
+
+          });
+
+        }
+
+      } finally {
+
+        if (sppRenderInFlightRef.current === inFlightKey) {
+
+          sppRenderInFlightRef.current = null;
+
+        }
+
+      }
+
+    };
+
+
+
+    const bootstrap = async () => {
+
+      try {
+
+        await loadRenderPath(window.location.pathname, { initial: true });
+
+      } catch (error: unknown) {
+
+        if (controller.signal.aborted) return;
+
+        const failure = toCloudLoadFailure(error);
+
+        const { cachedPages, cachedSite } = readCachedPages(fingerprint);
+
+        const hasCachedFallback = applyCachedBootstrap({
+
+          cachedPages,
+
+          cachedSite,
+
+          cachedCollections: cached?.collections,
+
+          setPages,
+
+          setSiteConfig,
+
+          setCollections,
+
+        });
+
+        if (hasCachedFallback) {
+
+          setContentMode('cloud');
+
+          setContentFallback({
+
+            reasonCode: 'RENDER_FAILED',
+
+            message: failure.message,
+
+            correlationId: failure.correlationId,
+
+          });
+
+          setHasInitialCloudResolved(true);
+
+        } else {
+
+          setContentMode('error');
+
+          setContentFallback(failure);
+
+          setHasInitialCloudResolved(true);
+
+        }
+
+        logBootstrapEvent('boot.spp_render.error', {
+
+          reasonCode: failure.reasonCode,
+
+          correlationId: failure.correlationId ?? null,
+
+        });
+
+      } finally {
+
+        setShowTopProgress(false);
+
+      }
+
+    };
+
+
+
+    let inFlight: Promise<void> | null = null;
+
+    inFlight = bootstrap().finally(() => {
+
+      if (contentLoadInFlight.current === inFlight) {
+
+        contentLoadInFlight.current = null;
+
+      }
+
+    });
+
+    contentLoadInFlight.current = inFlight;
+
+
+
+    const unpatchHistory = patchHistoryNavigation(() => {
+
+      if (!sppBootstrappedRef.current) return;
+
+      void loadRenderPath(window.location.pathname);
+
+    });
+
+
+
+    return () => {
+
+      controller.abort();
+
+      unpatchHistory();
+
+      contentLoadInFlight.current = null;
+
+    };
+
+  }, [
+
+    isCloudMode,
+
+    isSave2RepoMode,
+
+    useRenderBootstrap,
+
+    cloudApiCandidates,
+
+    filePages,
+
+    bootstrapRunId,
+
+  ]);
+
+
+
+  const shouldRenderEngine = !isCloudMode || hasInitialCloudResolved;
+
+
+
+  return {
+
+    pages,
+
+    siteConfig,
+
+    menuConfig,
+
+    themeConfig,
+
+    enginePages: pages,
+
+    collections,
+
+    setPages,
+
+    setSiteConfig,
+
+    setCollections,
+
+    cloudApiCandidates,
+
+    isCloudMode,
+
+    isSave2RepoMode,
+
+    isHotSaveMode,
+
+    contentMode,
+
+    contentFallback,
+
+    showTopProgress,
+
+    hasInitialCloudResolved,
+
+    shouldRenderEngine,
+
+    isTenantEmpty,
+
+    retryBootstrap,
+
+  };
+
+}
+
+
+
+END_OF_FILE_CONTENT
 echo "Creating src/lib/utils.ts..."
 cat << 'END_OF_FILE_CONTENT' > "src/lib/utils.ts"
 import { clsx, type ClassValue } from 'clsx';
@@ -12137,7 +14155,6 @@ export function cn(...inputs: ClassValue[]) {
 }
 
 END_OF_FILE_CONTENT
-# SKIP: src/lib/utils.ts:Zone.Identifier is binary and cannot be embedded as text.
 echo "Creating src/main.tsx..."
 cat << 'END_OF_FILE_CONTENT' > "src/main.tsx"
 import '@/types'; // TBP: load type augmentation from capsule-driven types
@@ -12202,7 +14219,6 @@ export function getWebMcpBuildState(): {
 }
 
 END_OF_FILE_CONTENT
-# SKIP: src/runtime.ts:Zone.Identifier is binary and cannot be embedded as text.
 echo "Creating src/types.ts..."
 cat << 'END_OF_FILE_CONTENT' > "src/types.ts"
 import type { AuthorsListData, AuthorsListSettings } from '@/components/authors-list';
@@ -12303,7 +14319,6 @@ cat << 'END_OF_FILE_CONTENT' > "src/vercel.json"
   ]
 }
 END_OF_FILE_CONTENT
-# SKIP: src/vercel.json:Zone.Identifier is binary and cannot be embedded as text.
 echo "Creating src/vite-env.d.ts..."
 cat << 'END_OF_FILE_CONTENT' > "src/vite-env.d.ts"
 /// <reference types="vite/client" />
@@ -12469,6 +14484,33 @@ function normalizeManifestSlug(raw) {
     .replace(/(\.schema)?\.json$/i, '');
 }
 
+function applyDevSliceFilters(page, authored, params) {
+  if (!authored?.sections || !page?.sections) return page;
+  const at = (o, p) => p.split('.').reduce((a, k) => a?.[k], o);
+  return {
+    ...page,
+    sections: page.sections.map((section, i) => {
+      const src = authored.sections[i]?.data;
+      if (!src || !section.data) return section;
+      const data = { ...section.data };
+      for (const [key, ref] of Object.entries(src)) {
+        if (!ref?.$sliceFilter || typeof data[key] !== 'object') continue;
+        const filter = Object.fromEntries(
+          Object.entries(ref.$sliceFilter)
+            .map(([k, v]) => [k, typeof v === 'string' ? v : params[v?.$routeParam] ?? ''])
+            .filter(([, v]) => v),
+        );
+        data[key] = Object.fromEntries(
+          Object.entries(data[key]).filter(([, item]) =>
+            Object.entries(filter).every(([p, v]) => String(at(item, p) ?? '') === v),
+          ),
+        );
+      }
+      return { ...section, data };
+    }),
+  };
+}
+
 async function loadWebMcpBuilders() {
   const moduleUrl = import.meta.resolve('@olonjs/core');
   return import(moduleUrl);
@@ -12520,6 +14562,7 @@ export default defineConfig({
                 themeConfig: buildState.themeConfig,
                 menuConfig: buildState.menuConfig,
                 collections: buildState.collections,
+                collectionSchemas: buildState.collectionSchemas,
                 refDocuments: buildState.refDocuments,
               });
               if (!resolved) {
@@ -12547,6 +14590,7 @@ export default defineConfig({
                 themeConfig: buildState.themeConfig,
                 menuConfig: buildState.menuConfig,
                 collections: buildState.collections,
+                collectionSchemas: buildState.collectionSchemas,
                 refDocuments: buildState.refDocuments,
               });
               if (!resolved) {
@@ -12612,13 +14656,15 @@ export default defineConfig({
                 themeConfig: buildState.themeConfig,
                 menuConfig: buildState.menuConfig,
                 collections: buildState.collections,
+                collectionSchemas: buildState.collectionSchemas,
                 refDocuments: buildState.refDocuments,
               });
               if (!resolved) {
                 sendJson(res, 404, { error: 'Page JSON not found' });
                 return;
               }
-              sendJson(res, 200, resolved.page);
+              const authored = buildState.pages[resolved.pageMatch.registrySlug];
+              sendJson(res, 200, applyDevSliceFilters(resolved.page, authored, resolved.pageMatch.params ?? {}));
             })().catch((error) => {
               sendJson(res, 500, { error: error?.message || 'Page JSON resolution failed' });
             });
@@ -12664,7 +14710,7 @@ export default defineConfig({
             req.on('error', () => sendJson(res, 500, { error: 'Request error' }));
             return;
           }
-          if (req.method !== 'POST' || req.url !== '/api/upload-asset') return next();
+          if (req.method !== 'POST' || pathname !== '/api/upload-asset') return next();
           const chunks = [];
           req.on('data', (chunk) => chunks.push(chunk));
           req.on('end', () => {

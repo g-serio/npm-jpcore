@@ -18,11 +18,28 @@ Read code first. Treat documents as secondary unless they help interpret code th
 
 ## Architecture Specifications
 
-**Normative:** OlonJS Architecture Specifications **v1.6** (`olonjsSpecs_V_1_6.md`).
+**Normative:** OlonJS Architecture Specifications **v1.6**  
 
-Use this document as the architectural law for each tenant; compliance is judged against it:
 
-- `\\wsl.localhost\Ubuntu\home\dev\npm-jpcore\specs\olonjsSpecs_V_1_6.md`
+
+The OlonJS Architecture Specifications **v1.6** are expressed through the specs contained in the reference folder
+
+- `"\\wsl.localhost\Ubuntu\home\dev\npm-jpcore\.cursor\skills\olonjs-tenant2\references\ASC_1.1.md" `
+- `"\\wsl.localhost\Ubuntu\home\dev\npm-jpcore\.cursor\skills\olonjs-tenant2\references\BSDS_1.1.md" ` 
+- `"\\wsl.localhost\Ubuntu\home\dev\npm-jpcore\.cursor\skills\olonjs-tenant2\references\ComplianceModel.md" `
+- `"\\wsl.localhost\Ubuntu\home\dev\npm-jpcore\.cursor\skills\olonjs-tenant2\references\COP_v1.1.md" `
+- `"\\wsl.localhost\Ubuntu\home\dev\npm-jpcore\.cursor\skills\olonjs-tenant2\references\ECIP.md" `
+- `"\\wsl.localhost\Ubuntu\home\dev\npm-jpcore\.cursor\skills\olonjs-tenant2\references\IDAC_1.2.md" `
+- `"\\wsl.localhost\Ubuntu\home\dev\npm-jpcore\.cursor\skills\olonjs-tenant2\references\JAP_1.3.md" `
+- `"\\wsl.localhost\Ubuntu\home\dev\npm-jpcore\.cursor\skills\olonjs-tenant2\references\JEB_1.2.md" `
+- `"\\wsl.localhost\Ubuntu\home\dev\npm-jpcore\.cursor\skills\olonjs-tenant2\references\JSP_1.1.md" `
+- `"\\wsl.localhost\Ubuntu\home\dev\npm-jpcore\.cursor\skills\olonjs-tenant2\references\MTRP_1.3.md" `
+- `"\\wsl.localhost\Ubuntu\home\dev\npm-jpcore\.cursor\skills\olonjs-tenant2\references\TBP_1.1.md" `
+- `"\\wsl.localhost\Ubuntu\home\dev\npm-jpcore\.cursor\skills\olonjs-tenant2\references\TOCC_1.1.md" `
+- `"\\wsl.localhost\Ubuntu\home\dev\npm-jpcore\.cursor\skills\olonjs-tenant2\references\Appendix.md" `
+
+
+
 
 Key v1.6 laws that agents must not ignore:
 

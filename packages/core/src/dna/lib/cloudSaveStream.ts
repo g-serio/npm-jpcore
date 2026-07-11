@@ -20,16 +20,49 @@ interface SaveStreamErrorEvent {
   message?: string;
 }
 
+interface SaveStreamBundleFile {
+  path: string;
+  content: unknown;
+}
+
 interface StartCloudSaveStreamInput {
   apiBaseUrl: string;
   apiKey: string;
   path: string;
   content: unknown;
   message?: string;
+  /** Additional repo files committed atomically alongside the primary path/content (e.g. site.json, menu.json). */
+  additionalFiles?: SaveStreamBundleFile[];
+  /** Declares which global scopes changed, mirroring the server's ERR_*_CONFIG_REQUIRED validation. */
+  changedScopes?: Array<'page' | 'site' | 'menu'>;
   signal?: AbortSignal;
   onStep: (event: SaveStreamStepEvent) => void;
   onLog?: (event: SaveStreamLogEvent) => void;
   onDone: (event: SaveStreamDoneEvent) => void;
+}
+
+/**
+ * Builds the request body for `POST /save-stream`. Stays on the legacy
+ * single-file shape (`{ path, content, message }`) when no additional files
+ * are provided, so existing callers are unaffected. Switches to the `files[]`
+ * bundle shape (primary path/content + additionalFiles) otherwise.
+ */
+export function buildSaveStreamRequestBody(
+  input: StartCloudSaveStreamInput
+): Record<string, unknown> {
+  if (input.additionalFiles && input.additionalFiles.length > 0) {
+    return {
+      files: [{ path: input.path, content: input.content }, ...input.additionalFiles],
+      ...(input.changedScopes ? { changedScopes: input.changedScopes } : {}),
+      message: input.message,
+    };
+  }
+
+  return {
+    path: input.path,
+    content: input.content,
+    message: input.message,
+  };
 }
 
 function parseSseEventBlock(rawBlock: string): { event: string; data: string } | null {
@@ -61,11 +94,7 @@ export async function startCloudSaveStream(input: StartCloudSaveStreamInput): Pr
       'Content-Type': 'application/json',
       Authorization: `Bearer ${input.apiKey}`,
     },
-    body: JSON.stringify({
-      path: input.path,
-      content: input.content,
-      message: input.message,
-    }),
+    body: JSON.stringify(buildSaveStreamRequestBody(input)),
     signal: input.signal,
   });
 

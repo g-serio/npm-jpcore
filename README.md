@@ -25,7 +25,7 @@
 
 **OlonJS** is an open-source JavaScript infrastructure designed to bridge the gap between human-centric websites and AI agents. It introduces a **deterministic machine contract** for web content: every page is natively available as a typed JSON endpoint (`/{slug}.json`), making websites reliably readable and operable by AI agents while preserving a high-end human UI.
 
-[olonjsSpecs_V_1_6](./specs/olonjsSpecs_V_1_6.md)
+
 
 
 This repository contains the OlonJS stack:
@@ -96,6 +96,9 @@ Root `dist:dna:all` delegates to those `dist` scripts.
 ## 📖 Documentation Index
 
 Detailed technical documentation is available in the `docs/` directory:
+
+### Specs 1.6
+- **[OlonJS Specs_V_1_6](./specs/olonjsSpecs_V_1_6.md)**
 
 ### Core Architecture & CLI
 - **[Architecture](./docs/ARCHITECTURE.md):** Monorepo layout, package responsibilities, and DNA regeneration flow.
