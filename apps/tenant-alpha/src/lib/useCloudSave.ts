@@ -65,6 +65,11 @@ export function useCloudSave() {
           apiKey: CLOUD_API_KEY,
           path: `src/data/pages/${payload.slug}.json`,
           content: payload.state.page,
+          additionalFiles: [
+            { path: 'src/data/config/site.json', content: payload.state.site },
+            { path: 'src/data/config/menu.json', content: payload.state.menu },
+          ],
+          changedScopes: ['page', 'site', 'menu'],
           message: `Content update for ${payload.slug} via Visual Editor`,
           signal: controller.signal,
           onStep: (event) => {
