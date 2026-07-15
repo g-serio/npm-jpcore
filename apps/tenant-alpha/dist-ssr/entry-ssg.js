@@ -28100,7 +28100,7 @@ var util;
   function assertIs(_arg) {
   }
   util2.assertIs = assertIs;
-  function assertNever(_x) {
+  function assertNever(_x2) {
     throw new Error();
   }
   util2.assertNever = assertNever;
@@ -32896,7 +32896,7 @@ function Ua(e) {
   }
   return n.trim();
 }
-const Cx = /* @__PURE__ */ Object.freeze(/* @__PURE__ */ Object.defineProperty({
+const Ex = /* @__PURE__ */ Object.freeze(/* @__PURE__ */ Object.defineProperty({
   __proto__: null,
   applyCollectionRefBindingsToDraft: Bn,
   applyMenuRefBindingsToDraft: ho,
@@ -41030,12 +41030,12 @@ objectType({
   url: stringType(),
   alt: stringType().optional()
 }).describe("ui:image-picker");
-const zx = objectType({
+const Ax = objectType({
   id: stringType().optional(),
   anchorId: stringType().optional().describe("ui:text")
-}), Ax = objectType({
-  id: stringType().optional()
 }), Px = objectType({
+  id: stringType().optional()
+}), Ox = objectType({
   id: stringType()
 });
 objectType({
@@ -41050,12 +41050,12 @@ objectType({
   href: stringType().describe("ui:text"),
   variant: enumType(["primary", "secondary", "accent"]).default("primary").describe("ui:select")
 });
-const Dx = objectType({
+const _x = objectType({
   recipientEmail: stringType().optional().describe("ui:text")
 });
-const dx = { status: "idle", message: "" }, ux = reactExports.createContext({});
-function Lx(e) {
-  return reactExports.useContext(ux)[e] ?? dx;
+const ux = { status: "idle", message: "" }, fx = reactExports.createContext({});
+function $x(e) {
+  return reactExports.useContext(fx)[e] ?? ux;
 }
 const ThemeContext = reactExports.createContext({
   theme: "dark",
@@ -41144,11 +41144,11 @@ function AuthorsListView({ data }) {
     )) })
   ] }) });
 }
-const AutoreSchema = Px.extend({
+const AutoreSchema = Ox.extend({
   name: stringType().describe("ui:text")
 });
 const AutoriCollectionSchema = recordType(stringType(), AutoreSchema);
-const AuthorsListSchema = zx.extend({
+const AuthorsListSchema = Ax.extend({
   eyebrow: stringType().optional().describe("ui:text"),
   title: stringType().describe("ui:text"),
   description: stringType().optional().describe("ui:textarea"),
@@ -41194,7 +41194,7 @@ function BookDetailView({ data }) {
 const CollectionRefSchema = objectType({
   $ref: stringType()
 });
-const LibroSchema = Px.extend({
+const LibroSchema = Ox.extend({
   title: stringType().describe("ui:text"),
   author: unionType([AutoreSchema, CollectionRefSchema]).describe("ui:collection-ref:autori"),
   year: numberType().describe("ui:number"),
@@ -41202,7 +41202,7 @@ const LibroSchema = Px.extend({
   summary: stringType().describe("ui:textarea")
 });
 const LibriCollectionSchema = recordType(stringType(), LibroSchema);
-const BookDetailSchema = zx.extend({
+const BookDetailSchema = Ax.extend({
   item: LibroSchema.describe("ui:collection-ref"),
   backLabel: stringType().default("Torna ai libri").describe("ui:text")
 });
@@ -41350,7 +41350,7 @@ function BooksListView({ data }) {
     ] })
   ] }) });
 }
-const BooksListSchema = zx.extend({
+const BooksListSchema = Ax.extend({
   eyebrow: stringType().optional().describe("ui:text"),
   title: stringType().describe("ui:text"),
   description: stringType().optional().describe("ui:textarea"),
@@ -41367,7 +41367,7 @@ function EmptyTenantView({ data }) {
     /* @__PURE__ */ jsxRuntimeExports.jsx("p", { className: "mt-3 text-sm text-muted-foreground", children: description })
   ] }) });
 }
-const EmptyTenantSchema = zx.extend({
+const EmptyTenantSchema = Ax.extend({
   title: stringType().optional().describe("ui:text"),
   description: stringType().optional().describe("ui:textarea")
 });
@@ -41421,13 +41421,13 @@ function FooterView({ data, settings }) {
     }
   );
 }
-const FooterLinkSchema = Ax.extend({
+const FooterLinkSchema = Px.extend({
   id: stringType(),
   label: stringType().describe("ui:text"),
   href: stringType().describe("ui:text"),
   external: booleanType().optional()
 });
-const FooterSchema = zx.extend({
+const FooterSchema = Ax.extend({
   brandText: stringType().describe("ui:text"),
   description: stringType().optional().describe("ui:textarea"),
   copyright: stringType().describe("ui:text"),
@@ -41740,7 +41740,7 @@ function SetupGuide({ recipientEmail }) {
 function FormDemoView({ data }) {
   var _a;
   const formId = ((_a = data.anchorId) == null ? void 0 : _a.trim()) || "form-demo";
-  const { status, message } = Lx(formId);
+  const { status, message } = $x(formId);
   return /* @__PURE__ */ jsxRuntimeExports.jsx("main", { className: "min-h-screen flex items-center justify-center bg-background text-foreground px-6", children: /* @__PURE__ */ jsxRuntimeExports.jsxs("section", { className: "w-full max-w-xl rounded-xl border border-border bg-card p-8 shadow-sm space-y-6", children: [
     data.icon && /* @__PURE__ */ jsxRuntimeExports.jsx("div", { "data-jp-field": "icon", className: "mb-2", children: /* @__PURE__ */ jsxRuntimeExports.jsx(Icon, { name: data.icon, size: 24 }) }),
     data.title && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { children: [
@@ -41821,7 +41821,7 @@ function FormDemoView({ data }) {
     )
   ] }) });
 }
-const FormDemoSchema = zx.merge(Dx).extend({
+const FormDemoSchema = Ax.merge(_x).extend({
   icon: stringType().optional().describe("ui:icon-picker"),
   title: stringType().optional().describe("ui:text"),
   description: stringType().optional().describe("ui:textarea"),
@@ -42246,7 +42246,7 @@ function resolveTenantId() {
 function render(slug2) {
   const resolved = resolvePage(slug2);
   const location = resolved.slug === "home" ? "/" : `/${resolved.slug}`;
-  const collectionContext = Cx.resolveCollectionContext(resolved.page, resolved.params, collections);
+  const collectionContext = Ex.resolveCollectionContext(resolved.page, resolved.params, collections);
   const resolvedRuntime = gr({
     pages: { [resolved.registrySlug]: resolved.page },
     siteConfig,

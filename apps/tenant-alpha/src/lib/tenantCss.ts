@@ -7,10 +7,18 @@ export function buildThemeFontVarsCss(input: unknown): string {
   const tokens = isObjectRecord(input.tokens) ? input.tokens : null;
   const typography = tokens && isObjectRecord(tokens.typography) ? tokens.typography : null;
   const fontFamily = typography && isObjectRecord(typography.fontFamily) ? typography.fontFamily : null;
-  const primary = typeof fontFamily?.primary === 'string' ? fontFamily.primary : "'Instrument Sans', system-ui, sans-serif";
-  const serif = typeof fontFamily?.serif === 'string' ? fontFamily.serif : "'Instrument Serif', Georgia, serif";
+  const primary =
+    typeof fontFamily?.primary === 'string'
+      ? fontFamily.primary
+      : "'Instrument Sans', system-ui, sans-serif";
+  const display =
+    typeof fontFamily?.display === 'string'
+      ? fontFamily.display
+      : typeof fontFamily?.serif === 'string'
+        ? fontFamily.serif
+        : "'Instrument Serif', Georgia, serif";
   const mono = typeof fontFamily?.mono === 'string' ? fontFamily.mono : "'JetBrains Mono', monospace";
-  return `:root{--theme-font-primary:${primary};--theme-font-serif:${serif};--theme-font-mono:${mono};}`;
+  return `:root{--theme-font-primary:${primary};--theme-font-display:${display};--theme-font-mono:${mono};}`;
 }
 
 const REMOTE_CSS_LINK_ATTR = 'data-jp-tenant-remote-css';

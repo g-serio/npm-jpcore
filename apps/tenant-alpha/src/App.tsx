@@ -42,6 +42,7 @@ import { useAssetsManifest } from '@/lib/useAssetsManifest';
 import { useCloudSave } from '@/lib/useCloudSave';
 import { useTenantBootstrap } from '@/lib/useTenantBootstrap';
 import { useAdminStudioContent } from '@/lib/cloud/useAdminStudioContent';
+import { hydrateLocalProjectState } from '@/lib/hydrateLocalProjectState';
 
 import tenantCss from './index.css?inline';
 
@@ -108,7 +109,10 @@ function App() {
     };
   }, [canPaintVisitor, bootstrap.enginePages, bootstrap.siteConfig]);
 
-  const engineCollections = bootstrap.isHotSaveMode ? bootstrap.collections : fileCollections;
+  const engineCollections =
+    bootstrap.isHotSaveMode || Object.keys(bootstrap.collections).length > 0
+      ? bootstrap.collections
+      : fileCollections;
   const engineRefDocuments = useMemo(
     () => ({
       'menu.json': bootstrap.menuConfig,
@@ -146,6 +150,15 @@ function App() {
         });
         const body = (await res.json().catch(() => ({}))) as { error?: string };
         if (!res.ok) throw new Error(body.error ?? `Save to file failed: ${res.status}`);
+        hydrateLocalProjectState({
+          state,
+          slug,
+          setPages: bootstrap.setPages,
+          setSiteConfig: bootstrap.setSiteConfig,
+          setMenuConfig: bootstrap.setMenuConfig,
+          setThemeConfig: bootstrap.setThemeConfig,
+          setCollections: bootstrap.setCollections,
+        });
       },
       async hotSave(state: ProjectState, slug: string): Promise<void> {
         if (!bootstrap.isCloudMode || !CLOUD_API_URL || !CLOUD_API_KEY) {

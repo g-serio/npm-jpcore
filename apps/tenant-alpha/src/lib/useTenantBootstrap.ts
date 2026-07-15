@@ -144,7 +144,7 @@ export function useTenantBootstrap({
 
   const [menuConfig, setMenuConfig] = useState<MenuConfig>(menuConfigSeed);
 
-  const [themeConfig] = useState<ThemeConfig>(themeConfigSeed);
+  const [themeConfig, setThemeConfig] = useState<ThemeConfig>(themeConfigSeed);
 
   const [collections, setCollections] = useState<NonNullable<JsonPagesConfig['collections']>>(EMPTY_COLLECTIONS);
 
@@ -659,6 +659,10 @@ export function useTenantBootstrap({
     setPages,
 
     setSiteConfig,
+
+    setMenuConfig,
+
+    setThemeConfig,
 
     setCollections,
 

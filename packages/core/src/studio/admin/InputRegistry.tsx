@@ -44,7 +44,7 @@ export const InputWidgets = {
       </Label>
       <Input 
         type="text" 
-        className="h-9 text-[13px] bg-zinc-900/50 border-zinc-700 focus-visible:ring-blue-600"
+        className="h-9 text-[13px] text-zinc-100 bg-zinc-900/50 border-zinc-700 focus-visible:ring-blue-600"
         value={value || ''} 
         onChange={(e) => onChange(e.target.value)} 
       />
@@ -57,7 +57,7 @@ export const InputWidgets = {
         {humanizeLabel(label)}
       </Label>
       <Textarea 
-        className="min-h-[96px] text-[13px] bg-zinc-900/50 border-zinc-700 focus-visible:ring-blue-600 resize-none"
+        className="min-h-[96px] text-[13px] text-zinc-100 bg-zinc-900/50 border-zinc-700 focus-visible:ring-blue-600 resize-none"
         value={value || ''} 
         onChange={(e) => onChange(e.target.value)} 
       />
@@ -70,7 +70,7 @@ export const InputWidgets = {
         {humanizeLabel(label)}
       </Label>
       <Select value={value || ""} onValueChange={onChange}>
-        <SelectTrigger className="w-full h-9 text-[13px] bg-zinc-900/50 border-zinc-700 focus:ring-blue-600">
+        <SelectTrigger className="w-full h-9 text-[13px] text-zinc-100 bg-zinc-900/50 border-zinc-700 focus:ring-blue-600">
           <SelectValue placeholder={`Select...`} />
         </SelectTrigger>
         <SelectContent className="dark">

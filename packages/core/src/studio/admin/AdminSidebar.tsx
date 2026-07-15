@@ -474,7 +474,7 @@ export const AdminSidebar: React.FC<AdminSidebarProps> = ({
 
   return (
     <TooltipProvider>
-      <aside className="relative w-full h-full bg-zinc-950 border-l border-zinc-800 flex flex-col shadow-2xl shrink-0 min-w-0 animate-in slide-in-from-right duration-300">
+      <aside data-jp-inspector className="relative w-full h-full bg-zinc-950 border-l border-zinc-800 flex flex-col shadow-2xl shrink-0 min-w-0 animate-in slide-in-from-right duration-300 text-zinc-100">
         {/* Header: Inspector + page context or type|scope */}
         <div className="flex items-center justify-between px-4 py-3 border-b border-zinc-800 shrink-0">
           <div className="min-w-0">

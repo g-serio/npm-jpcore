@@ -50,6 +50,19 @@
   --jp-inspector-field-size: 13px;
 }
 
+/* Inspector shell owns its palette — immune to visitor [data-theme] token leaks on <html> */
+[data-jp-inspector] {
+  --foreground: oklch(0.985 0 0);
+  --background: oklch(0.141 0.005 285.823);
+  --card: oklch(0.21 0.006 285.885);
+  --card-foreground: oklch(0.985 0 0);
+  --muted-foreground: oklch(0.705 0.015 286.067);
+  --border: oklch(1 0 0 / 10%);
+  --input: oklch(1 0 0 / 15%);
+  --ring: oklch(0.552 0.016 285.938);
+  color: var(--foreground);
+}
+
 @layer base {
   * { border-color: var(--border); }
   body {

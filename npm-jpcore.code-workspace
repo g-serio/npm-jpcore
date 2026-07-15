@@ -17,6 +17,12 @@
 		},
 		{
 			"path": "../temp/personalfolioblog"
+		},
+		{
+			"path": "../temp/inkwell"
+		},
+		{
+			"path": "../temp/devportfolio"
 		}
 	],
 	"settings": {
