@@ -621,7 +621,7 @@ Current public import path in tenant code is:
 import { BaseCollectionItem } from '@olonjs/core';
 ```
 
-When the tenant uses the runtime-only split, imports should follow the same split rules used by tenant section schemas.
+`BaseCollectionItem` is a pure Zod schema fragment and stays in `@olonjs/core` regardless of which rendering package (`@olonjs/react`) or editor package (`@olonjs/studio`) the tenant also depends on — there is no subpath or build-time split to reason about for this import (the pre-ADR-0016 `@olonjs/core/runtime` subpath split has been superseded by the three-package split; see ADR-0016).
 
 ---
 
@@ -1377,9 +1377,9 @@ const config: JsonPagesConfig = {
 };
 ```
 
-Core provides `iconRegistry` via `IconRegistryContext`. The Form Factory reads this context and renders only the tenant-registered icons in the picker dialog.
+The engine provides `iconRegistry` to the rendering tree via `IconRegistryContext`, owned by `@olonjs/react`, populated from `JsonPagesConfig.iconRegistry`. The Form Factory (in `@olonjs/studio`) does **not** read that same context instance — since `@olonjs/studio` depends only on `@olonjs/core` and cannot share React context identity with a separately-bundled `@olonjs/react` (ADR-0012), the admin bridge passes the icon registry as an explicit prop into `@olonjs/studio`'s own `StudioAssetsContext`, which the Form Factory and icon picker dialog read from. Same tenant-registered icon set, two distinct context instances by design — this is invisible to the tenant.
 
-**Tenant responsibility:** declare all usable icons in `src/lib/IconResolver.tsx` and export `iconMap`. Pass it to `JsonPagesConfig.iconRegistry`. If `iconRegistry` is empty or not provided, the picker renders no options.
+**Tenant responsibility:** declare all usable icons in `src/lib/IconResolver.tsx` and export `iconMap`. Pass it to `JsonPagesConfig.iconRegistry`. If `iconRegistry` is empty or not provided, the picker renders no options. This contract is unchanged by the package split.
 
 ### 5.5 Path-Only Nested Selection & Expansion
 
@@ -1460,7 +1460,7 @@ cat << 'END_OF_FILE_CONTENT' > "references/JAP_1.3.md"
 
 ## 1. The Sovereign Shell Topology
 
-The Admin interface is a sovereign shell from `@olonjs/core`.
+The Admin interface is a sovereign shell composed from `@olonjs/react` (routing, studio-mode bridge, lazy-loads the editor) and `@olonjs/studio` (Stage, Inspector, Form Factory, and all other editor UI). `@olonjs/core` itself is framework-agnostic and owns none of this UI — it owns only the pure contract/kernel types and resolution logic both packages consume.
 
 1. The Stage is an isolated iframe using postMessage and IDAC bindings
 2. The Inspector consumes tenant schemas to generate editors

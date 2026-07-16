@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { BaseArrayItem, BaseSectionData, ImageSelectionSchema } from '@olonjs/core/runtime';
+import { BaseArrayItem, BaseSectionData, ImageSelectionSchema } from '@olonjs/core';
 
 export const Content7ReadLinkSchema = z.object({
   label: z.string().describe('ui:text'),

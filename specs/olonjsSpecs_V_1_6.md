@@ -13,6 +13,7 @@
 - theme flattening is explicit and normative
 - tenant theme sovereignty is explicit
 - `menu.json` is the source of truth for menu structures
+- **Package-boundary clarification (post-ADR-0016):** `@olonjs/core` was split into three packages — `@olonjs/core` (framework-agnostic contract/kernel, zero React), `@olonjs/react` (rendering engine: `JsonPagesEngine`, routing, contexts, hooks), `@olonjs/studio` (editor UI: Stage, Inspector, Form Factory). This spec's behavioral contracts are unaffected — the change is purely about which package a given symbol ships from. Sections referring to "Core" as owning routing, `/admin`, or Studio UI should be read as `@olonjs/react`/`@olonjs/studio` collectively.
 - `site.json` owns shell structure and shell instance declaration
 - `header` and `footer` are shell-scoped section instances, not conceptually reserved types
 - normative companion JSON Schemas are defined for `site.json` and `menu.json`
@@ -484,7 +485,7 @@ const config: JsonPagesConfig = {
 };
 ```
 
-Core provides `iconRegistry` via `IconRegistryContext`. The Form Factory reads this context and renders only the tenant-registered icons in the picker dialog.
+The engine provides `iconRegistry` to the rendering tree via `IconRegistryContext` (owned by `@olonjs/react`, populated from `JsonPagesConfig.iconRegistry`). The Form Factory (in `@olonjs/studio`) does not consume that context directly — since `@olonjs/studio` depends only on `@olonjs/core` and cannot share React context identity with a separately-bundled `@olonjs/react`, the admin bridge passes the icon registry as an explicit prop into `@olonjs/studio`'s own `StudioAssetsContext`, which the Form Factory and icon picker read from. Same tenant-registered icon set, two distinct context instances by design.
 
 **Tenant responsibility:** declare all usable icons in `src/lib/IconResolver.tsx` and export `iconMap`. Pass it to `JsonPagesConfig.iconRegistry`. If `iconRegistry` is empty or not provided, the picker renders no options.
 
@@ -741,7 +742,7 @@ Shell instances do not become menu owners because bootstrap includes `menuConfig
 
 ## 1. The Sovereign Shell Topology
 
-The Admin interface is a sovereign shell from `@olonjs/core`.
+The Admin interface is a sovereign shell composed from `@olonjs/react` (routing, studio-mode bridge, lazy-loading the editor) and `@olonjs/studio` (Stage, Inspector, Form Factory, and all other editor UI). `@olonjs/core` itself is framework-agnostic and owns none of this UI — it owns only the pure contract/kernel types and resolution logic that both packages consume.
 
 1. The Stage is an isolated iframe using postMessage and IDAC bindings
 2. The Inspector consumes tenant schemas to generate editors

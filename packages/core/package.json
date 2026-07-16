@@ -1,6 +1,6 @@
 {
   "name": "@olonjs/core",
-  "version": "1.1.15",
+  "version": "1.1.16",
   "private": false,
   "type": "module",
   "main": "./dist/olonjs-core.umd.cjs",
@@ -13,16 +13,12 @@
       "import": "./dist/olonjs-core.js",
       "require": "./dist/olonjs-core.umd.cjs"
     },
-    "./runtime": {
-      "types": "./dist/runtime.d.ts",
-      "import": "./dist/olonjs-core-runtime.js"
-    },
     "./package.json": "./package.json"
   },
   "files": [
     "dist"
   ],
-  "description": "The Sovereign Core Engine for OlonJS.",
+  "description": "The framework-agnostic Sovereign Core Engine for OlonJS: protocol types, config/collection resolution, theme-token logic, WebMCP contracts, and routing helpers. Zero React dependency — consumed by @olonjs/react and @olonjs/studio.",
   "author": "JsonPages Team",
   "license": "MIT",
   "homepage": "https://github.com/olonjs/npm-jpcore#readme",
@@ -38,45 +34,20 @@
     "access": "public"
   },
   "scripts": {
-    "build:full": "vite build",
-    "build:runtime": "vite build --config vite.config.runtime.ts",
-    "build": "node scripts/build-dual.mjs",
+    "build": "vite build",
     "prepack": "node scripts/sync-peers-from-stack.js",
-    "test": "vitest run",
-    "test:boundary": "node scripts/check-runtime-decoupling.mjs && node scripts/check-singleton-modules.mjs",
-    "test:all": "npm run test:boundary && npm test"
+    "test": "vitest run"
   },
   "peerDependencies": {
-    "react": "^19.0.0",
-    "react-dom": "^19.0.0",
-    "react-router-dom": "^6.29.0",
     "zod": "^3.24.1"
   },
   "dependencies": {
-    "@dnd-kit/core": "^6.3.0",
-    "@dnd-kit/modifiers": "^7.0.0",
-    "@dnd-kit/sortable": "^9.0.0",
-    "@dnd-kit/utilities": "^3.2.2",
-    "@radix-ui/react-popover": "^1.1.4",
-    "@radix-ui/react-scroll-area": "^1.2.2",
-    "@radix-ui/react-select": "^2.1.6",
-    "@radix-ui/react-slot": "^1.1.0",
-    "@radix-ui/react-tooltip": "^1.1.6",
     "clsx": "^2.1.1",
-    "lucide-react": "^0.474.0",
-    "radix-ui": "^1.4.3",
     "tailwind-merge": "^3.0.1"
   },
   "devDependencies": {
     "@olonjs/stack": "^1.0.0",
-    "@tailwindcss/vite": "^4.0.0",
-    "@testing-library/jest-dom": "^6.6.3",
-    "@testing-library/react": "^16.2.0",
-    "@testing-library/user-event": "^14.6.1",
-    "@types/react": "^19.0.0",
-    "@types/react-dom": "^19.0.0",
-    "@vitejs/plugin-react": "^4.0.0",
-    "jsdom": "^26.0.0",
+    "@types/node": "^22.0.0",
     "typescript": "^5.7.3",
     "vite": "^6.0.0",
     "vite-plugin-dts": "^4.0.0",

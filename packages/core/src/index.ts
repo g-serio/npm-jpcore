@@ -1,20 +1,26 @@
 /**
- * @olonjs/core - Public API (legacy alias: @jsonpages/core)
+ * @olonjs/core - Public API
+ *
+ * Pure TypeScript engine — zero React, zero DOM-framework dependency.
+ * Protocol types, config/collection resolution, theme-token logic,
+ * WebMCP contracts + browser bridge, asset/base-path/routing helpers,
+ * and the DNA surface (schemas tenants must not fork). Consumed by both
+ * `@olonjs/react` (rendering bindings) and `@olonjs/studio` (editor UI),
+ * which otherwise share no dependency on each other.
  */
 
-// Conceptual surfaces for the future split.
+// Conceptual namespaced surfaces.
 export * as contract from './contract';
 export * as kernel from './kernel';
-export * as runtime from './runtime';
-export * as studio from './studio';
 export * as webmcp from './webmcp';
 
-// Flat legacy surface kept intact for current tenants.
-export * from './kernel';
-export * from './studio/events';
+// Flat surface.
+export * from './contract';
 export * from './lib/utils';
-export * from './runtime';
 export * from './dna';
+export * from './assets';
+export * from './url';
+export * from './routing';
 export {
   applyValueAtSelectionPath,
   buildWebMcpToolName,
@@ -27,15 +33,3 @@ export {
   resolveWebMcpMutationData,
   type WebMcpMutationArgs,
 } from './webmcp';
-
-// Utils
-export { resolveAssetUrl } from './runtime/assets/asset-resolver';
-export { themeManager } from './runtime/theme/theme-manager';
-
-// Admin
-export { AdminSidebar, type LayerItem, type OnUpdateSection } from './studio/admin/AdminSidebar';
-export { StudioStage } from './studio/admin/StudioStage';
-export { PreviewEntry } from './studio/admin/PreviewEntry';
-export { AddSectionLibrary } from './studio/admin/AddSectionLibrary';
-export { FormFactory } from './studio/admin/FormFactory';
-export { InputWidgets, type WidgetType } from './studio/admin/InputRegistry';

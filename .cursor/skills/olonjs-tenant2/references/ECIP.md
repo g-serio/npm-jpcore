@@ -45,9 +45,9 @@ const config: JsonPagesConfig = {
 };
 ```
 
-Core provides `iconRegistry` via `IconRegistryContext`. The Form Factory reads this context and renders only the tenant-registered icons in the picker dialog.
+The engine provides `iconRegistry` to the rendering tree via `IconRegistryContext`, owned by `@olonjs/react`, populated from `JsonPagesConfig.iconRegistry`. The Form Factory (in `@olonjs/studio`) does **not** read that same context instance — since `@olonjs/studio` depends only on `@olonjs/core` and cannot share React context identity with a separately-bundled `@olonjs/react` (ADR-0012), the admin bridge passes the icon registry as an explicit prop into `@olonjs/studio`'s own `StudioAssetsContext`, which the Form Factory and icon picker dialog read from. Same tenant-registered icon set, two distinct context instances by design — this is invisible to the tenant.
 
-**Tenant responsibility:** declare all usable icons in `src/lib/IconResolver.tsx` and export `iconMap`. Pass it to `JsonPagesConfig.iconRegistry`. If `iconRegistry` is empty or not provided, the picker renders no options.
+**Tenant responsibility:** declare all usable icons in `src/lib/IconResolver.tsx` and export `iconMap`. Pass it to `JsonPagesConfig.iconRegistry`. If `iconRegistry` is empty or not provided, the picker renders no options. This contract is unchanged by the package split.
 
 ### 5.5 Path-Only Nested Selection & Expansion
 

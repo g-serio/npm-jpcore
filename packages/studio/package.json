@@ -1,0 +1,72 @@
+{
+  "name": "@olonjs/studio",
+  "version": "0.1.0",
+  "private": false,
+  "type": "module",
+  "main": "./dist/olonjs-studio.umd.cjs",
+  "module": "./dist/olonjs-studio.js",
+  "types": "./dist/index.d.ts",
+  "sideEffects": false,
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/olonjs-studio.js",
+      "require": "./dist/olonjs-studio.umd.cjs"
+    },
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "dist"
+  ],
+  "description": "The schema-driven Studio editor UI for OlonJS (AdminSidebar, FormFactory, StudioStage). Depends only on @olonjs/core — reusable by any future rendering-framework binding, not just @olonjs/react.",
+  "author": "JsonPages Team",
+  "license": "MIT",
+  "homepage": "https://github.com/olonjs/npm-jpcore#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/olonjs/npm-jpcore.git",
+    "directory": "packages/studio"
+  },
+  "bugs": {
+    "url": "https://github.com/olonjs/npm-jpcore/issues"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "scripts": {
+    "build": "vite build",
+    "test": "vitest run"
+  },
+  "peerDependencies": {
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "react-router-dom": "^6.29.0"
+  },
+  "dependencies": {
+    "@olonjs/core": "^1.1.16",
+    "@dnd-kit/core": "^6.3.0",
+    "@dnd-kit/modifiers": "^7.0.0",
+    "@dnd-kit/sortable": "^9.0.0",
+    "@dnd-kit/utilities": "^3.2.2",
+    "@radix-ui/react-popover": "^1.1.4",
+    "@radix-ui/react-scroll-area": "^1.2.2",
+    "@radix-ui/react-select": "^2.1.6",
+    "@radix-ui/react-slot": "^1.1.0",
+    "@radix-ui/react-tooltip": "^1.1.6",
+    "lucide-react": "^0.474.0"
+  },
+  "devDependencies": {
+    "@tailwindcss/vite": "^4.0.0",
+    "@testing-library/jest-dom": "^6.6.3",
+    "@testing-library/react": "^16.2.0",
+    "@testing-library/user-event": "^14.6.1",
+    "@types/react": "^19.0.0",
+    "@types/react-dom": "^19.0.0",
+    "@vitejs/plugin-react": "^4.0.0",
+    "jsdom": "^26.0.0",
+    "typescript": "^5.7.3",
+    "vite": "^6.0.0",
+    "vite-plugin-dts": "^4.0.0",
+    "vitest": "^3.0.0"
+  }
+}

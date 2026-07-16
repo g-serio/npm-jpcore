@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { BaseArrayItem, BaseSectionData, ImageSelectionSchema } from '@olonjs/core/runtime';
+import { BaseArrayItem, BaseSectionData, ImageSelectionSchema } from '@olonjs/core';
 import { MenuItemSchema } from '@/lib/menu-item-schema';
 
 const FooterLinkItem = BaseArrayItem.extend({

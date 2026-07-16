@@ -11,47 +11,51 @@ Core must NOT contain tenant-specific logic (sections, schemas, data, theme choi
 
 ## Protocols
 
-- **MTRP (Module Type Registry Protocol):** `kernel.ts` defines `SectionDataRegistry`, `BaseSection`, type-safe registry pattern
+- **MTRP (Module Type Registry Protocol):** `contract/kernel.ts` defines `SectionDataRegistry`, `BaseSection`, type-safe registry pattern
 - **TBP (Tenant Block Protocol):** sections are capsules with `View.tsx`, `schema.ts`, `types.ts`, `index.ts`
 - **JSP (JsonPages Site Protocol):** `config/site.json`, `menu.json`, `theme.json`; `pages/[slug].json`
 
-## Key files
+## Real file structure (verified against source, not aspirational)
 
-| File | Role |
-|------|------|
-| `lib/kernel.ts` | Type registries, `SectionDataRegistry`, `BaseSection` |
-| `lib/JsonPagesEngine.tsx` | Main engine entry point |
-| `lib/PageRenderer.tsx` | Resolves page by slug, renders sections |
-| `lib/SectionRenderer.tsx` | Renders individual section by type from registry |
-| `lib/ConfigContext.tsx` | Site config context provider |
-| `lib/StudioContext.tsx` | Studio editing state context |
-| `lib/persistence.ts` | Save/load abstractions |
-| `lib/events.ts` | Event bus |
-| `lib/types-engine.ts` | SelectionPath, engine types |
+`src/` is organized by domain, not by "lib/admin" as older docs may say:
 
-## Admin / Studio
+| Domain | Contents | React? |
+|---|---|---|
+| `contract/` | `kernel.ts` (MTRP registries, `Section`, `PageConfig`, `SiteConfig`, `ThemeConfig`, `MenuConfig`), `types-engine.ts` (`JsonPagesConfig`, `SelectionPath`), `config-resolver.ts`, `zod-schemas.ts`, `webmcp-contracts.ts` | No — pure TS/Zod |
+| `runtime/` | `engine/` (`JsonPagesEngineCore`, `OlonJSEngine`, `JsonPagesEngine`, `VisitorRoute`, `StudioRoute`, `PreviewRoute`), `rendering/` (`PageRenderer`, `SectionRenderer`), `config/ConfigContext.tsx`, `theme/ThemeLoader.tsx` + `theme-manager.ts`, `icons/IconRegistryContext.tsx`, `assets/asset-resolver.ts`, `url/base-path.ts` | **Mixed** — despite the folder name, `asset-resolver.ts`, `theme-manager.ts`, `base-path.ts`, `route-utils.ts`, `public-page-document.ts` are pure TS with zero React import. Don't assume "in `runtime/`" means "needs React" — check the actual imports. |
+| `studio/` | `admin/` (`AdminSidebar`, `FormFactory`, `InputRegistry`, `StudioStage`, `AddSectionLibrary`, `PageSelector`, `image-picker/`), `ui/` (Radix primitives), `orchestration/` (`section-ops.ts`, `useStudioPersistence.ts`, `useStudioSelectionState.ts`), `StudioContext.tsx`, `events.ts` | **Mixed** — same caveat. `section-ops.ts`, `selection-path.ts` (in `admin/`), and `events.ts` (`STUDIO_EVENTS`) are pure TS despite living here. `StudioContext.tsx` and `admin/PreviewEntry.tsx` import React runtime pieces (`PageRenderer`, `themeManager`) even though they sit under `studio/`. |
+| `webmcp/` | `webmcp-contracts.ts` (pure), `runtime/webmcp-bridge.ts` (DOM-level, no React) | No |
+| `dna/` | `lib/base-schemas.ts` (BSDS), `cloudSaveStream.ts`, `deploySteps.ts`, `OlonFormsContext.ts` (imports React `createContext` despite `.ts` extension — false negative), `types/deploy.ts` | Mixed, one exception |
+| `lib/` | `utils.ts` (`cn`), `shared-types.ts`, `DefaultNotFound.tsx` | Mostly no |
 
-| File | Role |
-|------|------|
-| `admin/PreviewEntry.tsx` | Preview mode entry point |
-| `admin/StudioStage.tsx` | Editing stage with selection |
-| `admin/AdminSidebar.tsx` | Sidebar with inspector |
-| `admin/FormFactory.tsx` | Dynamic form from schema |
-| `admin/InputRegistry.tsx` | Maps schema field types to input components |
-| `admin/AddSectionLibrary.tsx` | Section picker for adding new sections |
-| `admin/PageSelector.tsx` | Page navigation |
-| `admin/ControlBar.tsx` | Top control bar |
+**Do not use folder location as a proxy for "framework-agnostic vs React."** Check the actual import statements. The folder layout was drawn along the dual-bundle axis (below), not the TS/React axis.
+
+## Dual bundle (ADR-0009) — undocumented here before, but load-bearing
+
+`package.json` exports two subpaths built by `scripts/build-dual.mjs`:
+- `.` (full, includes Studio) → `vite.config.ts`
+- `./runtime` (visitor-only, ~28KB gz) → `vite.config.runtime.ts`, built from `src/runtime-entry.ts` (explicit named exports only, never `export *`)
+
+Both configs externalize the same 4 "singleton" modules (`ConfigContext.tsx`, `StudioContext.tsx`, `theme-manager.ts`, `IconRegistryContext.tsx`) and rewrite their import path to `./olonjs-core-runtime.js`, so both bundles share one React Context identity at runtime (ADR-0012). Do not build the two Vite configs independently in production — order matters (`build:full` then `build:runtime`, `emptyOutDir: false` on the runtime config).
+
+## Boundary enforcement (already exists, already partial)
+
+`npm run test:boundary` runs `check-runtime-decoupling.mjs` (fails if `runtime-entry.ts`'s import graph reaches `studio/admin/` or `studio/orchestration/`, with 3 documented exceptions: `JsonPagesEngine`, `StudioRoute`, `PreviewRoute`) and `check-singleton-modules.mjs`. Treat a failure here as a real architectural violation, not a lint nuisance.
+
+## Planned direction (idea, not yet implemented)
+
+There is an active proposal to split this package into three: `@olonjs/core` (pure engine), `@olonjs/react` (rendering bindings), `@olonjs/studio` (editor UI), with `@olonjs/studio` depending **only** on `@olonjs/core`. Full boundary analysis, file-by-file verified: [`docs/ideas/core-react-studio-package-split.md`](../../docs/ideas/core-react-studio-package-split.md). Until that lands, the file structure above is the ground truth — don't write new code as if the split already exists.
 
 ## Public API surface
 
-All public exports go through `index.ts`. When adding new exports:
-1. Add the export to `index.ts`
+All public exports go through `src/index.ts` (full) or `src/runtime-entry.ts` (`/runtime`). When adding new exports:
+1. Add the export to the correct entry file — check whether the export belongs in the visitor-safe `/runtime` surface or only the full bundle
 2. Verify it does not leak tenant-specific types
 3. Consider backward compatibility — removing an export is a breaking change
 
 ## UI primitives
 
-`components/ui/` contains Radix-based primitives (button, input, dialog, select, etc.). These are shared between admin UI and can be used by tenants.
+`studio/ui/` contains Radix-based primitives (button, input, dialog, select, etc.), used by the admin UI in `studio/admin/`.
 
 ## Compliance priority
 

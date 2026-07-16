@@ -163,7 +163,7 @@ Current public import path in tenant code is:
 import { BaseCollectionItem } from '@olonjs/core';
 ```
 
-When the tenant uses the runtime-only split, imports should follow the same split rules used by tenant section schemas.
+`BaseCollectionItem` is a pure Zod schema fragment and stays in `@olonjs/core` regardless of which rendering package (`@olonjs/react`) or editor package (`@olonjs/studio`) the tenant also depends on — there is no subpath or build-time split to reason about for this import (the pre-ADR-0016 `@olonjs/core/runtime` subpath split has been superseded by the three-package split; see ADR-0016).
 
 ---
 

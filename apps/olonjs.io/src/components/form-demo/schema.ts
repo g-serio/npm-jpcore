@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { BaseSectionData, WithFormRecipient } from '@olonjs/core/runtime';
+import { BaseSectionData, WithFormRecipient } from '@olonjs/core';
 
 export const FormDemoSchema = BaseSectionData.merge(WithFormRecipient).extend({
   icon: z.string().optional().describe('ui:icon-picker'),

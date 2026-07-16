@@ -7,7 +7,6 @@
  */
 export * from '../contract/kernel';
 export * from '../contract/types-engine';
-export * from '../lib/shared-types';
 export {
   applyMenuRefBindingsToDraft,
   applySiteMenuRefBindingsToDraft,

@@ -1,6 +1,7 @@
 'use client';
 
-import { resolveAssetUrl, useConfig } from '@olonjs/core/runtime';
+import { resolveAssetUrl } from '@olonjs/core';
+import { useConfig } from '@olonjs/react';
 import type { CSSProperties } from 'react';
 import { OSSSection } from '@/app/sticky-section';
 import { iconMap } from '@/lib/IconResolver';

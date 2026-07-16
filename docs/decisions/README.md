@@ -56,6 +56,7 @@ Optional: `Follow-ups`, `Open Points`, `Compliance mapping`, `Risk mitigation`, 
 | 0013 | [Implementation of the v1 canonical JSON Schema set via `npm run bump:all`](./ADR-0013-v1-schemas-implementation.md) | Accepted | 2026-05-12 |
 | 0014 | [Opt-in server-side rendering via `createStaticRouter` and a `/server` subpath export](./ADR-0014-opt-in-ssr-via-static-router-and-server-subpath.md) | Proposed — pending implementation and verification | 2026-06-04 |
 | 0015 | [SSR initial-data and hydration handoff contract](./ADR-0015-ssr-initial-data-and-hydration-contract.md) | Proposed — pending implementation and verification | 2026-06-04 |
+| 0016 | [Split `@olonjs/core` into three packages — `core`, `react`, `studio`](./ADR-0016-core-react-studio-package-split.md) | Proposed | 2026-07-16 |
 
 ## For agents
 

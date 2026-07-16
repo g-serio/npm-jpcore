@@ -9,4 +9,7 @@ export * from './kernel';
 export * from './types-engine';
 export * from './config-resolver';
 export * from './webmcp-contracts';
-export * from '../lib/shared-types';
+export * from './theme-logic';
+export * from './section-ops';
+export * from './selection-path';
+export * from './studio-events';

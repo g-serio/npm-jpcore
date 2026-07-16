@@ -1,0 +1,109 @@
+Baseline snapshot — ADR-0016 / core-react-studio-package-split plan, Task 0.1
+Captured: 2026-07-16 (repo: npm-jpcore, branch at capture time as checked out)
+
+Environment note: this WSL Ubuntu instance has no native Linux node/npm on
+non-interactive PATH by default (bash -lc does not source ~/.bashrc's nvm
+init in a way that survives, and $HOME is unset in that context). A native
+Linux node v24.13.0 (npm 11.6.2) IS installed via nvm at
+/home/dev/.nvm/versions/node/v24.13.0 and must be activated explicitly:
+
+  export HOME=/home/dev
+  export NVM_DIR=/home/dev/.nvm
+  source /home/dev/.nvm/nvm.sh
+  nvm use 24
+
+Without this, npm/node resolve to a Windows-side nvm4w shim via WSL
+interop (/mnt/c/nvm4w/nodejs/npm), which cannot run this repo's
+node_modules (installed with POSIX symlinks) and fails on UNC-style
+cwd translation for lifecycle scripts (spawns cmd.exe, which prints
+"UNC paths are not supported. Defaulting to Windows directory.").
+Record this so later phases don't re-lose the same hour to it.
+
+===============================================================================
+1. packages/core — npm test (vitest run)
+===============================================================================
+
+> @olonjs/core@1.1.16 test
+> vitest run
+
+ RUN  v3.2.4 /home/dev/npm-jpcore/packages/core
+
+ ✓ src/runtime/url/base-path.test.ts (5 tests) 2ms
+ ✓ src/studio/admin/selection-path.test.ts (4 tests) 2ms
+ ✓ src/runtime/theme/theme-manager.test.ts (3 tests) 3ms
+ ✓ src/dna/lib/cloudSaveStream.test.ts (4 tests) 3ms
+ ✓ src/runtime/engine/route-utils.test.ts (5 tests) 4ms
+ ✓ src/runtime/assets/asset-resolver.test.ts (8 tests) 4ms
+ ✓ src/runtime/engine/public-page-document.test.ts (4 tests) 10ms
+ ✓ src/contract/config-resolver.test.ts (20 tests) 13ms
+ ✓ src/webmcp/runtime/webmcp-bridge.test.ts (9 tests) 8ms
+ ✓ src/webmcp/webmcp-contracts.test.ts (6 tests) 16ms
+ ✓ src/studio/admin/FormFactory.nested-array.test.tsx (1 test) 121ms
+ ✓ src/studio/admin/image-picker/ImagePickerDialog.test.tsx (3 tests) 217ms
+ ✓ src/studio/admin/FormFactory.collection-ref.test.tsx (3 tests) 268ms
+
+ Test Files  13 passed (13)
+      Tests  75 passed (75)
+   Start at  13:57:20
+   Duration  2.19s (transform 724ms, setup 1.30s, collect 3.70s, tests 672ms, environment 7.38s, prepare 1.57s)
+
+RESULT: 13/13 test files passed, 75/75 tests passed. Zero pre-existing failures.
+
+===============================================================================
+2. packages/core — npm run build (dual bundle: build-dual.mjs)
+===============================================================================
+
+> @olonjs/core@1.1.16 build
+> node scripts/build-dual.mjs
+
+Build full (@olonjs/core):    dist/olonjs-core.js       552.34 kB │ gzip: 131.27 kB
+                               dist/olonjs-core.umd.cjs  366.97 kB │ gzip: 107.89 kB
+Build runtime (@olonjs/core/runtime): dist/olonjs-core-runtime.js  132.52 kB │ gzip: 29.68 kB
+
+Non-fatal warnings (pre-existing, not introduced by this work):
+  "No name was provided for external module ... in output.globals" for
+  ConfigContext.tsx, StudioContext(.tsx), theme-manager(.ts),
+  IconRegistryContext(.tsx) — UMD global-name guessing noise, cosmetic only.
+
+dist/ listing after build:
+  index.d.ts                42449 bytes
+  olonjs-core-runtime.js    132517 bytes (132K)
+  olonjs-core.js            552335 bytes (540K)
+  olonjs-core.umd.cjs       366968 bytes (360K)
+  runtime.d.ts               42449 bytes
+
+RESULT: both bundles built successfully, 1715 modules (full) / 1599 modules
+(runtime) transformed, in ~14.2s total.
+
+===============================================================================
+3. apps/tenant-alpha — npm run build (prebuild scripts + tsc + vite build)
+===============================================================================
+
+Prebuild chain: sync-pages-to-public.mjs, generate-llms-txt.mjs, bake.mjs
+(SSG for all pages/authors/collections), sitemap.mjs, robots.mjs — all
+completed without error. 33 page targets baked (home, form, authors index,
+authors/[authorId]/libri, libri index + 30 individual book detail pages).
+
+Main build: tsc && vite build
+  dist/index.html                  0.78 kB │ gzip:   0.44 kB
+  dist/assets/index-CsyceHS8.js   864.50 kB │ gzip: 240.85 kB
+
+Pre-existing warning (not introduced by this work): chunk size >500kB
+after minification — expected, tenant-alpha is the pre-split reference
+tenant still importing the full `@olonjs/core` (includes Studio).
+
+RESULT: tsc type-check clean, vite build succeeded in 1.95s (client),
+full prebuild + build pipeline green end to end, 1680 modules transformed.
+
+===============================================================================
+Summary
+===============================================================================
+
+All three baseline checks are green with zero pre-existing failures:
+  - packages/core tests:  75/75 passed
+  - packages/core build:  both bundles (full 552.34 kB / runtime 132.52 kB gz-raw)
+  - apps/tenant-alpha build: tsc clean, vite build clean, full SSG bake clean
+
+This is the comparison point for Phase 1–4 verification steps in
+docs/plans/core-react-studio-package-split.md. Any regression introduced
+during the split must be diffed against these exact numbers/outputs.

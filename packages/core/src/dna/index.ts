@@ -12,6 +12,5 @@
 export * from './lib/base-schemas';
 export * from './lib/cloudSaveStream';
 export * from './lib/deploySteps';
-export * from './lib/OlonFormsContext';
 
 export * from './types/deploy';

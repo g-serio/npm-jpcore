@@ -3,10 +3,9 @@
  * Bootstrap, persistence, and engine wiring — logic lives in lib/hooks.
  */
 import { useEffect, useMemo } from 'react';
-import { JsonPagesEngine } from '@olonjs/core';
+import { JsonPagesEngine, OlonFormsContext } from '@olonjs/react';
 import type { JsonPagesConfig, ProjectState } from '@olonjs/core';
 import { withBasePath } from '@olonjs/core';
-import { OlonFormsContext } from '@olonjs/core';
 import { ComponentRegistry } from '@/lib/ComponentRegistry';
 import { CollectionRegistry } from '@/lib/CollectionRegistry';
 import { SECTION_SCHEMAS } from '@/lib/schemas';

@@ -2,7 +2,8 @@
 
 import { ArrowRight, Play } from 'lucide-react';
 import type { CSSProperties } from 'react';
-import { resolveAssetUrl, useConfig } from '@olonjs/core/runtime';
+import { resolveAssetUrl } from '@olonjs/core';
+import { useConfig } from '@olonjs/react';
 import { TwoToneHeading } from '@/components/ui/two-tone-heading';
 import { cn } from '@/lib/utils';
 import type { PremiumHeroData, PremiumHeroSettings } from './types';

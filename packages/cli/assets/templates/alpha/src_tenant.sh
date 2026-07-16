@@ -1817,7 +1817,7 @@ cat << 'END_OF_FILE_CONTENT' > "package.json"
     "@tiptap/extension-link": "^2.11.5",
     "@tiptap/react": "^2.11.5",
     "@tiptap/starter-kit": "^2.11.5",
-    "@olonjs/core": "^1.1.15",
+    "@olonjs/core": "^1.1.16",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "lucide-react": "^0.474.0",
@@ -2981,6 +2981,7 @@ import { useAssetsManifest } from '@/lib/useAssetsManifest';
 import { useCloudSave } from '@/lib/useCloudSave';
 import { useTenantBootstrap } from '@/lib/useTenantBootstrap';
 import { useAdminStudioContent } from '@/lib/cloud/useAdminStudioContent';
+import { hydrateLocalProjectState } from '@/lib/hydrateLocalProjectState';
 
 import tenantCss from './index.css?inline';
 
@@ -3047,7 +3048,10 @@ function App() {
     };
   }, [canPaintVisitor, bootstrap.enginePages, bootstrap.siteConfig]);
 
-  const engineCollections = bootstrap.isHotSaveMode ? bootstrap.collections : fileCollections;
+  const engineCollections =
+    bootstrap.isHotSaveMode || Object.keys(bootstrap.collections).length > 0
+      ? bootstrap.collections
+      : fileCollections;
   const engineRefDocuments = useMemo(
     () => ({
       'menu.json': bootstrap.menuConfig,
@@ -3085,6 +3089,15 @@ function App() {
         });
         const body = (await res.json().catch(() => ({}))) as { error?: string };
         if (!res.ok) throw new Error(body.error ?? `Save to file failed: ${res.status}`);
+        hydrateLocalProjectState({
+          state,
+          slug,
+          setPages: bootstrap.setPages,
+          setSiteConfig: bootstrap.setSiteConfig,
+          setMenuConfig: bootstrap.setMenuConfig,
+          setThemeConfig: bootstrap.setThemeConfig,
+          setCollections: bootstrap.setCollections,
+        });
       },
       async hotSave(state: ProjectState, slug: string): Promise<void> {
         if (!bootstrap.isCloudMode || !CLOUD_API_URL || !CLOUD_API_KEY) {
@@ -11791,6 +11804,47 @@ export function getFilePages(): Record<string, PageConfig> {
 }
 
 END_OF_FILE_CONTENT
+echo "Creating src/lib/hydrateLocalProjectState.ts..."
+cat << 'END_OF_FILE_CONTENT' > "src/lib/hydrateLocalProjectState.ts"
+import type { JsonPagesConfig, ProjectState } from '@olonjs/core';
+import type { MenuConfig, PageConfig, SiteConfig, ThemeConfig } from '@/types';
+
+type HydrateLocalProjectStateArgs = {
+  state: ProjectState;
+  slug: string;
+  setPages: (updater: (prev: Record<string, PageConfig>) => Record<string, PageConfig>) => void;
+  setSiteConfig: (site: SiteConfig) => void;
+  setMenuConfig: (menu: MenuConfig) => void;
+  setThemeConfig: (theme: ThemeConfig) => void;
+  setCollections: (collections: NonNullable<JsonPagesConfig['collections']>) => void;
+};
+
+/**
+ * Write-through hydrate after local `/api/save-to-file`.
+ * Pushes only the slices present in the saved ProjectState into bootstrap state —
+ * no disk re-read, no full remount. Brand-agnostic.
+ */
+export function hydrateLocalProjectState({
+  state,
+  slug,
+  setPages,
+  setSiteConfig,
+  setMenuConfig,
+  setThemeConfig,
+  setCollections,
+}: HydrateLocalProjectStateArgs): void {
+  if (state.menu != null) setMenuConfig(state.menu);
+  if (state.site != null) setSiteConfig(state.site);
+  if (state.theme != null) setThemeConfig(state.theme);
+  if (state.page != null) {
+    setPages((prev) => ({ ...prev, [slug]: state.page }));
+  }
+  if (state.collections != null) {
+    setCollections(state.collections as NonNullable<JsonPagesConfig['collections']>);
+  }
+}
+
+END_OF_FILE_CONTENT
 echo "Creating src/lib/schemas.ts..."
 cat << 'END_OF_FILE_CONTENT' > "src/lib/schemas.ts"
 import { AuthorsListSchema } from '@/components/authors-list';
@@ -12862,10 +12916,18 @@ export function buildThemeFontVarsCss(input: unknown): string {
   const tokens = isObjectRecord(input.tokens) ? input.tokens : null;
   const typography = tokens && isObjectRecord(tokens.typography) ? tokens.typography : null;
   const fontFamily = typography && isObjectRecord(typography.fontFamily) ? typography.fontFamily : null;
-  const primary = typeof fontFamily?.primary === 'string' ? fontFamily.primary : "'Instrument Sans', system-ui, sans-serif";
-  const serif = typeof fontFamily?.serif === 'string' ? fontFamily.serif : "'Instrument Serif', Georgia, serif";
+  const primary =
+    typeof fontFamily?.primary === 'string'
+      ? fontFamily.primary
+      : "'Instrument Sans', system-ui, sans-serif";
+  const display =
+    typeof fontFamily?.display === 'string'
+      ? fontFamily.display
+      : typeof fontFamily?.serif === 'string'
+        ? fontFamily.serif
+        : "'Instrument Serif', Georgia, serif";
   const mono = typeof fontFamily?.mono === 'string' ? fontFamily.mono : "'JetBrains Mono', monospace";
-  return `:root{--theme-font-primary:${primary};--theme-font-serif:${serif};--theme-font-mono:${mono};}`;
+  return `:root{--theme-font-primary:${primary};--theme-font-display:${display};--theme-font-mono:${mono};}`;
 }
 
 const REMOTE_CSS_LINK_ATTR = 'data-jp-tenant-remote-css';
@@ -13094,7 +13156,7 @@ cat << 'END_OF_FILE_CONTENT' > "src/lib/useCloudSave.ts"
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { DeployPhase, ProjectState, StepId } from '@olonjs/core';
 import { DEPLOY_STEPS, startCloudSaveStream } from '@olonjs/core';
-import { CLOUD_API_KEY, CLOUD_API_URL } from '@/lib/tenantEnv';
+import { APP_BASE_PATH, CLOUD_API_KEY, CLOUD_API_URL } from '@/lib/tenantEnv';
 
 interface CloudSaveUiState {
   isOpen: boolean;
@@ -13118,6 +13180,100 @@ function getInitialCloudSaveUiState(): CloudSaveUiState {
 
 function stepProgress(doneSteps: StepId[]): number {
   return Math.round((doneSteps.length / DEPLOY_STEPS.length) * 100);
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+function cloneJson<T>(value: T): T {
+  return JSON.parse(JSON.stringify(value)) as T;
+}
+
+function normalizePathSegments(value: string): string {
+  return value
+    .split('/')
+    .map((segment) => segment.trim())
+    .filter(Boolean)
+    .join('/');
+}
+
+function resolveAdminContentSlug(): string | null {
+  if (typeof window === 'undefined') return null;
+
+  const normalizedBase = APP_BASE_PATH.replace(/\/+$/, '');
+  let path = window.location.pathname;
+  if (normalizedBase && normalizedBase !== '/' && path.startsWith(normalizedBase)) {
+    path = path.slice(normalizedBase.length) || '/';
+  }
+
+  const slug = normalizePathSegments(path.replace(/^\/admin\/?/, ''));
+  return slug || null;
+}
+
+function resolveTemplateParamValue(templateSlug: string, concreteSlug: string, paramKey: string): string | null {
+  const templateSegments = normalizePathSegments(templateSlug).split('/').filter(Boolean);
+  const concreteSegments = normalizePathSegments(concreteSlug).split('/').filter(Boolean);
+  if (templateSegments.length !== concreteSegments.length) return null;
+
+  for (let index = 0; index < templateSegments.length; index += 1) {
+    const templateSegment = templateSegments[index];
+    const concreteSegment = concreteSegments[index];
+    const paramMatch = templateSegment.match(/^\[([A-Za-z0-9_-]+)\]$/);
+    if (paramMatch?.[1] === paramKey) return concreteSegment;
+    if (!paramMatch && templateSegment !== concreteSegment) return null;
+  }
+
+  return null;
+}
+
+function hasCollectionCurrentRef(value: unknown): boolean {
+  if (Array.isArray(value)) return value.some(hasCollectionCurrentRef);
+  if (!isRecord(value)) return false;
+  if (value.$ref === 'collection:current') return true;
+  return Object.values(value).some(hasCollectionCurrentRef);
+}
+
+function replaceCollectionCurrentRefs(value: unknown, currentItem: unknown): unknown {
+  if (Array.isArray(value)) return value.map((item) => replaceCollectionCurrentRefs(item, currentItem));
+  if (!isRecord(value)) return value;
+  if (value.$ref === 'collection:current') return cloneJson(currentItem);
+  return Object.fromEntries(
+    Object.entries(value).map(([key, entryValue]) => [key, replaceCollectionCurrentRefs(entryValue, currentItem)]),
+  );
+}
+
+function buildSaveStreamPagePayload(state: ProjectState, fallbackSlug: string): { slug: string; page: ProjectState['page'] } {
+  const page = state.page;
+  const collection = page.collection;
+  if (!collection || !hasCollectionCurrentRef(page)) {
+    return { slug: fallbackSlug, page };
+  }
+
+  const concreteSlug = resolveAdminContentSlug();
+  if (!concreteSlug) {
+    throw new Error('Cannot resolve concrete admin route for collection page save.');
+  }
+
+  const paramValue = resolveTemplateParamValue(page.slug, concreteSlug, collection.paramKey);
+  if (!paramValue) {
+    throw new Error(`Cannot resolve collection param "${collection.paramKey}" from route "${concreteSlug}".`);
+  }
+
+  const collectionDocument = state.collections?.[collection.source];
+  const currentItem = isRecord(collectionDocument) ? collectionDocument[paramValue] : undefined;
+  if (!currentItem) {
+    throw new Error(`Cannot resolve collection item "${collection.source}/${paramValue}" for save.`);
+  }
+
+  const resolvedPage = replaceCollectionCurrentRefs(page, currentItem) as ProjectState['page'];
+  return {
+    slug: concreteSlug,
+    page: {
+      ...resolvedPage,
+      slug: concreteSlug,
+    },
+  };
 }
 
 export function useCloudSave() {
@@ -13153,12 +13309,18 @@ export function useCloudSave() {
       });
 
       try {
+        const savePage = buildSaveStreamPagePayload(payload.state, payload.slug);
         await startCloudSaveStream({
           apiBaseUrl: CLOUD_API_URL,
           apiKey: CLOUD_API_KEY,
-          path: `src/data/pages/${payload.slug}.json`,
-          content: payload.state.page,
-          message: `Content update for ${payload.slug} via Visual Editor`,
+          path: `src/data/pages/${savePage.slug}.json`,
+          content: savePage.page,
+          additionalFiles: [
+            { path: 'src/data/config/site.json', content: payload.state.site },
+            { path: 'src/data/config/menu.json', content: payload.state.menu },
+          ],
+          changedScopes: ['page', 'site', 'menu'],
+          message: `Content update for ${savePage.slug} via Visual Editor`,
           signal: controller.signal,
           onStep: (event) => {
             setCloudSaveUi((prev) => {
@@ -13598,7 +13760,7 @@ export function useTenantBootstrap({
 
   const [menuConfig, setMenuConfig] = useState<MenuConfig>(menuConfigSeed);
 
-  const [themeConfig] = useState<ThemeConfig>(themeConfigSeed);
+  const [themeConfig, setThemeConfig] = useState<ThemeConfig>(themeConfigSeed);
 
   const [collections, setCollections] = useState<NonNullable<JsonPagesConfig['collections']>>(EMPTY_COLLECTIONS);
 
@@ -14113,6 +14275,10 @@ export function useTenantBootstrap({
     setPages,
 
     setSiteConfig,
+
+    setMenuConfig,
+
+    setThemeConfig,
 
     setCollections,
 

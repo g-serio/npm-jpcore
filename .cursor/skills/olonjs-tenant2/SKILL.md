@@ -1,6 +1,6 @@
 ---
 name: olonjs-tenant2
-description: Use when transforming the base tenant DNA into a branded tenant, adding or modifying tenant sections, maintaining schema-driven editability, or reasoning about what belongs to @olonjs/core versus the tenant.
+description: Use when transforming the base tenant DNA into a branded tenant, adding or modifying tenant sections, maintaining schema-driven editability, or reasoning about what belongs to @olonjs/core, @olonjs/react, @olonjs/studio versus the tenant.
 ---
 
 # OlonJS Tenant
@@ -53,11 +53,17 @@ Key v1.6 laws that agents must not ignore:
 
 ## Core Model
 
-OlonJS has a hard split between `core` and `tenant`.
+OlonJS has a hard split between `engine` and `tenant`. Since ADR-0016 (three-package split), "engine" is no longer one package — it's three, each with a distinct role:
 
-- `@olonjs/core` owns routing, `/admin`, `/admin/preview`, preview stage, studio state, inspector/form factory, and shared engine behavior.
+| Package | Owns | Framework |
+|---|---|---|
+| `@olonjs/core` | Contract/kernel types (MTRP registries), resolution logic, WebMCP, routing helpers, pure utilities (`cn`, `withBasePath`) | None — zero React at runtime |
+| `@olonjs/react` | `JsonPagesEngine`, routing, `PageRenderer`/`SectionRenderer`, contexts (`ConfigProvider`, `StudioProvider`, `OlonFormsContext`, `IconRegistryContext`), hooks | React |
+| `@olonjs/studio` | `/admin`, `/admin/preview`, preview stage, Studio state, Inspector, Form Factory — all editor UI | React |
+
 - The tenant owns sections, schemas, type augmentation, page/config JSON, theme/design layer, and local workflow scripts.
 - The tenant does not implement the CMS. It implements the tenant protocol consumed by the engine.
+- When reasoning about "which package does X live in," default to `@olonjs/core` for types/pure logic and `@olonjs/react`/`@olonjs/studio` for anything that renders or is a React hook/context — but verify against the actual package source before asserting it, since this table is a summary, not the source of truth.
 
 In this ecosystem, code is the source of truth.
 
@@ -75,12 +81,14 @@ Compliance priority:
 Use these local references when available:
 
 - Base tenant DNA: `\\wsl.localhost\Ubuntu\home\dev\temp\alpha`
-- Core engine: `\\wsl.localhost\Ubuntu\home\dev\npm-jpcore\packages\core`
+- Core engine (contract/kernel, zero React): `\\wsl.localhost\Ubuntu\home\dev\npm-jpcore\packages\core`
+- Rendering engine (React bindings): `\\wsl.localhost\Ubuntu\home\dev\npm-jpcore\packages\react`
+- Editor UI (Studio): `\\wsl.localhost\Ubuntu\home\dev\npm-jpcore\packages\studio`
 
 If these paths are missing, infer the same roles from the current workspace:
 
 - base CLI-generated tenant
-- core package
+- core/react/studio packages
 
 ## Tenant Anatomy
 
@@ -224,7 +232,7 @@ image: z.string().describe('ui:image'),              // wrong — use ImageSelec
 
 A good tenant change:
 
-- stays inside tenant boundaries and  if the issue is truly in `@olonjs/core` you communicate the issue to the user without ever touching the `@olonjs/core`.
+- stays inside tenant boundaries and if the issue is truly in `@olonjs/core`, `@olonjs/react`, or `@olonjs/studio` you communicate the issue to the user without ever touching those packages.
 - keeps schema, defaults, registry, and type augmentation aligned
 - preserves editability for strings, lists, nested objects, CTAs, and image fields
 - uses `ImageSelectionSchema`-style image fields when the content is image-driven

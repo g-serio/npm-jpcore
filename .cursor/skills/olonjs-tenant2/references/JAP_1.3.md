@@ -4,7 +4,7 @@
 
 ## 1. The Sovereign Shell Topology
 
-The Admin interface is a sovereign shell from `@olonjs/core`.
+The Admin interface is a sovereign shell composed from `@olonjs/react` (routing, studio-mode bridge, lazy-loads the editor) and `@olonjs/studio` (Stage, Inspector, Form Factory, and all other editor UI). `@olonjs/core` itself is framework-agnostic and owns none of this UI — it owns only the pure contract/kernel types and resolution logic both packages consume.
 
 1. The Stage is an isolated iframe using postMessage and IDAC bindings
 2. The Inspector consumes tenant schemas to generate editors
