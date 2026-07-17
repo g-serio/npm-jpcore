@@ -23,6 +23,9 @@
 		},
 		{
 			"path": "../temp/devportfolio"
+		},
+		{
+			"path": "../temp/inkwellV2"
 		}
 	],
 	"settings": {

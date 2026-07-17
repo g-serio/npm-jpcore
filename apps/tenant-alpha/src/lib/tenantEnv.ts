@@ -1,9 +1,13 @@
 import { normalizeBasePath } from '@olonjs/core';
+import { readCloudEnvFromVite, resolveCloudPolicy, type CloudPolicy } from '@olonjs/react';
 
-export const CLOUD_API_URL =
-  import.meta.env.VITE_OLONJS_CLOUD_URL ?? import.meta.env.VITE_JSONPAGES_CLOUD_URL;
-export const CLOUD_API_KEY =
-  import.meta.env.VITE_OLONJS_API_KEY ?? import.meta.env.VITE_JSONPAGES_API_KEY;
-export const SAVE2REPO_ENABLED = import.meta.env.VITE_SAVE2REPO === 'true';
+/** Single Vite → policy path. Prefer `cloudPolicy` over ad-hoc env reads. */
+export const cloudPolicy: CloudPolicy = resolveCloudPolicy(
+  readCloudEnvFromVite(import.meta.env as Record<string, unknown>),
+);
+
+/** Aliases of `cloudPolicy.apiUrl` / `apiKey` for DNA helpers. */
+export const CLOUD_API_URL = cloudPolicy.apiUrl;
+export const CLOUD_API_KEY = cloudPolicy.apiKey;
 export const APP_BASE_PATH = normalizeBasePath(import.meta.env.BASE_URL || '/');
 export const TENANT_ID = 'alpha';

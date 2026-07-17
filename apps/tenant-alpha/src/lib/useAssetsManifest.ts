@@ -1,27 +1,32 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import type { LibraryImageEntry } from '@olonjs/core';
-import { buildApiCandidates } from '@/lib/sppCloudConfig';
-import { CLOUD_API_KEY, CLOUD_API_URL } from '@/lib/tenantEnv';
+import { buildApiCandidates } from '@olonjs/react';
+
+import { cloudPolicy } from '@/lib/tenantEnv';
 
 function normalizeApiBase(raw: string): string {
   return raw.trim().replace(/\/+$/, '');
 }
 
-export function useAssetsManifest(isCloudMode: boolean) {
+/** Asset library — cloud list when `cloudPolicy.isCloudMode`, else local `/api/list-assets`. */
+export function useAssetsManifest(isCloudMode: boolean = cloudPolicy.isCloudMode) {
   const [assetsManifest, setAssetsManifest] = useState<LibraryImageEntry[]>([]);
   const cloudApiCandidates = useMemo(
-    () => (isCloudMode && CLOUD_API_URL ? buildApiCandidates(CLOUD_API_URL) : []),
+    () => (isCloudMode && cloudPolicy.apiUrl ? buildApiCandidates(cloudPolicy.apiUrl) : []),
     [isCloudMode],
   );
 
   const loadAssetsManifest = useCallback(async (): Promise<void> => {
-    if (isCloudMode && CLOUD_API_URL && CLOUD_API_KEY) {
-      const apiBases = cloudApiCandidates.length > 0 ? cloudApiCandidates : [normalizeApiBase(CLOUD_API_URL)];
+    if (isCloudMode && cloudPolicy.apiUrl && cloudPolicy.apiKey) {
+      const apiBases =
+        cloudApiCandidates.length > 0
+          ? cloudApiCandidates
+          : [normalizeApiBase(cloudPolicy.apiUrl)];
       for (const apiBase of apiBases) {
         try {
           const res = await fetch(`${apiBase}/assets/list?limit=200`, {
             method: 'GET',
-            headers: { Authorization: `Bearer ${CLOUD_API_KEY}` },
+            headers: { Authorization: `Bearer ${cloudPolicy.apiKey}` },
           });
           const body = (await res.json().catch(() => ({}))) as { items?: LibraryImageEntry[] };
           if (!res.ok) continue;

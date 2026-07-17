@@ -758,6 +758,22 @@ without this rule, Studio may resolve a referenced field from a stale bootstrap 
 
 Shell instances do not become menu owners because bootstrap includes `menuConfig`.
 
+### 10.5 Package attribution (post-ADR-0016)
+
+JEB's bootstrap contract is unchanged in shape (§10.1–10.4). What changed is which physical npm package ships each symbol, per the core/react/studio split:
+
+| Symbol | Ships from | Notes |
+|---|---|---|
+| `JsonPagesConfig` (type), `ProjectState` (type) | `@olonjs/core` | Pure contract types — zero React |
+| `JsonPagesEngine`, `OlonJSEngine` | `@olonjs/react` | The two rendering-engine entry points; `JsonPagesEngine` internally dynamic-imports `@olonjs/studio` only when the admin route mounts |
+| `ConfigProvider`, `PageRenderer`, `StudioProvider`, `ThemeLoader` | `@olonjs/react` | Rendering pipeline and theme-chain publication |
+| `useConfig`, `useStudio` (hooks) | `@olonjs/react` | Context consumers for the rendering pipeline |
+| `OlonFormsContext`, `useFormState`, `FormState` (type) | `@olonjs/react` | Form submission state, wired into the rendering tree |
+| `resolveRuntimeConfig`, `resolvePageMatchFromRegistry`, `resolvePublicPageDocument`, `withBasePath`, `normalizeBasePath`, `cn`, base schemas (`BaseSectionData`, `BaseArrayItem`, `BaseCollectionItem`, `CtaSchema`, `ImageSelectionSchema`, `WithFormRecipient`), `webmcp` contracts, `STUDIO_EVENTS`, `DEPLOY_STEPS`, `startCloudSaveStream`, `resolveAssetUrl` | `@olonjs/core` | Framework-agnostic — safe to import from plain Node scripts (e.g. `bake.mjs`) with zero React in the dependency tree |
+| `AdminSidebar`, `FormFactory`, `StudioStage`, `StudioRouteBody`, image/icon pickers | `@olonjs/studio` | Editor UI — never imported directly by a tenant; reached only via `@olonjs/react`'s dynamic-import bridge |
+
+Bootstrap responsibility does not change: `apps/tenant-alpha/src/App.tsx` still builds one `JsonPagesConfig` object and renders one `<JsonPagesEngine config={config} />` — the tenant's bootstrap code is agnostic to which of the three packages a given import ultimately resolves to, and installs all three (`@olonjs/core`, `@olonjs/react`, `@olonjs/studio`) as ordinary npm dependencies. See [ADR-0016](../docs/decisions/ADR-0016-core-react-studio-package-split.md) for the full architectural decision.
+
 **Why it matters:** JEB is the runtime boundary between sovereign tenant data and Core orchestration.
 
 ---

@@ -14,6 +14,7 @@
         "build:all": "npm run build --workspaces --if-present",
         "release": "node scripts/release.js",
         "check:templates": "node scripts/check-cli-templates.mjs",
+        "test:boundary": "node scripts/check-package-boundaries.mjs",
         "dist:dna:all": "npm run dist -w tenant-alpha",
         "release:enterprise": "node scripts/release-enterprise.js",
         "bump:all": "tsx scripts/bump-schemas.ts"

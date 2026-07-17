@@ -27795,7 +27795,7 @@ function requireServer_node() {
 }
 var server_nodeExports = requireServer_node();
 var reactExports = requireReact();
-const Ce$1 = /* @__PURE__ */ getDefaultExportFromCjs(reactExports);
+const ge$1 = /* @__PURE__ */ getDefaultExportFromCjs(reactExports);
 /**
  * @remix-run/router v1.23.2
  *
@@ -31710,7 +31710,7 @@ function ee$1(e) {
 function H(e) {
   return x(e) && typeof e.$ref == "string" && e.$ref.trim().length > 0;
 }
-function Te(e) {
+function Te$1(e) {
   return e.replace(/~1/g, "/").replace(/~0/g, "~");
 }
 function Ze(e, t) {
@@ -31719,7 +31719,7 @@ function Ze(e, t) {
   if (!o || o === "/") return e;
   let r2 = e;
   for (const n of o.replace(/^\//, "").split("/")) {
-    const s = Te(n);
+    const s = Te$1(n);
     if (Array.isArray(r2)) {
       const i = Number(s);
       if (!Number.isInteger(i) || i < 0 || i >= r2.length) return;
@@ -31747,7 +31747,7 @@ function It(e) {
   const t = B(e), o = t.lastIndexOf("/");
   return o === -1 ? "" : t.slice(0, o);
 }
-function Ot$1(e, t) {
+function Ot(e, t) {
   const o = /* @__PURE__ */ new Set(), r2 = B(e);
   r2 && o.add(r2);
   const n = It(t), s = B(n ? `${n}/${e}` : e);
@@ -31758,7 +31758,7 @@ function R(e) {
     Object.entries(e).map(([t, o]) => [t, R(o)])
   ) : e;
 }
-function V$1(e, t, o) {
+function V(e, t, o) {
   for (const r2 of t) {
     const n = B(r2);
     n && e.set(n, o);
@@ -31779,7 +31779,7 @@ function Ce(e, t) {
   }
   return o;
 }
-function Et(e, t) {
+function Et$1(e, t) {
   if (!e) return null;
   const o = t[e.source];
   if (!x(o)) return null;
@@ -31799,15 +31799,15 @@ function zt({
 }) {
   const i = /* @__PURE__ */ new Map();
   for (const [l, a] of Object.entries(s ?? {}))
-    V$1(i, [l], a);
-  V$1(i, ["site.json", "config/site.json", "src/data/config/site.json"], t), V$1(i, ["theme.json", "config/theme.json", "src/data/config/theme.json"], o), V$1(i, ["menu.json", "config/menu.json", "src/data/config/menu.json"], r2);
+    V(i, [l], a);
+  V(i, ["site.json", "config/site.json", "src/data/config/site.json"], t), V(i, ["theme.json", "config/theme.json", "src/data/config/theme.json"], o), V(i, ["menu.json", "config/menu.json", "src/data/config/menu.json"], r2);
   for (const [l, a] of Object.entries(e)) {
     const c = l.replace(/^\/+|\/+$/g, "") || "home";
-    V$1(i, [`pages/${c}.json`, `src/data/pages/${c}.json`], a);
+    V(i, [`pages/${c}.json`, `src/data/pages/${c}.json`], a);
   }
   for (const [l, a] of Object.entries(n ?? {})) {
     const c = l.replace(/^\/+|\/+$/g, "");
-    c && V$1(i, [
+    c && V(i, [
       `collections/${c}/${c}.json`,
       `src/data/collections/${c}/${c}.json`
     ], a);
@@ -31832,7 +31832,7 @@ function $t(e, t, o) {
     const g = Ze(p, s);
     return g === void 0 ? null : { value: g, documentPath: c };
   }
-  for (const c of Ot$1(r2, t)) {
+  for (const c of Ot(r2, t)) {
     const p = o.documents.get(c);
     if (p === void 0) continue;
     const g = Ze(p, s);
@@ -31885,7 +31885,7 @@ function le(e, t, o, r2) {
     collectionContext: r2
   });
 }
-function ot$1(e, t, o) {
+function ot(e, t, o) {
   const r2 = e.collection;
   if (!r2) return null;
   const n = String(r2.source), s = r2.paramKey, i = t[s];
@@ -31900,30 +31900,30 @@ function ot$1(e, t, o) {
     currentItem: a
   };
 }
-function _t(e) {
+function _t$1(e) {
   return x(e) && typeof e.label == "string" && typeof e.href == "string";
 }
-function Mt(e) {
+function Mt$1(e) {
   if (!H(e)) return null;
   const t = e.$ref.trim(), [o, r2 = ""] = t.split("#");
   if (!/menu\.json$/i.test(o)) return null;
   const n = r2.replace(/^\//, "");
   if (!n) return null;
-  const s = n.split("/").map(Te).filter(Boolean);
+  const s = n.split("/").map(Te$1).filter(Boolean);
   return s.length > 0 ? s : null;
 }
 function Pe$1(e) {
   return x(e) ? Object.entries(e).map(([t, o]) => {
-    const r2 = Mt(o);
+    const r2 = Mt$1(o);
     return r2 ? { fieldKey: t, path: r2 } : null;
   }).filter((t) => t != null) : [];
 }
-function rt(e, t, o) {
+function rt$1(e, t, o) {
   if (t.length === 0) return o;
   const [r2, ...n] = t, s = x(e) ? e : {};
   return {
     ...s,
-    [r2]: rt(s[r2], n, o)
+    [r2]: rt$1(s[r2], n, o)
   };
 }
 function fe(e, t) {
@@ -31944,7 +31944,7 @@ function fe(e, t) {
   }
   return t;
 }
-function Ae(e, t, o) {
+function Ae$1(e, t, o) {
   const r2 = Pe$1(e);
   if (r2.length === 0)
     return { normalizedData: t, menuDraft: o };
@@ -31953,7 +31953,7 @@ function Ae(e, t, o) {
   for (const l of r2) {
     n[l.fieldKey] !== void 0 && (s[l.fieldKey] = n[l.fieldKey]);
     const a = t[l.fieldKey];
-    Array.isArray(a) && (i = rt(i, l.path, a));
+    Array.isArray(a) && (i = rt$1(i, l.path, a));
   }
   return { normalizedData: s, menuDraft: i };
 }
@@ -31967,7 +31967,7 @@ function Rt$1(e, t) {
     } : null;
   const [r2, n = ""] = o.split("#"), i = B(r2).match(/(?:^|\/)collections\/([^/]+)\/\1\.json$/);
   if (!(i != null && i[1])) return null;
-  const l = n.replace(/^\//, ""), a = l ? Te(l.split("/")[0]) : void 0;
+  const l = n.replace(/^\//, ""), a = l ? Te$1(l.split("/")[0]) : void 0;
   return {
     source: i[1],
     ...a ? { itemId: a } : {}
@@ -32010,7 +32010,7 @@ function Nt(e, t, o, r2, n) {
 function Ge(e, t, o) {
   if (!e || !t || !x(t.data))
     return { section: t, menuDraft: o };
-  const { normalizedData: r2, menuDraft: n } = Ae(
+  const { normalizedData: r2, menuDraft: n } = Ae$1(
     e.data,
     t.data,
     o
@@ -32045,7 +32045,7 @@ function st$1(e, t, o) {
 function it$1(e) {
   if (!x(e)) return null;
   const t = e.menu;
-  return Array.isArray(t) && t.every(_t) ? t : null;
+  return Array.isArray(t) && t.every(_t$1) ? t : null;
 }
 function Ie(e, t) {
   return it$1(e) ?? (Array.isArray(t) ? t : []);
@@ -32056,7 +32056,7 @@ function at$1(e, t) {
   if (e.type === "header") return Array.isArray(t) ? t : [];
 }
 function Oe(e) {
-  const t = Ce(e.collections, e.collectionSchemas), o = Et(e.collectionContext, t), r2 = zt({
+  const t = Ce(e.collections, e.collectionSchemas), o = Et$1(e.collectionContext, t), r2 = zt({
     ...e,
     collections: t
   });
@@ -32083,14 +32083,14 @@ const Wt = "olonjs:webmcp:tool-call", Lt = "olonjs:webmcp:tool-result";
 function Kt(e) {
   return e == null ? e : JSON.parse(JSON.stringify(e));
 }
-function Ee(e) {
+function Ee$1(e) {
   var t;
   return (t = e == null ? void 0 : e._def) == null ? void 0 : t.typeName;
 }
 function xe(e) {
   let t = e, o = false, r2 = false, n;
   for (; ; ) {
-    const s = Ee(t);
+    const s = Ee$1(t);
     if (s === ZodFirstPartyTypeKind.ZodOptional) {
       o = true, t = t._def.innerType;
       continue;
@@ -32117,11 +32117,11 @@ function O(e, t, o) {
   const r2 = Kt(t) ?? {};
   return e.description && r2.description == null && (r2.description = e.description), o.defaultValue !== void 0 && r2.default == null && (r2.default = o.defaultValue), o.isNullable ? { anyOf: [r2, { type: "null" }] } : r2;
 }
-function Ft(e) {
+function Ft$1(e) {
   const t = [];
   let o = null;
   for (const r2 of e) {
-    const n = xe(r2).schema, s = Ee(n);
+    const n = xe(r2).schema, s = Ee$1(n);
     if (s === ZodFirstPartyTypeKind.ZodLiteral) {
       const i = n._def.value;
       t.push(i);
@@ -32140,14 +32140,14 @@ function Ft(e) {
   }
   return t.length === 0 ? null : o === "number" ? { type: "number", enum: t } : o === "boolean" ? { type: "boolean", enum: t } : { type: "string", enum: t.map((r2) => String(r2)) };
 }
-function q(e) {
+function q$1(e) {
   const t = xe(e), o = t.schema;
-  switch (Ee(o)) {
+  switch (Ee$1(o)) {
     case ZodFirstPartyTypeKind.ZodObject: {
       const n = o._def.shape(), s = {}, i = [];
       for (const [a, c] of Object.entries(n)) {
         const p = c, g = xe(p);
-        s[a] = q(p), g.isOptional || i.push(a);
+        s[a] = q$1(p), g.isOptional || i.push(a);
       }
       const l = {
         type: "object",
@@ -32167,7 +32167,7 @@ function q(e) {
     case ZodFirstPartyTypeKind.ZodArray:
       return O(
         e,
-        { type: "array", items: q(o._def.type) },
+        { type: "array", items: q$1(o._def.type) },
         t
       );
     case ZodFirstPartyTypeKind.ZodEnum:
@@ -32185,17 +32185,17 @@ function q(e) {
         e,
         {
           type: "object",
-          additionalProperties: q(
+          additionalProperties: q$1(
             o._def.valueType
           )
         },
         t
       );
     case ZodFirstPartyTypeKind.ZodUnion: {
-      const n = o._def.options, s = Ft(n);
+      const n = o._def.options, s = Ft$1(n);
       return s ? O(e, s, t) : O(
         e,
-        { anyOf: n.map((i) => q(i)) },
+        { anyOf: n.map((i) => q$1(i)) },
         t
       );
     }
@@ -32262,10 +32262,10 @@ function Dt(e) {
   const t = e.data && typeof e.data == "object" ? e.data : {};
   return typeof t.title == "string" && t.title.trim() ? t.title.trim() : typeof t.sectionTitle == "string" && t.sectionTitle.trim() ? t.sectionTitle.trim() : typeof t.label == "string" && t.label.trim() ? t.label.trim() : e.type ?? "section";
 }
-function Ut() {
+function Ut$1() {
   return "update-section";
 }
-function pe(e) {
+function pe$1(e) {
   return `/schemas/${e}.schema.json`;
 }
 function ge(e) {
@@ -32289,12 +32289,12 @@ function ze({
   const s = typeof ((z = t.meta) == null ? void 0 : z.title) == "string" ? t.meta.title : e, i = typeof ((C = t.meta) == null ? void 0 : C.description) == "string" ? t.meta.description : "", l = Zt(t, n), a = Array.from(new Set(l.map((y) => String(y.type)).filter(Boolean))), c = Object.fromEntries(
     a.filter((y) => (o == null ? void 0 : o[y]) != null).map((y) => {
       const A = o[y];
-      return [y, q(A)];
+      return [y, q$1(A)];
     })
   ), p = Object.fromEntries(
     a.filter((y) => (r2 == null ? void 0 : r2[y]) != null).map((y) => {
       const A = r2[y];
-      return [y, q(A)];
+      return [y, q$1(A)];
     })
   ), g = l.map((y) => ({
     id: y.id,
@@ -32303,7 +32303,7 @@ function ze({
     label: Dt(y)
   })), w = a.filter((y) => c[y] != null).length > 0 ? [
     {
-      name: Ut(),
+      name: Ut$1(),
       description: "Update a section field in the Studio draft. Does not persist — call save when all updates are complete. Use sectionType to select the matching schema from sectionSchemas.",
       inputSchema: Bt()
     },
@@ -32336,7 +32336,7 @@ function $e(e) {
     slug: e.slug,
     title: t.title,
     description: t.description,
-    contractHref: pe(e.slug),
+    contractHref: pe$1(e.slug),
     transport: {
       kind: "window-message",
       requestType: Wt,
@@ -32385,7 +32385,7 @@ function _e({
         title: l.title,
         description: l.description,
         manifestHref: ge(s),
-        contractHref: pe(s),
+        contractHref: pe$1(s),
         sectionTypes: l.sectionTypes
       };
     })
@@ -32510,11 +32510,11 @@ const Qt = {
   STUDIO_EVENTS: Qt,
   appendDraftSection: Jt,
   applyCollectionRefBindingsToDraft: Nt,
-  applyMenuRefBindingsToDraft: Ae,
+  applyMenuRefBindingsToDraft: Ae$1,
   applySiteMenuRefBindingsToDraft: st$1,
   buildLlmsTxt: lt$1,
   buildPageContract: ze,
-  buildPageContractHref: pe,
+  buildPageContractHref: pe$1,
   buildPageManifest: $e,
   buildPageManifestHref: ge,
   buildSelectionPath: Yt,
@@ -32523,7 +32523,7 @@ const Qt = {
   getCollectionRefBindings: nt,
   getMenuRefBindings: Pe$1,
   reorderPageSections: qt,
-  resolveCollectionContext: ot$1,
+  resolveCollectionContext: ot,
   resolveHeaderMenuItems: Ie,
   resolveRuntimeConfig: Oe,
   resolveSectionMenuItems: at$1,
@@ -32781,9 +32781,9 @@ const co = (e, t) => {
     if (i.indexOf(U) > -1)
       continue;
     i.push(U);
-    const Z = n(A, y);
-    for (let W = 0; W < Z.length; ++W) {
-      const Q = Z[W];
+    const Z2 = n(A, y);
+    for (let W = 0; W < Z2.length; ++W) {
+      const Q = Z2[W];
       i.push(Y + Q);
     }
     a = p + (a.length > 0 ? " " + a : a);
@@ -32817,18 +32817,18 @@ const co = (e, t) => {
 }, Eo = [], v = (e) => {
   const t = (o) => o[e] || Eo;
   return t.isThemeGetter = true, t;
-}, ht$1 = /^\[(?:(\w[\w-]*):)?(.+)\]$/i, yt$1 = /^\((?:(\w[\w-]*):)?(.+)\)$/i, zo = /^\d+(?:\.\d+)?\/\d+(?:\.\d+)?$/, $o = /^(\d+(\.\d+)?)?(xs|sm|md|lg|xl)$/, _o = /\d+(%|px|r?em|[sdl]?v([hwib]|min|max)|pt|pc|in|cm|mm|cap|ch|ex|r?lh|cq(w|h|i|b|min|max))|\b(calc|min|max|clamp)\(.+\)|^0$/, Mo = /^(rgba?|hsla?|hwb|(ok)?(lab|lch)|color-mix)\(.+\)$/, Ro = /^(inset_)?-?((\d+)?\.?(\d+)[a-z]+|0)_-?((\d+)?\.?(\d+)[a-z]+|0)/, No = /^(url|image|image-set|cross-fade|element|(repeating-)?(linear|radial|conic)-gradient)\(.+\)$/, _ = (e) => zo.test(e), b = (e) => !!e && !Number.isNaN(Number(e)), M = (e) => !!e && Number.isInteger(Number(e)), ke$1 = (e) => e.endsWith("%") && b(e.slice(0, -1)), $ = (e) => $o.test(e), wt = () => true, Wo = (e) => (
+}, ht$1 = /^\[(?:(\w[\w-]*):)?(.+)\]$/i, yt$1 = /^\((?:(\w[\w-]*):)?(.+)\)$/i, zo = /^\d+(?:\.\d+)?\/\d+(?:\.\d+)?$/, $o = /^(\d+(\.\d+)?)?(xs|sm|md|lg|xl)$/, _o = /\d+(%|px|r?em|[sdl]?v([hwib]|min|max)|pt|pc|in|cm|mm|cap|ch|ex|r?lh|cq(w|h|i|b|min|max))|\b(calc|min|max|clamp)\(.+\)|^0$/, Mo = /^(rgba?|hsla?|hwb|(ok)?(lab|lch)|color-mix)\(.+\)$/, Ro = /^(inset_)?-?((\d+)?\.?(\d+)[a-z]+|0)_-?((\d+)?\.?(\d+)[a-z]+|0)/, No = /^(url|image|image-set|cross-fade|element|(repeating-)?(linear|radial|conic)-gradient)\(.+\)$/, _ = (e) => zo.test(e), b = (e) => !!e && !Number.isNaN(Number(e)), M = (e) => !!e && Number.isInteger(Number(e)), ke = (e) => e.endsWith("%") && b(e.slice(0, -1)), $ = (e) => $o.test(e), wt = () => true, Wo = (e) => (
   // `colorFunctionRegex` check is necessary because color functions can have percentages in them which which would be incorrectly classified as lengths.
   // For example, `hsl(0 0% 0%)` would be classified as a length without this check.
   // I could also use lookbehind assertion in `lengthUnitRegex` but that isn't supported widely enough.
   _o.test(e) && !Mo.test(e)
-), Re = () => false, Lo = (e) => Ro.test(e), Ko = (e) => No.test(e), Fo = (e) => !d(e) && !u(e), Bo = (e) => N(e, xt, Re), d = (e) => ht$1.test(e), K$1 = (e) => N(e, St, Wo), Ye = (e) => N(e, Ho, b), Do = (e) => N(e, Tt$1, wt), Uo = (e) => N(e, jt, Re), Qe = (e) => N(e, vt$1, Re), Zo = (e) => N(e, kt, Ko), ce = (e) => N(e, Ct, Lo), u = (e) => yt$1.test(e), X$1 = (e) => D(e, St), Go = (e) => D(e, jt), Xe = (e) => D(e, vt$1), Vo = (e) => D(e, xt), qo = (e) => D(e, kt), de = (e) => D(e, Ct, true), Jo = (e) => D(e, Tt$1, true), N = (e, t, o) => {
+), Re = () => false, Lo = (e) => Ro.test(e), Ko = (e) => No.test(e), Fo = (e) => !d(e) && !u(e), Bo = (e) => N(e, xt, Re), d = (e) => ht$1.test(e), K = (e) => N(e, St, Wo), Ye = (e) => N(e, Ho, b), Do = (e) => N(e, Tt, wt), Uo = (e) => N(e, jt, Re), Qe = (e) => N(e, vt$1, Re), Zo = (e) => N(e, kt$1, Ko), ce = (e) => N(e, Ct, Lo), u = (e) => yt$1.test(e), X$1 = (e) => D(e, St), Go = (e) => D(e, jt), Xe = (e) => D(e, vt$1), Vo = (e) => D(e, xt), qo = (e) => D(e, kt$1), de = (e) => D(e, Ct, true), Jo = (e) => D(e, Tt, true), N = (e, t, o) => {
   const r2 = ht$1.exec(e);
   return r2 ? r2[1] ? t(r2[1]) : o(r2[2]) : false;
 }, D = (e, t, o = false) => {
   const r2 = yt$1.exec(e);
   return r2 ? r2[1] ? t(r2[1]) : o : false;
-}, vt$1 = (e) => e === "position" || e === "percentage", kt = (e) => e === "image" || e === "url", xt = (e) => e === "length" || e === "size" || e === "bg-size", St = (e) => e === "length", Ho = (e) => e === "number", jt = (e) => e === "family-name", Tt$1 = (e) => e === "number" || e === "weight", Ct = (e) => e === "shadow", Yo = () => {
+}, vt$1 = (e) => e === "position" || e === "percentage", kt$1 = (e) => e === "image" || e === "url", xt = (e) => e === "length" || e === "size" || e === "bg-size", St = (e) => e === "length", Ho = (e) => e === "number", jt = (e) => e === "family-name", Tt = (e) => e === "number" || e === "weight", Ct = (e) => e === "shadow", Yo = () => {
   const e = v("color"), t = v("font"), o = v("text"), r2 = v("font-weight"), n = v("tracking"), s = v("leading"), i = v("breakpoint"), l = v("container"), a = v("spacing"), c = v("radius"), p = v("shadow"), g = v("inset-shadow"), w = v("text-shadow"), E = v("drop-shadow"), z = v("blur"), C = v("perspective"), y = v("aspect"), A = v("ease"), oe = v("animate"), Y = () => ["auto", "avoid", "all", "avoid-page", "page", "left", "right", "column"], U = () => [
     "center",
     "top",
@@ -32847,15 +32847,15 @@ const co = (e, t) => {
     "bottom-left",
     // Deprecated since Tailwind CSS v4.1.0, see https://github.com/tailwindlabs/tailwindcss/pull/17378
     "left-bottom"
-  ], Z = () => [...U(), u, d], W = () => ["auto", "hidden", "clip", "visible", "scroll"], Q = () => ["auto", "contain", "none"], f = () => [u, d, a], P = () => [_, "full", "auto", ...f()], Ne2 = () => [M, "none", "subgrid", u, d], We = () => ["auto", {
+  ], Z2 = () => [...U(), u, d], W = () => ["auto", "hidden", "clip", "visible", "scroll"], Q = () => ["auto", "contain", "none"], f = () => [u, d, a], P = () => [_, "full", "auto", ...f()], Ne2 = () => [M, "none", "subgrid", u, d], We = () => ["auto", {
     span: ["full", M, u, d]
-  }, M, u, d], re = () => [M, "auto", u, d], Le = () => ["auto", "min", "max", "fr", u, d], be2 = () => ["start", "end", "center", "between", "around", "evenly", "stretch", "baseline", "center-safe", "end-safe"], G2 = () => ["start", "end", "center", "stretch", "center-safe", "end-safe"], I = () => ["auto", ...f()], L = () => [_, "auto", "full", "dvw", "dvh", "lvw", "lvh", "svw", "svh", "min", "max", "fit", ...f()], he = () => [_, "screen", "full", "dvw", "lvw", "svw", "min", "max", "fit", ...f()], ye2 = () => [_, "screen", "full", "lh", "dvh", "lvh", "svh", "min", "max", "fit", ...f()], m = () => [e, u, d], Ke2 = () => [...U(), Xe, Qe, {
+  }, M, u, d], re = () => [M, "auto", u, d], Le = () => ["auto", "min", "max", "fr", u, d], be2 = () => ["start", "end", "center", "between", "around", "evenly", "stretch", "baseline", "center-safe", "end-safe"], G2 = () => ["start", "end", "center", "stretch", "center-safe", "end-safe"], I = () => ["auto", ...f()], L = () => [_, "auto", "full", "dvw", "dvh", "lvw", "lvh", "svw", "svh", "min", "max", "fit", ...f()], he = () => [_, "screen", "full", "dvw", "lvw", "svw", "min", "max", "fit", ...f()], ye2 = () => [_, "screen", "full", "lh", "dvh", "lvh", "svh", "min", "max", "fit", ...f()], m = () => [e, u, d], Ke = () => [...U(), Xe, Qe, {
     position: [u, d]
   }], Fe = () => ["no-repeat", {
     repeat: ["", "x", "y", "space", "round"]
   }], Be = () => ["auto", "cover", "contain", Vo, Bo, {
     size: [u, d]
-  }], we2 = () => [ke$1, X$1, K$1], S = () => [
+  }], we = () => [ke, X$1, K], S = () => [
     // Deprecated since Tailwind CSS v4.0.0
     "",
     "none",
@@ -32863,14 +32863,14 @@ const co = (e, t) => {
     c,
     u,
     d
-  ], j = () => ["", b, X$1, K$1], ne = () => ["solid", "dashed", "dotted", "double"], De = () => ["normal", "multiply", "screen", "overlay", "darken", "lighten", "color-dodge", "color-burn", "hard-light", "soft-light", "difference", "exclusion", "hue", "saturation", "color", "luminosity"], k = () => [b, ke$1, Xe, Qe], Ue = () => [
+  ], j = () => ["", b, X$1, K], ne = () => ["solid", "dashed", "dotted", "double"], De = () => ["normal", "multiply", "screen", "overlay", "darken", "lighten", "color-dodge", "color-burn", "hard-light", "soft-light", "difference", "exclusion", "hue", "saturation", "color", "luminosity"], k = () => [b, ke, Xe, Qe], Ue = () => [
     // Deprecated since Tailwind CSS v4.0.0
     "",
     "none",
     z,
     u,
     d
-  ], se = () => ["none", b, u, d], ie = () => ["none", b, u, d], ve2 = () => [b, u, d], ae = () => [_, "full", ...f()];
+  ], se = () => ["none", b, u, d], ie = () => ["none", b, u, d], ve = () => [b, u, d], ae = () => [_, "full", ...f()];
   return {
     cacheSize: 500,
     theme: {
@@ -32994,7 +32994,7 @@ const co = (e, t) => {
        * @see https://tailwindcss.com/docs/object-position
        */
       "object-position": [{
-        object: Z()
+        object: Z2()
       }],
       /**
        * Overflow
@@ -33659,7 +33659,7 @@ const co = (e, t) => {
        * @see https://tailwindcss.com/docs/font-size
        */
       "font-size": [{
-        text: ["base", o, X$1, K$1]
+        text: ["base", o, X$1, K]
       }],
       /**
        * Font Smoothing
@@ -33683,7 +33683,7 @@ const co = (e, t) => {
        * @see https://tailwindcss.com/docs/font-stretch
        */
       "font-stretch": [{
-        "font-stretch": ["ultra-condensed", "extra-condensed", "condensed", "semi-condensed", "normal", "semi-expanded", "expanded", "extra-expanded", "ultra-expanded", ke$1, d]
+        "font-stretch": ["ultra-condensed", "extra-condensed", "condensed", "semi-condensed", "normal", "semi-expanded", "expanded", "extra-expanded", "ultra-expanded", ke, d]
       }],
       /**
        * Font Family
@@ -33814,7 +33814,7 @@ const co = (e, t) => {
        * @see https://tailwindcss.com/docs/text-decoration-thickness
        */
       "text-decoration-thickness": [{
-        decoration: [b, "from-font", "auto", u, K$1]
+        decoration: [b, "from-font", "auto", u, K]
       }],
       /**
        * Text Decoration Color
@@ -33925,7 +33925,7 @@ const co = (e, t) => {
        * @see https://tailwindcss.com/docs/background-position
        */
       "bg-position": [{
-        bg: Ke2()
+        bg: Ke()
       }],
       /**
        * Background Repeat
@@ -33966,21 +33966,21 @@ const co = (e, t) => {
        * @see https://tailwindcss.com/docs/gradient-color-stops
        */
       "gradient-from-pos": [{
-        from: we2()
+        from: we()
       }],
       /**
        * Gradient Color Stops Via Position
        * @see https://tailwindcss.com/docs/gradient-color-stops
        */
       "gradient-via-pos": [{
-        via: we2()
+        via: we()
       }],
       /**
        * Gradient Color Stops To Position
        * @see https://tailwindcss.com/docs/gradient-color-stops
        */
       "gradient-to-pos": [{
-        to: we2()
+        to: we()
       }],
       /**
        * Gradient Color Stops From
@@ -34329,7 +34329,7 @@ const co = (e, t) => {
        * @see https://tailwindcss.com/docs/outline-width
        */
       "outline-w": [{
-        outline: ["", b, X$1, K$1]
+        outline: ["", b, X$1, K]
       }],
       /**
        * Outline Color
@@ -34404,7 +34404,7 @@ const co = (e, t) => {
        * @see https://github.com/tailwindlabs/tailwindcss/blob/v4.0.0/packages/tailwindcss/src/utilities.ts#L4158
        */
       "ring-offset-w": [{
-        "ring-offset": [b, K$1]
+        "ring-offset": [b, K]
       }],
       /**
        * Ring Offset Color
@@ -34630,7 +34630,7 @@ const co = (e, t) => {
        * @see https://tailwindcss.com/docs/mask-position
        */
       "mask-position": [{
-        mask: Ke2()
+        mask: Ke()
       }],
       /**
        * Mask Repeat
@@ -34941,7 +34941,7 @@ const co = (e, t) => {
        * @see https://tailwindcss.com/docs/perspective-origin
        */
       "perspective-origin": [{
-        "perspective-origin": Z()
+        "perspective-origin": Z2()
       }],
       /**
        * Rotate
@@ -35009,21 +35009,21 @@ const co = (e, t) => {
        * @see https://tailwindcss.com/docs/skew
        */
       skew: [{
-        skew: ve2()
+        skew: ve()
       }],
       /**
        * Skew X
        * @see https://tailwindcss.com/docs/skew
        */
       "skew-x": [{
-        "skew-x": ve2()
+        "skew-x": ve()
       }],
       /**
        * Skew Y
        * @see https://tailwindcss.com/docs/skew
        */
       "skew-y": [{
-        "skew-y": ve2()
+        "skew-y": ve()
       }],
       /**
        * Transform
@@ -35037,7 +35037,7 @@ const co = (e, t) => {
        * @see https://tailwindcss.com/docs/transform-origin
        */
       "transform-origin": [{
-        origin: Z()
+        origin: Z2()
       }],
       /**
        * Transform Style
@@ -35382,7 +35382,7 @@ const co = (e, t) => {
        * @see https://tailwindcss.com/docs/stroke-width
        */
       "stroke-w": [{
-        stroke: [b, X$1, K$1, Ye]
+        stroke: [b, X$1, K, Ye]
       }],
       /**
        * Stroke
@@ -35488,11 +35488,17 @@ objectType({
 const yr = objectType({
   recipientEmail: stringType().optional().describe("ui:text")
 });
-function te(e) {
+function et$1(e) {
+  const t = e.trim();
+  if (!t || t === "/") return "/";
+  const r2 = (t.startsWith("/") ? t : `/${t}`).replace(/\/+$/, "");
+  return r2.length > 0 ? `${r2}/` : "/";
+}
+function te$1(e) {
   return e.split("/").map((t) => t.trim()).filter(Boolean).join("/");
 }
 function ir(e, t) {
-  const o = te(e).split("/").filter(Boolean), r2 = te(t).split("/").filter(Boolean);
+  const o = te$1(e).split("/").filter(Boolean), r2 = te$1(t).split("/").filter(Boolean);
   if (o.length !== r2.length) return null;
   const n = {};
   for (let s = 0; s < o.length; s += 1) {
@@ -35506,7 +35512,7 @@ function ir(e, t) {
   return n;
 }
 function At(e, t) {
-  const o = te(t) || "home", r2 = e[o];
+  const o = te$1(t) || "home", r2 = e[o];
   if (r2)
     return {
       page: r2,
@@ -35525,7 +35531,7 @@ function At(e, t) {
       };
   }
 }
-var K = { exports: {} }, V = {};
+var Z = { exports: {} }, q = {};
 /**
  * @license React
  * react-jsx-runtime.production.js
@@ -35535,27 +35541,27 @@ var K = { exports: {} }, V = {};
  * This source code is licensed under the MIT license found in the
  * LICENSE file in the root directory of this source tree.
  */
-var ve;
-function Ke() {
-  if (ve) return V;
-  ve = 1;
+var be;
+function et() {
+  if (be) return q;
+  be = 1;
   var e = Symbol.for("react.transitional.element"), n = Symbol.for("react.fragment");
-  function s(a, o, d2) {
-    var m = null;
-    if (d2 !== void 0 && (m = "" + d2), o.key !== void 0 && (m = "" + o.key), "key" in o) {
-      d2 = {};
-      for (var y in o)
-        y !== "key" && (d2[y] = o[y]);
-    } else d2 = o;
-    return o = d2.ref, {
+  function o(a, s, i) {
+    var l = null;
+    if (i !== void 0 && (l = "" + i), s.key !== void 0 && (l = "" + s.key), "key" in s) {
+      i = {};
+      for (var v2 in s)
+        v2 !== "key" && (i[v2] = s[v2]);
+    } else i = s;
+    return s = i.ref, {
       $$typeof: e,
       type: a,
-      key: m,
-      ref: o !== void 0 ? o : null,
-      props: d2
+      key: l,
+      ref: s !== void 0 ? s : null,
+      props: i
     };
   }
-  return V.Fragment = n, V.jsx = s, V.jsxs = s, V;
+  return q.Fragment = n, q.jsx = o, q.jsxs = o, q;
 }
 var G = {};
 /**
@@ -35567,9 +35573,9 @@ var G = {};
  * This source code is licensed under the MIT license found in the
  * LICENSE file in the root directory of this source tree.
  */
-var be;
-function et() {
-  return be || (be = 1, process.env.NODE_ENV !== "production" && (function() {
+var ye;
+function tt() {
+  return ye || (ye = 1, process.env.NODE_ENV !== "production" && (function() {
     function e(t) {
       if (t == null) return null;
       if (typeof t == "function")
@@ -35580,34 +35586,34 @@ function et() {
           return "Fragment";
         case A:
           return "Profiler";
-        case j:
+        case C:
           return "StrictMode";
         case w:
           return "Suspense";
         case k:
           return "SuspenseList";
-        case O2:
+        case I:
           return "Activity";
       }
       if (typeof t == "object")
         switch (typeof t.tag == "number" && console.error(
           "Received an unexpected object in getComponentNameFromType(). This is likely a bug in React. Please file an issue."
         ), t.$$typeof) {
-          case E:
+          case x2:
             return "Portal";
           case g:
             return t.displayName || "Context";
-          case v2:
+          case b2:
             return (t._context.displayName || "Context") + ".Consumer";
-          case u2:
-            var c = t.render;
-            return t = t.displayName, t || (t = c.displayName || c.name || "", t = t !== "" ? "ForwardRef(" + t + ")" : "ForwardRef"), t;
+          case m:
+            var u2 = t.render;
+            return t = t.displayName, t || (t = u2.displayName || u2.name || "", t = t !== "" ? "ForwardRef(" + t + ")" : "ForwardRef"), t;
           case T2:
-            return c = t.displayName || null, c !== null ? c : e(t.type) || "Memo";
+            return u2 = t.displayName || null, u2 !== null ? u2 : e(t.type) || "Memo";
           case P:
-            c = t._payload, t = t._init;
+            u2 = t._payload, t = t._init;
             try {
-              return e(t(c));
+              return e(t(u2));
             } catch {
             }
         }
@@ -35616,20 +35622,20 @@ function et() {
     function n(t) {
       return "" + t;
     }
-    function s(t) {
+    function o(t) {
       try {
         n(t);
-        var c = false;
+        var u2 = false;
       } catch {
-        c = true;
+        u2 = true;
       }
-      if (c) {
-        c = console;
-        var S = c.error, R2 = typeof Symbol == "function" && Symbol.toStringTag && t[Symbol.toStringTag] || t.constructor.name || "Object";
-        return S.call(
-          c,
+      if (u2) {
+        u2 = console;
+        var j = u2.error, _2 = typeof Symbol == "function" && Symbol.toStringTag && t[Symbol.toStringTag] || t.constructor.name || "Object";
+        return j.call(
+          u2,
           "The provided key is an unsupported type %s. This value must be coerced to a string before using it here.",
-          R2
+          _2
         ), n(t);
       }
     }
@@ -35638,55 +35644,55 @@ function et() {
       if (typeof t == "object" && t !== null && t.$$typeof === P)
         return "<...>";
       try {
-        var c = e(t);
-        return c ? "<" + c + ">" : "<...>";
+        var u2 = e(t);
+        return u2 ? "<" + u2 + ">" : "<...>";
       } catch {
         return "<...>";
       }
     }
-    function o() {
+    function s() {
       var t = $2.A;
       return t === null ? null : t.getOwner();
     }
-    function d2() {
+    function i() {
       return Error("react-stack-top-frame");
     }
-    function m(t) {
-      if (U.call(t, "key")) {
-        var c = Object.getOwnPropertyDescriptor(t, "key").get;
-        if (c && c.isReactWarning) return false;
+    function l(t) {
+      if (Y.call(t, "key")) {
+        var u2 = Object.getOwnPropertyDescriptor(t, "key").get;
+        if (u2 && u2.isReactWarning) return false;
       }
       return t.key !== void 0;
     }
-    function y(t, c) {
-      function S() {
+    function v2(t, u2) {
+      function j() {
         F2 || (F2 = true, console.error(
           "%s: `key` is not a prop. Trying to access it will result in `undefined` being returned. If you need to access the same value within the child component, you should pass it as a different prop. (https://react.dev/link/special-props)",
-          c
+          u2
         ));
       }
-      S.isReactWarning = true, Object.defineProperty(t, "key", {
-        get: S,
+      j.isReactWarning = true, Object.defineProperty(t, "key", {
+        get: j,
         configurable: true
       });
     }
-    function C() {
+    function S() {
       var t = e(this.type);
-      return I[t] || (I[t] = true, console.error(
+      return O2[t] || (O2[t] = true, console.error(
         "Accessing element.ref was removed in React 19. ref is now a regular prop. It will be removed from the JSX Element type in a future release."
       )), t = this.props.ref, t !== void 0 ? t : null;
     }
-    function b2(t, c, S, R2, Q, oe) {
-      var _2 = S.ref;
+    function y(t, u2, j, _2, X2, se) {
+      var R2 = j.ref;
       return t = {
-        $$typeof: l,
+        $$typeof: d2,
         type: t,
-        key: c,
-        props: S,
-        _owner: R2
-      }, (_2 !== void 0 ? _2 : null) !== null ? Object.defineProperty(t, "ref", {
+        key: u2,
+        props: j,
+        _owner: _2
+      }, (R2 !== void 0 ? R2 : null) !== null ? Object.defineProperty(t, "ref", {
         enumerable: false,
-        get: C
+        get: S
       }) : Object.defineProperty(t, "ref", { enumerable: false, value: null }), t._store = {}, Object.defineProperty(t._store, "validated", {
         configurable: false,
         enumerable: false,
@@ -35701,110 +35707,110 @@ function et() {
         configurable: false,
         enumerable: false,
         writable: true,
-        value: Q
+        value: X2
       }), Object.defineProperty(t, "_debugTask", {
         configurable: false,
         enumerable: false,
         writable: true,
-        value: oe
+        value: se
       }), Object.freeze && (Object.freeze(t.props), Object.freeze(t)), t;
     }
-    function f(t, c, S, R2, Q, oe) {
-      var _2 = c.children;
-      if (_2 !== void 0)
-        if (R2)
-          if (W(_2)) {
-            for (R2 = 0; R2 < _2.length; R2++)
-              x2(_2[R2]);
-            Object.freeze && Object.freeze(_2);
+    function p(t, u2, j, _2, X2, se) {
+      var R2 = u2.children;
+      if (R2 !== void 0)
+        if (_2)
+          if (B2(R2)) {
+            for (_2 = 0; _2 < R2.length; _2++)
+              E(R2[_2]);
+            Object.freeze && Object.freeze(R2);
           } else
             console.error(
               "React.jsx: Static children should always be an array. You are likely explicitly calling React.jsxs or React.jsxDEV. Use the Babel transform instead."
             );
-        else x2(_2);
-      if (U.call(c, "key")) {
-        _2 = e(t);
-        var B2 = Object.keys(c).filter(function(Ae2) {
-          return Ae2 !== "key";
+        else E(R2);
+      if (Y.call(u2, "key")) {
+        R2 = e(t);
+        var V2 = Object.keys(u2).filter(function(Oe2) {
+          return Oe2 !== "key";
         });
-        R2 = 0 < B2.length ? "{key: someKey, " + B2.join(": ..., ") + ": ...}" : "{key: someKey}", q2[_2 + R2] || (B2 = 0 < B2.length ? "{" + B2.join(": ..., ") + ": ...}" : "{}", console.error(
+        _2 = 0 < V2.length ? "{key: someKey, " + V2.join(": ..., ") + ": ...}" : "{key: someKey}", W[R2 + _2] || (V2 = 0 < V2.length ? "{" + V2.join(": ..., ") + ": ...}" : "{}", console.error(
           `A props object containing a "key" prop is being spread into JSX:
   let props = %s;
   <%s {...props} />
 React keys must be passed directly to JSX without using spread:
   let props = %s;
   <%s key={someKey} {...props} />`,
-          R2,
           _2,
-          B2,
-          _2
-        ), q2[_2 + R2] = true);
+          R2,
+          V2,
+          R2
+        ), W[R2 + _2] = true);
       }
-      if (_2 = null, S !== void 0 && (s(S), _2 = "" + S), m(c) && (s(c.key), _2 = "" + c.key), "key" in c) {
-        S = {};
-        for (var se in c)
-          se !== "key" && (S[se] = c[se]);
-      } else S = c;
-      return _2 && y(
-        S,
+      if (R2 = null, j !== void 0 && (o(j), R2 = "" + j), l(u2) && (o(u2.key), R2 = "" + u2.key), "key" in u2) {
+        j = {};
+        for (var ae in u2)
+          ae !== "key" && (j[ae] = u2[ae]);
+      } else j = u2;
+      return R2 && v2(
+        j,
         typeof t == "function" ? t.displayName || t.name || "Unknown" : t
-      ), b2(
+      ), y(
         t,
-        _2,
-        S,
-        o(),
-        Q,
-        oe
+        R2,
+        j,
+        s(),
+        X2,
+        se
       );
     }
-    function x2(t) {
-      p(t) ? t._store && (t._store.validated = 1) : typeof t == "object" && t !== null && t.$$typeof === P && (t._payload.status === "fulfilled" ? p(t._payload.value) && t._payload.value._store && (t._payload.value._store.validated = 1) : t._store && (t._store.validated = 1));
+    function E(t) {
+      f(t) ? t._store && (t._store.validated = 1) : typeof t == "object" && t !== null && t.$$typeof === P && (t._payload.status === "fulfilled" ? f(t._payload.value) && t._payload.value._store && (t._payload.value._store.validated = 1) : t._store && (t._store.validated = 1));
     }
-    function p(t) {
-      return typeof t == "object" && t !== null && t.$$typeof === l;
+    function f(t) {
+      return typeof t == "object" && t !== null && t.$$typeof === d2;
     }
-    var i = Ce$1, l = Symbol.for("react.transitional.element"), E = Symbol.for("react.portal"), h = Symbol.for("react.fragment"), j = Symbol.for("react.strict_mode"), A = Symbol.for("react.profiler"), v2 = Symbol.for("react.consumer"), g = Symbol.for("react.context"), u2 = Symbol.for("react.forward_ref"), w = Symbol.for("react.suspense"), k = Symbol.for("react.suspense_list"), T2 = Symbol.for("react.memo"), P = Symbol.for("react.lazy"), O2 = Symbol.for("react.activity"), D2 = Symbol.for("react.client.reference"), $2 = i.__CLIENT_INTERNALS_DO_NOT_USE_OR_WARN_USERS_THEY_CANNOT_UPGRADE, U = Object.prototype.hasOwnProperty, W = Array.isArray, H2 = console.createTask ? console.createTask : function() {
+    var c = ge$1, d2 = Symbol.for("react.transitional.element"), x2 = Symbol.for("react.portal"), h = Symbol.for("react.fragment"), C = Symbol.for("react.strict_mode"), A = Symbol.for("react.profiler"), b2 = Symbol.for("react.consumer"), g = Symbol.for("react.context"), m = Symbol.for("react.forward_ref"), w = Symbol.for("react.suspense"), k = Symbol.for("react.suspense_list"), T2 = Symbol.for("react.memo"), P = Symbol.for("react.lazy"), I = Symbol.for("react.activity"), D2 = Symbol.for("react.client.reference"), $2 = c.__CLIENT_INTERNALS_DO_NOT_USE_OR_WARN_USERS_THEY_CANNOT_UPGRADE, Y = Object.prototype.hasOwnProperty, B2 = Array.isArray, z = console.createTask ? console.createTask : function() {
       return null;
     };
-    i = {
+    c = {
       react_stack_bottom_frame: function(t) {
         return t();
       }
     };
-    var F2, I = {}, N2 = i.react_stack_bottom_frame.bind(
-      i,
-      d2
-    )(), Y = H2(a(d2)), q2 = {};
-    G.Fragment = h, G.jsx = function(t, c, S) {
-      var R2 = 1e4 > $2.recentlyCreatedOwnerStacks++;
-      return f(
+    var F2, O2 = {}, N2 = c.react_stack_bottom_frame.bind(
+      c,
+      i
+    )(), H2 = z(a(i)), W = {};
+    G.Fragment = h, G.jsx = function(t, u2, j) {
+      var _2 = 1e4 > $2.recentlyCreatedOwnerStacks++;
+      return p(
         t,
-        c,
-        S,
+        u2,
+        j,
         false,
-        R2 ? Error("react-stack-top-frame") : N2,
-        R2 ? H2(a(t)) : Y
+        _2 ? Error("react-stack-top-frame") : N2,
+        _2 ? z(a(t)) : H2
       );
-    }, G.jsxs = function(t, c, S) {
-      var R2 = 1e4 > $2.recentlyCreatedOwnerStacks++;
-      return f(
+    }, G.jsxs = function(t, u2, j) {
+      var _2 = 1e4 > $2.recentlyCreatedOwnerStacks++;
+      return p(
         t,
-        c,
-        S,
+        u2,
+        j,
         true,
-        R2 ? Error("react-stack-top-frame") : N2,
-        R2 ? H2(a(t)) : Y
+        _2 ? Error("react-stack-top-frame") : N2,
+        _2 ? z(a(t)) : H2
       );
     };
   })()), G;
 }
-var ye;
-function tt() {
-  return ye || (ye = 1, process.env.NODE_ENV === "production" ? K.exports = Ke() : K.exports = et()), K.exports;
+var Ee;
+function rt() {
+  return Ee || (Ee = 1, process.env.NODE_ENV === "production" ? Z.exports = et() : Z.exports = tt()), Z.exports;
 }
-var r = tt();
-const we = reactExports.createContext(void 0), ot = ({ config: e, children: n }) => /* @__PURE__ */ r.jsx(
-  we.Provider,
+var r = rt();
+const Te = reactExports.createContext(void 0), st = ({ config: e, children: n }) => /* @__PURE__ */ r.jsx(
+  Te.Provider,
   {
     value: {
       registry: e.registry,
@@ -35817,25 +35823,25 @@ const we = reactExports.createContext(void 0), ot = ({ config: e, children: n })
     children: n
   }
 );
-function st() {
-  const e = reactExports.useContext(we);
+function at() {
+  const e = reactExports.useContext(Te);
   if (e === void 0)
     throw new Error("useConfig must be used within ConfigProvider");
   return e;
 }
 reactExports.createContext({});
-const ke = reactExports.createContext(void 0), ue = ({ mode: e, children: n }) => (reactExports.useEffect(() => {
+const Ne = reactExports.createContext(void 0), me = ({ mode: e, children: n }) => (reactExports.useEffect(() => {
   if (e !== "studio") return;
-  const s = new MutationObserver((a) => {
-    a.forEach((o) => {
-      o.addedNodes.forEach((d2) => {
-        d2 instanceof HTMLElement && d2.hasAttribute("data-radix-portal") && d2.setAttribute("data-jp-studio-portal", "true");
+  const o = new MutationObserver((a) => {
+    a.forEach((s) => {
+      s.addedNodes.forEach((i) => {
+        i instanceof HTMLElement && i.hasAttribute("data-radix-portal") && i.setAttribute("data-jp-studio-portal", "true");
       });
     });
   });
-  return s.observe(document.body, { childList: true }), () => s.disconnect();
-}, [e]), /* @__PURE__ */ r.jsx(ke.Provider, { value: { mode: e }, children: n })), at = () => {
-  const e = reactExports.useContext(ke);
+  return o.observe(document.body, { childList: true }), () => o.disconnect();
+}, [e]), /* @__PURE__ */ r.jsx(Ne.Provider, { value: { mode: e }, children: n })), it = () => {
+  const e = reactExports.useContext(Ne);
   if (e === void 0)
     throw new Error("useStudio must be used within a StudioProvider");
   return e;
@@ -35846,14 +35852,14 @@ const ke = reactExports.createContext(void 0), ue = ({ mode: e, children: n }) =
  * This source code is licensed under the ISC license.
  * See the LICENSE file in the root directory of this source tree.
  */
-const it = (e) => e.replace(/([a-z0-9])([A-Z])/g, "$1-$2").toLowerCase(), Ne = (...e) => e.filter((n, s, a) => !!n && n.trim() !== "" && a.indexOf(n) === s).join(" ").trim();
+const lt = (e) => e.replace(/([a-z0-9])([A-Z])/g, "$1-$2").toLowerCase(), Pe = (...e) => e.filter((n, o, a) => !!n && n.trim() !== "" && a.indexOf(n) === o).join(" ").trim();
 /**
  * @license lucide-react v0.474.0 - ISC
  *
  * This source code is licensed under the ISC license.
  * See the LICENSE file in the root directory of this source tree.
  */
-var lt = {
+var ct = {
   xmlns: "http://www.w3.org/2000/svg",
   width: 24,
   height: 24,
@@ -35870,31 +35876,31 @@ var lt = {
  * This source code is licensed under the ISC license.
  * See the LICENSE file in the root directory of this source tree.
  */
-const ct = reactExports.forwardRef(
+const dt = reactExports.forwardRef(
   ({
     color: e = "currentColor",
     size: n = 24,
-    strokeWidth: s = 2,
+    strokeWidth: o = 2,
     absoluteStrokeWidth: a,
-    className: o = "",
-    children: d2,
-    iconNode: m,
-    ...y
-  }, C) => reactExports.createElement(
+    className: s = "",
+    children: i,
+    iconNode: l,
+    ...v2
+  }, S) => reactExports.createElement(
     "svg",
     {
-      ref: C,
-      ...lt,
+      ref: S,
+      ...ct,
       width: n,
       height: n,
       stroke: e,
-      strokeWidth: a ? Number(s) * 24 / Number(n) : s,
-      className: Ne("lucide", o),
-      ...y
+      strokeWidth: a ? Number(o) * 24 / Number(n) : o,
+      className: Pe("lucide", s),
+      ...v2
     },
     [
-      ...m.map(([b2, f]) => reactExports.createElement(b2, f)),
-      ...Array.isArray(d2) ? d2 : [d2]
+      ...l.map(([y, p]) => reactExports.createElement(y, p)),
+      ...Array.isArray(i) ? i : [i]
     ]
   )
 );
@@ -35904,16 +35910,16 @@ const ct = reactExports.forwardRef(
  * This source code is licensed under the ISC license.
  * See the LICENSE file in the root directory of this source tree.
  */
-const me = (e, n) => {
-  const s = reactExports.forwardRef(
-    ({ className: a, ...o }, d2) => reactExports.createElement(ct, {
-      ref: d2,
+const pe = (e, n) => {
+  const o = reactExports.forwardRef(
+    ({ className: a, ...s }, i) => reactExports.createElement(dt, {
+      ref: i,
       iconNode: n,
-      className: Ne(`lucide-${it(e)}`, a),
-      ...o
+      className: Pe(`lucide-${lt(e)}`, a),
+      ...s
     })
   );
-  return s.displayName = `${e}`, s;
+  return o.displayName = `${e}`, o;
 };
 /**
  * @license lucide-react v0.474.0 - ISC
@@ -35921,21 +35927,21 @@ const me = (e, n) => {
  * This source code is licensed under the ISC license.
  * See the LICENSE file in the root directory of this source tree.
  */
-const dt = [["path", { d: "m6 9 6 6 6-6", key: "qrunsl" }]], ut = me("ChevronDown", dt);
+const ut = [["path", { d: "m6 9 6 6 6-6", key: "qrunsl" }]], mt = pe("ChevronDown", ut);
 /**
  * @license lucide-react v0.474.0 - ISC
  *
  * This source code is licensed under the ISC license.
  * See the LICENSE file in the root directory of this source tree.
  */
-const mt = [["path", { d: "m18 15-6-6-6 6", key: "153udz" }]], pt = me("ChevronUp", mt);
+const pt = [["path", { d: "m18 15-6-6-6 6", key: "153udz" }]], ft = pe("ChevronUp", pt);
 /**
  * @license lucide-react v0.474.0 - ISC
  *
  * This source code is licensed under the ISC license.
  * See the LICENSE file in the root directory of this source tree.
  */
-const ft = [
+const ht = [
   [
     "path",
     {
@@ -35945,20 +35951,20 @@ const ft = [
   ],
   ["path", { d: "M12 9v4", key: "juzpu7" }],
   ["path", { d: "M12 17h.01", key: "p32p05" }]
-], ht = me("TriangleAlert", ft);
-class gt extends reactExports.Component {
+], gt = pe("TriangleAlert", ht);
+class vt extends reactExports.Component {
   constructor(n) {
     super(n), this.state = { hasError: false };
   }
   static getDerivedStateFromError() {
     return { hasError: true };
   }
-  componentDidCatch(n, s) {
-    console.error(`[JsonPages] Component Crash [${this.props.type}]:`, n, s);
+  componentDidCatch(n, o) {
+    console.error(`[JsonPages] Component Crash [${this.props.type}]:`, n, o);
   }
   render() {
     return this.state.hasError ? /* @__PURE__ */ r.jsxs("div", { className: "p-8 m-4 bg-amber-500/5 border-2 border-dashed border-amber-500/20 rounded-xl flex flex-col items-center text-center gap-3", children: [
-      /* @__PURE__ */ r.jsx(ht, { className: "text-amber-500", size: 32 }),
+      /* @__PURE__ */ r.jsx(gt, { className: "text-amber-500", size: 32 }),
       /* @__PURE__ */ r.jsxs("div", { className: "space-y-1", children: [
         /* @__PURE__ */ r.jsx("h4", { className: "text-sm font-bold text-amber-200 uppercase tracking-tight", children: "Component Error" }),
         /* @__PURE__ */ r.jsxs("p", { className: "text-xs text-amber-500/70 font-mono", children: [
@@ -35970,8 +35976,8 @@ class gt extends reactExports.Component {
     ] }) : this.props.children;
   }
 }
-const vt = ({ type: e, scope: n, isSelected: s, sectionId: a, sectionIndex: o = 0, totalSections: d2 = 0, onReorder: m }) => {
-  const y = typeof o == "number" && o > 0 && m, C = typeof o == "number" && o < d2 - 1 && m;
+const bt = ({ type: e, scope: n, isSelected: o, sectionId: a, sectionIndex: s = 0, totalSections: i = 0, onReorder: l }) => {
+  const v2 = typeof s == "number" && s > 0 && l, S = typeof s == "number" && s < i - 1 && l;
   return /* @__PURE__ */ r.jsx(
     "div",
     {
@@ -35980,7 +35986,7 @@ const vt = ({ type: e, scope: n, isSelected: s, sectionId: a, sectionIndex: o = 
       className: ur(
         "absolute inset-0 pointer-events-none transition-all duration-200 z-[50]",
         "border-2 border-transparent group-hover:border-blue-400/50 group-hover:border-dashed",
-        s && "border-2 border-blue-600 border-solid bg-blue-500/5"
+        o && "border-2 border-blue-600 border-solid bg-blue-500/5"
       ),
       children: /* @__PURE__ */ r.jsxs(
         "div",
@@ -35988,36 +35994,36 @@ const vt = ({ type: e, scope: n, isSelected: s, sectionId: a, sectionIndex: o = 
           className: ur(
             "absolute top-0 right-0 flex flex-nowrap items-center gap-1 pl-1 pr-2 py-1 text-[9px] font-black uppercase tracking-widest transition-opacity pointer-events-auto",
             "bg-blue-600 text-white",
-            s || "group-hover:opacity-100 opacity-0"
+            o || "group-hover:opacity-100 opacity-0"
           ),
           children: [
-            m && a != null && /* @__PURE__ */ r.jsxs("span", { className: "shrink-0 flex items-center gap-0.5", children: [
+            l && a != null && /* @__PURE__ */ r.jsxs("span", { className: "shrink-0 flex items-center gap-0.5", children: [
               /* @__PURE__ */ r.jsx(
                 "button",
                 {
                   type: "button",
-                  onClick: (b2) => {
-                    b2.stopPropagation(), y && m(a, o - 1);
+                  onClick: (y) => {
+                    y.stopPropagation(), v2 && l(a, s - 1);
                   },
-                  disabled: !y,
+                  disabled: !v2,
                   className: "inline-flex items-center justify-center min-w-[18px] min-h-[18px] rounded bg-white/20 hover:bg-white/30 disabled:opacity-30 disabled:pointer-events-none",
                   title: "Move section up",
                   "aria-label": "Move section up",
-                  children: /* @__PURE__ */ r.jsx(pt, { size: 12, strokeWidth: 2.5 })
+                  children: /* @__PURE__ */ r.jsx(ft, { size: 12, strokeWidth: 2.5 })
                 }
               ),
               /* @__PURE__ */ r.jsx(
                 "button",
                 {
                   type: "button",
-                  onClick: (b2) => {
-                    b2.stopPropagation(), C && m(a, o + 2);
+                  onClick: (y) => {
+                    y.stopPropagation(), S && l(a, s + 2);
                   },
-                  disabled: !C,
+                  disabled: !S,
                   className: "inline-flex items-center justify-center min-w-[18px] min-h-[18px] rounded bg-white/20 hover:bg-white/30 disabled:opacity-30 disabled:pointer-events-none",
                   title: "Move section down",
                   "aria-label": "Move section down",
-                  children: /* @__PURE__ */ r.jsx(ut, { size: 12, strokeWidth: 2.5 })
+                  children: /* @__PURE__ */ r.jsx(mt, { size: 12, strokeWidth: 2.5 })
                 }
               )
             ] }),
@@ -36032,93 +36038,93 @@ const vt = ({ type: e, scope: n, isSelected: s, sectionId: a, sectionIndex: o = 
 }, ee = ({
   section: e,
   menu: n,
-  selectedId: s,
+  selectedId: o,
   reorderable: a,
-  sectionIndex: o,
-  totalSections: d2,
-  onReorder: m
+  sectionIndex: s,
+  totalSections: i,
+  onReorder: l
 }) => {
-  const { mode: y } = at(), { registry: C, overlayDisabledSectionTypes: b2 } = st(), f = y === "studio", x2 = f && s === e.id, p = C[e.type], i = e.type === "header" || e.type === "footer" ? "global" : "local", l = Array.isArray(b2) ? b2.includes(e.type) : false, E = e.type === "header" && typeof e.settings == "object" && e.settings !== null && "sticky" in e.settings && !!e.settings.sticky;
-  if (!p)
+  const { mode: v2 } = it(), { registry: S, overlayDisabledSectionTypes: y } = at(), p = v2 === "studio", E = p && o === e.id, f = S[e.type], c = e.type === "header" || e.type === "footer" ? "global" : "local", d2 = Array.isArray(y) ? y.includes(e.type) : false, x2 = e.type === "header" && typeof e.settings == "object" && e.settings !== null && "sticky" in e.settings && !!e.settings.sticky;
+  if (!f)
     return /* @__PURE__ */ r.jsxs("div", { className: "p-6 m-4 bg-red-500/10 text-red-400 border border-red-500/20 rounded-lg text-sm font-mono", children: [
       /* @__PURE__ */ r.jsx("strong", { children: "Missing Component:" }),
       " ",
       e.type
     ] });
   const h = () => {
-    const A = p;
+    const A = f;
     return n ? /* @__PURE__ */ r.jsx(A, { data: e.data, settings: e.settings, menu: n }) : /* @__PURE__ */ r.jsx(A, { data: e.data, settings: e.settings });
-  }, j = typeof e.data == "object" && e.data !== null && "anchorId" in e.data ? String(e.data.anchorId ?? "") : void 0;
+  }, C = typeof e.data == "object" && e.data !== null && "anchorId" in e.data ? String(e.data.anchorId ?? "") : void 0;
   return /* @__PURE__ */ r.jsxs(
     "div",
     {
-      id: j || void 0,
-      "data-section-id": f ? e.id : void 0,
-      "data-section-type": f ? e.type : void 0,
-      "data-section-scope": f ? i : void 0,
-      ...f && x2 ? { "data-jp-selected": true } : {},
+      id: C || void 0,
+      "data-section-id": p ? e.id : void 0,
+      "data-section-type": p ? e.type : void 0,
+      "data-section-scope": p ? c : void 0,
+      ...p && E ? { "data-jp-selected": true } : {},
       className: ur(
         "relative w-full",
-        f && !l && "group cursor-pointer",
-        f && E ? "sticky top-0 z-[60]" : e.type === "header" ? "relative" : "relative z-0",
-        x2 && "z-[70]"
+        p && !d2 && "group cursor-pointer",
+        p && x2 ? "sticky top-0 z-[60]" : e.type === "header" ? "relative" : "relative z-0",
+        E && "z-[70]"
       ),
       children: [
-        /* @__PURE__ */ r.jsx("div", { className: e.type === "header" ? "relative" : "relative z-0", children: /* @__PURE__ */ r.jsx(gt, { type: e.type, children: h() }) }),
-        f && !l && /* @__PURE__ */ r.jsx(
-          vt,
+        /* @__PURE__ */ r.jsx("div", { className: e.type === "header" ? "relative" : "relative z-0", children: /* @__PURE__ */ r.jsx(vt, { type: e.type, children: h() }) }),
+        p && !d2 && /* @__PURE__ */ r.jsx(
+          bt,
           {
             type: e.type,
-            scope: i,
-            isSelected: !!x2,
-            sectionId: a && i === "local" ? e.id : void 0,
-            sectionIndex: a && i === "local" ? o : void 0,
-            totalSections: a && i === "local" ? d2 : void 0,
-            onReorder: a && i === "local" ? m : void 0
+            scope: c,
+            isSelected: !!E,
+            sectionId: a && c === "local" ? e.id : void 0,
+            sectionIndex: a && c === "local" ? s : void 0,
+            totalSections: a && c === "local" ? i : void 0,
+            onReorder: a && c === "local" ? l : void 0
           }
         )
       ]
     }
   );
-}, bt = (e) => {
+}, yt = (e) => {
   reactExports.useEffect(() => {
     document.title = e.title;
     let n = document.querySelector('meta[name="description"]');
     n || (n = document.createElement("meta"), n.setAttribute("name", "description"), document.head.appendChild(n)), n.setAttribute("content", e.description);
   }, [e.title, e.description]);
-}, yt = "application/json", Pe = ({
+}, Et = "application/json", Ae = ({
   pageConfig: e,
   siteConfig: n,
-  menuConfig: s,
+  menuConfig: o,
   selectedId: a,
-  onReorder: o,
-  scrollToSectionId: d2,
-  onActiveSectionChange: m
+  onReorder: s,
+  scrollToSectionId: i,
+  onActiveSectionChange: l
 }) => {
-  bt(e.meta);
-  const [y, C] = reactExports.useState(null), b2 = reactExports.useRef({}), f = reactExports.useRef(m);
-  f.current = m;
-  const x2 = tt$1(e, n), p = x2 ? n.header ?? null : null, i = n.footer ?? null, l = (v2) => {
+  yt(e.meta);
+  const [v2, S] = reactExports.useState(null), y = reactExports.useRef({}), p = reactExports.useRef(l);
+  p.current = l;
+  const E = tt$1(e, n), f = E ? n.header ?? null : null, c = n.footer ?? null, d2 = (b2) => {
     var g;
-    (g = f.current) == null || g.call(f, v2);
+    (g = p.current) == null || g.call(p, b2);
   };
   reactExports.useEffect(() => {
-    if (!d2) return;
-    const v2 = b2.current[d2];
-    v2 && v2.scrollIntoView({ behavior: "smooth", block: "center" });
-  }, [d2]), reactExports.useEffect(() => {
-    if (!f.current) return;
+    if (!i) return;
+    const b2 = y.current[i];
+    b2 && b2.scrollIntoView({ behavior: "smooth", block: "center" });
+  }, [i]), reactExports.useEffect(() => {
+    if (!p.current) return;
     const g = [
-      ...p ? [p.id] : [],
+      ...f ? [f.id] : [],
       ...e.sections.map((T2) => T2.id),
-      ...i ? [i.id] : []
-    ], u2 = new IntersectionObserver(
+      ...c ? [c.id] : []
+    ], m = new IntersectionObserver(
       (T2) => {
         T2.forEach((P) => {
-          var O2;
+          var I;
           if (P.isIntersecting && P.intersectionRatio > 0.5) {
             const D2 = P.target.getAttribute("data-section-id");
-            D2 && ((O2 = f.current) == null || O2.call(f, D2));
+            D2 && ((I = p.current) == null || I.call(p, D2));
           }
         });
       },
@@ -36127,37 +36133,37 @@ const vt = ({ type: e, scope: n, isSelected: s, sectionId: a, sectionIndex: o = 
     let w = false;
     const k = requestAnimationFrame(() => {
       w || g.forEach((T2) => {
-        const P = b2.current[T2];
-        P && u2.observe(P);
+        const P = y.current[T2];
+        P && m.observe(P);
       });
     });
     return () => {
-      w = true, cancelAnimationFrame(k), u2.disconnect();
+      w = true, cancelAnimationFrame(k), m.disconnect();
     };
-  }, [i, p, e.sections, e["global-header"], x2]);
-  const E = (v2, g) => {
-    v2.preventDefault(), v2.dataTransfer.dropEffect = "move", C(g);
+  }, [c, f, e.sections, e["global-header"], E]);
+  const x2 = (b2, g) => {
+    b2.preventDefault(), b2.dataTransfer.dropEffect = "move", S(g);
   }, h = () => {
-    C(null);
-  }, j = (v2, g) => {
-    if (v2.preventDefault(), C(null), !!o)
+    S(null);
+  }, C = (b2, g) => {
+    if (b2.preventDefault(), S(null), !!s)
       try {
-        const u2 = v2.dataTransfer.getData(yt), { sectionId: w } = JSON.parse(u2);
-        typeof w == "string" && o(w, g);
+        const m = b2.dataTransfer.getData(Et), { sectionId: w } = JSON.parse(m);
+        typeof w == "string" && s(w, g);
       } catch {
       }
   }, A = () => {
-    const v2 = typeof o == "function", g = e.sections.map((u2, w) => {
-      const k = y === w;
-      return v2 ? /* @__PURE__ */ r.jsxs(
+    const b2 = typeof s == "function", g = e.sections.map((m, w) => {
+      const k = v2 === w;
+      return b2 ? /* @__PURE__ */ r.jsxs(
         "div",
         {
           ref: (T2) => {
-            b2.current[u2.id] = T2;
+            y.current[m.id] = T2;
           },
-          "data-section-id": u2.id,
+          "data-section-id": m.id,
           style: { position: "relative" },
-          onMouseEnter: () => l(u2.id),
+          onMouseEnter: () => d2(m.id),
           children: [
             /* @__PURE__ */ r.jsx(
               "div",
@@ -36174,48 +36180,48 @@ const vt = ({ type: e, scope: n, isSelected: s, sectionId: a, sectionIndex: o = 
                   backgroundColor: k ? "rgba(59, 130, 246, 0.4)" : "transparent",
                   borderTop: k ? "2px solid rgb(96, 165, 250)" : "2px solid transparent"
                 },
-                onDragOver: (T2) => E(T2, w),
+                onDragOver: (T2) => x2(T2, w),
                 onDragLeave: h,
-                onDrop: (T2) => j(T2, w)
+                onDrop: (T2) => C(T2, w)
               }
             ),
             /* @__PURE__ */ r.jsx(
               ee,
               {
-                section: u2,
-                menu: at$1(u2, s.main ?? []),
+                section: m,
+                menu: at$1(m, o.main ?? []),
                 selectedId: a,
                 reorderable: true,
                 sectionIndex: w,
                 totalSections: e.sections.length,
-                onReorder: o
+                onReorder: s
               }
             )
           ]
         },
-        u2.id
+        m.id
       ) : /* @__PURE__ */ r.jsx(
         "div",
         {
           ref: (T2) => {
-            b2.current[u2.id] = T2;
+            y.current[m.id] = T2;
           },
-          "data-section-id": u2.id,
-          onMouseEnter: () => l(u2.id),
+          "data-section-id": m.id,
+          onMouseEnter: () => d2(m.id),
           children: /* @__PURE__ */ r.jsx(
             ee,
             {
-              section: u2,
-              menu: at$1(u2, s.main ?? []),
+              section: m,
+              menu: at$1(m, o.main ?? []),
               selectedId: a
             }
           )
         },
-        u2.id
+        m.id
       );
     });
-    if (v2 && g.length > 0) {
-      const u2 = e.sections.length, w = y === u2;
+    if (b2 && g.length > 0) {
+      const m = e.sections.length, w = v2 === m;
       g.push(
         /* @__PURE__ */ r.jsx(
           "div",
@@ -36232,9 +36238,9 @@ const vt = ({ type: e, scope: n, isSelected: s, sectionId: a, sectionIndex: o = 
               backgroundColor: w ? "rgba(59, 130, 246, 0.4)" : "transparent",
               borderTop: w ? "2px solid rgb(96, 165, 250)" : "2px solid transparent"
             },
-            onDragOver: (k) => E(k, u2),
+            onDragOver: (k) => x2(k, m),
             onDragLeave: h,
-            onDrop: (k) => j(k, u2)
+            onDrop: (k) => C(k, m)
           },
           "jp-drop-after-last"
         )
@@ -36243,38 +36249,38 @@ const vt = ({ type: e, scope: n, isSelected: s, sectionId: a, sectionIndex: o = 
     return g;
   };
   return /* @__PURE__ */ r.jsxs("div", { className: "min-h-screen flex flex-col bg-[var(--color-background)]", children: [
-    p != null && /* @__PURE__ */ r.jsx(
+    f != null && /* @__PURE__ */ r.jsx(
       "div",
       {
-        ref: (v2) => {
-          b2.current[p.id] = v2;
+        ref: (b2) => {
+          y.current[f.id] = b2;
         },
-        "data-section-id": p.id,
-        onMouseEnter: () => l(p.id),
+        "data-section-id": f.id,
+        onMouseEnter: () => d2(f.id),
         children: /* @__PURE__ */ r.jsx(
           ee,
           {
-            section: p,
-            menu: at$1(p, s.main ?? []),
+            section: f,
+            menu: at$1(f, o.main ?? []),
             selectedId: a
           }
         )
       }
     ),
     /* @__PURE__ */ r.jsx("main", { className: "flex-1", children: A() }),
-    i != null && /* @__PURE__ */ r.jsx(
+    c != null && /* @__PURE__ */ r.jsx(
       "div",
       {
-        ref: (v2) => {
-          b2.current[i.id] = v2;
+        ref: (b2) => {
+          y.current[c.id] = b2;
         },
-        "data-section-id": i.id,
-        onMouseEnter: () => l(i.id),
+        "data-section-id": c.id,
+        onMouseEnter: () => d2(c.id),
         children: /* @__PURE__ */ r.jsx(
           ee,
           {
-            section: i,
-            menu: at$1(i, s.main ?? []),
+            section: c,
+            menu: at$1(c, o.main ?? []),
             selectedId: a
           }
         )
@@ -36282,9 +36288,35 @@ const vt = ({ type: e, scope: n, isSelected: s, sectionId: a, sectionIndex: o = 
     )
   ] });
 };
-const Tt = { status: "idle", message: "" }, Rt = reactExports.createContext({});
-function Ot(e) {
-  return reactExports.useContext(Rt)[e] ?? Tt;
+const _t = { status: "idle", message: "" }, Rt = reactExports.createContext({});
+function Mt(e) {
+  return reactExports.useContext(Rt)[e] ?? _t;
+}
+function kt(e, n) {
+  return !!(e && n);
+}
+function Ft(e) {
+  const n = e.apiUrl.trim(), o = e.apiKey.trim(), a = kt(n, o), s = a && e.save2RepoFlag, i = a;
+  let l = "local";
+  return a && (l = s ? "static" : "live"), {
+    isCloudMode: a,
+    bootSource: l,
+    hotSaveEnabled: i,
+    save2RepoEnabled: s,
+    showLocalSave: !a,
+    showHotSave: i,
+    showColdSave: s,
+    apiUrl: n,
+    apiKey: o
+  };
+}
+function te(e, n) {
+  const o = e[n];
+  return typeof o == "string" ? o.trim() : "";
+}
+function Ut(e) {
+  const n = te(e, "VITE_OLONJS_CLOUD_URL") || te(e, "VITE_JSONPAGES_CLOUD_URL"), o = te(e, "VITE_OLONJS_API_KEY") || te(e, "VITE_JSONPAGES_API_KEY"), a = e.VITE_SAVE2REPO === "true";
+  return { apiUrl: n, apiKey: o, save2RepoFlag: a };
 }
 const ThemeContext = reactExports.createContext({
   theme: "dark",
@@ -36935,6 +36967,12 @@ const Icon = ({ name: name2, size = 20, className }) => {
   }
   return /* @__PURE__ */ jsxRuntimeExports.jsx(IconComponent, { size, className });
 };
+const __vite_import_meta_env__ = { "BASE_URL": "/", "DEV": false, "MODE": "production", "PROD": true, "SSR": true };
+const cloudEnv = Ut(__vite_import_meta_env__);
+const cloudPolicy = Ft(cloudEnv);
+et$1("/");
+const missingCloudUrl = !cloudPolicy.apiUrl;
+const hasCloudKey = Boolean(cloudPolicy.apiKey);
 function SetupGuide({ recipientEmail }) {
   const steps = [
     {
@@ -36943,14 +36981,14 @@ function SetupGuide({ recipientEmail }) {
       code: '"recipientEmail": "tu@esempio.it"'
     },
     {
-      done: false,
-      label: "VITE_JSONPAGES_CLOUD_URL nel file .env",
-      code: "VITE_JSONPAGES_CLOUD_URL=https://cloud.olonjs.io"
+      done: !missingCloudUrl,
+      label: "VITE_OLONJS_CLOUD_URL (o VITE_JSONPAGES_CLOUD_URL) nel file .env",
+      code: "VITE_OLONJS_CLOUD_URL=https://cloud.olonjs.io/api/v1"
     },
     {
-      done: false,
-      label: "VITE_JSONPAGES_API_KEY nel file .env",
-      code: "VITE_JSONPAGES_API_KEY=sk-..."
+      done: hasCloudKey,
+      label: "VITE_OLONJS_API_KEY (o VITE_JSONPAGES_API_KEY) nel file .env",
+      code: "VITE_OLONJS_API_KEY=sk-..."
     }
   ];
   const allDone = steps.every((s) => s.done);
@@ -36969,7 +37007,7 @@ function SetupGuide({ recipientEmail }) {
 function FormDemoView({ data }) {
   var _a;
   const formId = ((_a = data.anchorId) == null ? void 0 : _a.trim()) || "form-demo";
-  const { status, message } = Ot(formId);
+  const { status, message } = Mt(formId);
   return /* @__PURE__ */ jsxRuntimeExports.jsx("main", { className: "min-h-screen flex items-center justify-center bg-background text-foreground px-6", children: /* @__PURE__ */ jsxRuntimeExports.jsxs("section", { className: "w-full max-w-xl rounded-xl border border-border bg-card p-8 shadow-sm space-y-6", children: [
     data.icon && /* @__PURE__ */ jsxRuntimeExports.jsx("div", { "data-jp-field": "icon", className: "mb-2", children: /* @__PURE__ */ jsxRuntimeExports.jsx(Icon, { name: data.icon, size: 24 }) }),
     data.title && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { children: [
@@ -37489,15 +37527,15 @@ function render(slug2) {
   const resolvedPage = resolvedRuntime.pages[resolved.registrySlug] ?? resolved.page;
   return server_nodeExports.renderToString(
     /* @__PURE__ */ jsxRuntimeExports.jsx(StaticRouter, { location, children: /* @__PURE__ */ jsxRuntimeExports.jsx(
-      ot,
+      st,
       {
         config: {
           registry: ComponentRegistry,
           schemas: SECTION_SCHEMAS,
           tenantId: resolveTenantId()
         },
-        children: /* @__PURE__ */ jsxRuntimeExports.jsx(ue, { mode: "visitor", children: /* @__PURE__ */ jsxRuntimeExports.jsx(ThemeProvider, { children: /* @__PURE__ */ jsxRuntimeExports.jsx(
-          Pe,
+        children: /* @__PURE__ */ jsxRuntimeExports.jsx(me, { mode: "visitor", children: /* @__PURE__ */ jsxRuntimeExports.jsx(ThemeProvider, { children: /* @__PURE__ */ jsxRuntimeExports.jsx(
+          Ae,
           {
             pageConfig: resolvedPage,
             siteConfig: resolvedRuntime.siteConfig,

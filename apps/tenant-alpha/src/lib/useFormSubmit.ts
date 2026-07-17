@@ -1,5 +1,7 @@
 import { useState, useCallback } from 'react';
 
+import { cloudPolicy } from '@/lib/tenantEnv';
+
 export type SubmitStatus = 'idle' | 'submitting' | 'success' | 'error';
 
 interface UseFormSubmitOptions {
@@ -12,22 +14,20 @@ export function useFormSubmit({ source, tenantId }: UseFormSubmitOptions) {
   const [message, setMessage] = useState<string>('');
 
   const submit = useCallback(async (
-    formData: FormData, 
-    recipientEmail: string, 
-    pageSlug: string, 
+    formData: FormData,
+    recipientEmail: string,
+    pageSlug: string,
     sectionId: string
   ) => {
-    const cloudApiUrl = import.meta.env.VITE_JSONPAGES_CLOUD_URL as string | undefined;
-    const cloudApiKey = import.meta.env.VITE_JSONPAGES_API_KEY as string | undefined;
+    const { apiUrl, apiKey } = cloudPolicy;
 
-    if (!cloudApiUrl || !cloudApiKey) {
+    if (!apiUrl || !apiKey) {
       setStatus('error');
       setMessage('Configurazione API non disponibile. Riprova tra poco.');
       return false;
     }
 
-    // Trasformiamo FormData in un oggetto piatto per il payload JSON
-    const data: Record<string, any> = {};
+    const data: Record<string, string> = {};
     formData.forEach((value, key) => {
       data[key] = String(value).trim();
     });
@@ -42,18 +42,17 @@ export function useFormSubmit({ source, tenantId }: UseFormSubmitOptions) {
       submittedAt: new Date().toISOString(),
     };
 
-    // Idempotency Key per evitare doppi invii accidentali
     const idempotencyKey = `form-${sectionId}-${Date.now()}`;
 
     setStatus('submitting');
     setMessage('Invio in corso...');
 
     try {
-      const apiBase = cloudApiUrl.replace(/\/$/, '');
+      const apiBase = apiUrl.replace(/\/$/, '');
       const response = await fetch(`${apiBase}/forms/submit`, {
         method: 'POST',
         headers: {
-          Authorization: `Bearer ${cloudApiKey}`,
+          Authorization: `Bearer ${apiKey}`,
           'Content-Type': 'application/json',
           'Idempotency-Key': idempotencyKey,
         },

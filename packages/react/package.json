@@ -1,6 +1,6 @@
 {
   "name": "@olonjs/react",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "private": false,
   "type": "module",
   "main": "./dist/olonjs-react.umd.cjs",
@@ -35,13 +35,14 @@
   },
   "scripts": {
     "build": "vite build",
+    "prepack": "node scripts/sync-peers-from-stack.js",
     "test": "vitest run"
   },
   "peerDependencies": {
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "react-router-dom": "^6.29.0",
-    "@olonjs/studio": "*"
+    "@olonjs/studio": "^0.1.1"
   },
   "peerDependenciesMeta": {
     "@olonjs/studio": {
@@ -49,10 +50,11 @@
     }
   },
   "dependencies": {
-    "@olonjs/core": "^1.1.16",
+    "@olonjs/core": "^1.1.18",
     "lucide-react": "^0.474.0"
   },
   "devDependencies": {
+    "@olonjs/stack": "^1.0.0",
     "@testing-library/jest-dom": "^6.6.3",
     "@testing-library/react": "^16.2.0",
     "@testing-library/user-event": "^14.6.1",

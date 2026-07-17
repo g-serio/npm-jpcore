@@ -1,7 +1,13 @@
 #!/usr/bin/env node
 /**
- * Enterprise release script for @olonjs/stack, @olonjs/core, @olonjs/cli.
+ * Enterprise release script for @olonjs/stack, @olonjs/core, @olonjs/react,
+ * @olonjs/studio, @olonjs/mcp, @olonjs/cli (plus @jsonpages/* compat packages).
  * Run from monorepo root. Uses NPM_TOKEN for authentication (no interactive login).
+ *
+ * Publish order follows the ADR-0016 dependency graph: stack -> core ->
+ * studio -> react (react pins core + the optional studio peer to the
+ * versions just published) -> mcp -> tenant-alpha (pins all three @olonjs/*
+ * packages, then rebuilds + regenerates the CLI DNA template) -> cli -> compat.
  *
  * Usage:
  *   Put NPM_TOKEN in root .env (one line: NPM_TOKEN=npm_xxx), then: npm run release
@@ -188,10 +194,18 @@ function getCommandPlan() {
     { step: "3/6", desc: "@olonjs/core", cmd: "npm run build -w @olonjs/core", cwd: "root", skip: false },
     { step: "3/6", desc: "@olonjs/core", cmd: "npm version patch --no-git-tag-version -w @olonjs/core", cwd: "root", skip: false },
     { step: "3/6", desc: "@olonjs/core (publish)", cmd: "npm publish --access public -w @olonjs/core", cwd: "root", skip: dryRun },
-    { step: "3b/6", desc: "@olonjs/mcp", cmd: "npm run build -w @olonjs/mcp", cwd: "root", skip: false },
-    { step: "3b/6", desc: "@olonjs/mcp", cmd: "npm version patch --no-git-tag-version -w @olonjs/mcp", cwd: "root", skip: false },
-    { step: "3b/6", desc: "@olonjs/mcp (publish)", cmd: "npm publish --access public -w @olonjs/mcp", cwd: "root", skip: dryRun },
-    { step: "4/6", desc: "tenant-alpha", cmd: "Update package.json @olonjs/core -> ^<new-version>", cwd: "apps/tenant-alpha", skip: false },
+    { step: "3b/6", desc: "@olonjs/studio", cmd: "Update package.json @olonjs/core -> ^<new-version>", cwd: "packages/studio", skip: false },
+    { step: "3b/6", desc: "@olonjs/studio", cmd: "npm run build -w @olonjs/studio", cwd: "root", skip: false },
+    { step: "3b/6", desc: "@olonjs/studio", cmd: "npm version patch --no-git-tag-version -w @olonjs/studio", cwd: "root", skip: false },
+    { step: "3b/6", desc: "@olonjs/studio (publish)", cmd: "npm publish --access public -w @olonjs/studio", cwd: "root", skip: dryRun },
+    { step: "3c/6", desc: "@olonjs/react", cmd: "Update package.json @olonjs/core -> ^<new-version>, peerDependencies['@olonjs/studio'] -> ^<studio-version>", cwd: "packages/react", skip: false },
+    { step: "3c/6", desc: "@olonjs/react", cmd: "npm run build -w @olonjs/react", cwd: "root", skip: false },
+    { step: "3c/6", desc: "@olonjs/react", cmd: "npm version patch --no-git-tag-version -w @olonjs/react", cwd: "root", skip: false },
+    { step: "3c/6", desc: "@olonjs/react (publish)", cmd: "npm publish --access public -w @olonjs/react", cwd: "root", skip: dryRun },
+    { step: "3d/6", desc: "@olonjs/mcp", cmd: "npm run build -w @olonjs/mcp", cwd: "root", skip: false },
+    { step: "3d/6", desc: "@olonjs/mcp", cmd: "npm version patch --no-git-tag-version -w @olonjs/mcp", cwd: "root", skip: false },
+    { step: "3d/6", desc: "@olonjs/mcp (publish)", cmd: "npm publish --access public -w @olonjs/mcp", cwd: "root", skip: dryRun },
+    { step: "4/6", desc: "tenant-alpha", cmd: "Update package.json @olonjs/core/@olonjs/react/@olonjs/studio -> ^<new-versions>", cwd: "apps/tenant-alpha", skip: false },
     { step: "4/6", desc: "tenant-alpha", cmd: "npm install -w tenant-alpha", cwd: "root", skip: false },
     { step: "4/6", desc: "tenant-alpha", cmd: "npm run build -w tenant-alpha", cwd: "root", skip: false },
     { step: "4/6", desc: "tenant-alpha", cmd: "npm run dist -w tenant-alpha", cwd: "root", skip: false },
@@ -254,8 +268,45 @@ function stepCore() {
   return newVersion;
 }
 
+function stepStudio(coreVersion) {
+  log("Step 3b/6: @olonjs/studio — pin @olonjs/core, build, version patch & publish (from root -w)");
+  const dir = path.join(ROOT, "packages", "studio");
+  const pkg = readPackageJson(dir);
+  pkg.dependencies["@olonjs/core"] = `^${coreVersion}`;
+  writePackageJson(dir, pkg);
+  run("npm run build -w @olonjs/studio");
+  run("npm version patch --no-git-tag-version -w @olonjs/studio");
+  const newVersion = getVersion(dir);
+  if (!dryRun) {
+    run("npm publish --access public -w @olonjs/studio");
+  } else {
+    log("[dry-run] Skipping npm publish for studio");
+  }
+  return newVersion;
+}
+
+function stepReact(coreVersion, studioVersion) {
+  log("Step 3c/6: @olonjs/react — pin @olonjs/core + @olonjs/studio, build, version patch & publish (from root -w)");
+  const dir = path.join(ROOT, "packages", "react");
+  const pkg = readPackageJson(dir);
+  pkg.dependencies["@olonjs/core"] = `^${coreVersion}`;
+  if (pkg.peerDependencies && pkg.peerDependencies["@olonjs/studio"]) {
+    pkg.peerDependencies["@olonjs/studio"] = `^${studioVersion}`;
+  }
+  writePackageJson(dir, pkg);
+  run("npm run build -w @olonjs/react");
+  run("npm version patch --no-git-tag-version -w @olonjs/react");
+  const newVersion = getVersion(dir);
+  if (!dryRun) {
+    run("npm publish --access public -w @olonjs/react");
+  } else {
+    log("[dry-run] Skipping npm publish for react");
+  }
+  return newVersion;
+}
+
 function stepMcp() {
-  log("Step 3b/6: @olonjs/mcp — build, version patch & publish (from root -w)");
+  log("Step 3d/6: @olonjs/mcp — build, version patch & publish (from root -w)");
   const dir = path.join(ROOT, "packages", "mcp");
   run("npm run build -w @olonjs/mcp");
   run("npm version patch --no-git-tag-version -w @olonjs/mcp");
@@ -268,17 +319,29 @@ function stepMcp() {
   return newVersion;
 }
 
-function stepTenant(tenantName, coreVersion) {
-  log(`Step 4/6: ${tenantName} — pin @olonjs/core, build & dist (from root -w)`);
+function stepTenant(tenantName, coreVersion, reactVersion, studioVersion) {
+  log(`Step 4/6: ${tenantName} — pin @olonjs/core/@olonjs/react/@olonjs/studio, build & dist (from root -w)`);
   const dir = path.join(ROOT, "apps", tenantName);
   const pkg = readPackageJson(dir);
-  const prev = pkg.dependencies["@olonjs/core"] ?? pkg.dependencies["@jsonpages/core"];
+  const prevCore = pkg.dependencies["@olonjs/core"] ?? pkg.dependencies["@jsonpages/core"];
+  const prevReact = pkg.dependencies["@olonjs/react"];
+  const prevStudio = pkg.dependencies["@olonjs/studio"];
   pkg.dependencies["@olonjs/core"] = `^${coreVersion}`;
   if (pkg.dependencies["@jsonpages/core"]) {
     delete pkg.dependencies["@jsonpages/core"];
   }
+  if (pkg.dependencies["@olonjs/react"]) {
+    pkg.dependencies["@olonjs/react"] = `^${reactVersion}`;
+  }
+  if (pkg.dependencies["@olonjs/studio"]) {
+    pkg.dependencies["@olonjs/studio"] = `^${studioVersion}`;
+  }
   writePackageJson(dir, pkg);
-  log(`Updated ${tenantName} @olonjs/core: ${prev ?? "(unset)"} -> ^${coreVersion}`);
+  log(
+    `Updated ${tenantName}: @olonjs/core ${prevCore ?? "(unset)"} -> ^${coreVersion}, ` +
+      `@olonjs/react ${prevReact ?? "(unset)"} -> ^${reactVersion}, ` +
+      `@olonjs/studio ${prevStudio ?? "(unset)"} -> ^${studioVersion}`
+  );
   run(`npm install -w ${tenantName}`);
   run(`npm run build -w ${tenantName}`);
   run(`npm run dist -w ${tenantName}`);
@@ -341,8 +404,10 @@ function main() {
     stepBuildAll();
     const stackVersion = stepStack();
     const coreVersion = stepCore();
+    const studioVersion = stepStudio(coreVersion);
+    const reactVersion = stepReact(coreVersion, studioVersion);
     const mcpVersion = stepMcp();
-    stepTenant("tenant-alpha", coreVersion);
+    stepTenant("tenant-alpha", coreVersion, reactVersion, studioVersion);
     const cliVersion = stepCli();
     stepCompatPackages(stackVersion, coreVersion, cliVersion);
 

@@ -3,7 +3,7 @@
  * Bootstrap, persistence, and engine wiring — logic lives in lib/hooks.
  */
 import { useEffect, useMemo } from 'react';
-import { JsonPagesEngine, OlonFormsContext } from '@olonjs/react';
+import { JsonPagesEngine, OlonFormsContext, createHotSaveHandler } from '@olonjs/react';
 import type { JsonPagesConfig, ProjectState } from '@olonjs/core';
 import { withBasePath } from '@olonjs/core';
 import { ComponentRegistry } from '@/lib/ComponentRegistry';
@@ -36,7 +36,7 @@ import {
   useInjectedTenantCss,
   useTenantFontsReady,
 } from '@/lib/tenantCss';
-import { APP_BASE_PATH, CLOUD_API_KEY, CLOUD_API_URL, TENANT_ID } from '@/lib/tenantEnv';
+import { APP_BASE_PATH, TENANT_ID, cloudPolicy } from '@/lib/tenantEnv';
 import { useAssetsManifest } from '@/lib/useAssetsManifest';
 import { useCloudSave } from '@/lib/useCloudSave';
 import { useTenantBootstrap } from '@/lib/useTenantBootstrap';
@@ -61,15 +61,39 @@ function App() {
     themeConfigSeed,
   });
   useAdminStudioContent({
-    enabled: bootstrap.isHotSaveMode,
+    enabled: bootstrap.bootSource === 'live',
     apiCandidates: bootstrap.cloudApiCandidates,
-    apiKey: CLOUD_API_KEY,
+    apiKey: cloudPolicy.apiKey,
     setPages: bootstrap.setPages,
     setSiteConfig: bootstrap.setSiteConfig,
-    setCollections: bootstrap.setCollections,
+    onSettled: bootstrap.markCloudContentReady,
   });
-  const { assetsManifest, loadAssetsManifest, cloudApiCandidates } = useAssetsManifest(bootstrap.isCloudMode);
+  const { assetsManifest, loadAssetsManifest, cloudApiCandidates } = useAssetsManifest(cloudPolicy.isCloudMode);
   const { cloudSaveUi, runCloudSave, closeCloudDrawer, retryCloudSave } = useCloudSave();
+
+  const hotSave = useMemo(
+    () =>
+      createHotSaveHandler({
+        apiUrl: cloudPolicy.apiUrl,
+        apiKey: cloudPolicy.apiKey,
+        onSuccess: ({ state, slug, apiUrl, apiKey }) => {
+          const keyFingerprint = cloudFingerprintFromUrl(apiUrl, apiKey);
+          const normalizedSlug = normalizeSlugForCache(slug);
+          const existing = readCachedCloudContent(keyFingerprint);
+          writeCachedCloudContent({
+            keyFingerprint,
+            savedAt: Date.now(),
+            siteConfig: state.site ?? null,
+            collections: state.collections,
+            pages: {
+              ...(existing?.pages ?? {}),
+              [normalizedSlug]: state.page,
+            },
+          });
+        },
+      }),
+    [],
+  );
 
   const tenantCssParts = useMemo(() => extractLeadingRemoteCssImports(tenantCss), []);
   const resolvedTenantCss = useMemo(
@@ -109,9 +133,10 @@ function App() {
   }, [canPaintVisitor, bootstrap.enginePages, bootstrap.siteConfig]);
 
   const engineCollections =
-    bootstrap.isHotSaveMode || Object.keys(bootstrap.collections).length > 0
+    bootstrap.bootSource === 'live' || Object.keys(bootstrap.collections).length > 0
       ? bootstrap.collections
       : fileCollections;
+
   const engineRefDocuments = useMemo(
     () => ({
       'menu.json': bootstrap.menuConfig,
@@ -120,7 +145,6 @@ function App() {
     }),
     [bootstrap.menuConfig],
   );
-
   const config: JsonPagesConfig = {
     tenantId: TENANT_ID,
     basePath: APP_BASE_PATH,
@@ -159,48 +183,13 @@ function App() {
           setCollections: bootstrap.setCollections,
         });
       },
-      async hotSave(state: ProjectState, slug: string): Promise<void> {
-        if (!bootstrap.isCloudMode || !CLOUD_API_URL || !CLOUD_API_KEY) {
-          throw new Error('Cloud mode is not configured for hot save.');
-        }
-        const apiBase = CLOUD_API_URL.replace(/\/$/, '');
-        const res = await fetch(`${apiBase}/hotSave`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${CLOUD_API_KEY}`,
-          },
-          body: JSON.stringify({
-            slug,
-            page: state.page,
-            siteConfig: state.site,
-            collections: state.collections,
-          }),
-        });
-        const body = (await res.json().catch(() => ({}))) as { error?: string; code?: string };
-        if (!res.ok) {
-          throw new Error(body.error || body.code || `Hot save failed: ${res.status}`);
-        }
-        const keyFingerprint = cloudFingerprintFromUrl(CLOUD_API_URL, CLOUD_API_KEY);
-        const normalizedSlug = normalizeSlugForCache(slug);
-        const existing = readCachedCloudContent(keyFingerprint);
-        writeCachedCloudContent({
-          keyFingerprint,
-          savedAt: Date.now(),
-          siteConfig: state.site ?? null,
-          collections: state.collections,
-          pages: {
-            ...(existing?.pages ?? {}),
-            [normalizedSlug]: state.page,
-          },
-        });
-      },
+      hotSave,
       async coldSave(state: ProjectState, slug: string): Promise<void> {
         await runCloudSave({ state, slug }, true);
       },
-      showLocalSave: !bootstrap.isCloudMode,
-      showHotSave: bootstrap.isHotSaveMode,
-      showColdSave: bootstrap.isSave2RepoMode,
+      showLocalSave: cloudPolicy.showLocalSave,
+      showHotSave: cloudPolicy.showHotSave,
+      showColdSave: cloudPolicy.showColdSave,
     },
     assets: {
       assetsBaseUrl: withBasePath('/assets', APP_BASE_PATH),
@@ -208,9 +197,9 @@ function App() {
       onAssetUpload: (file) =>
         uploadTenantAsset(file, {
           basePath: APP_BASE_PATH,
-          isCloudMode: bootstrap.isCloudMode,
-          cloudApiUrl: CLOUD_API_URL,
-          cloudApiKey: CLOUD_API_KEY,
+          isCloudMode: cloudPolicy.isCloudMode,
+          cloudApiUrl: cloudPolicy.apiUrl,
+          cloudApiKey: cloudPolicy.apiKey,
           apiBases: cloudApiCandidates,
           onUploaded: loadAssetsManifest,
         }),
@@ -221,7 +210,7 @@ function App() {
     <ThemeProvider>
       <OlonFormsContext.Provider value={formStates}>
         <TenantBootstrapChrome
-          isCloudMode={bootstrap.isCloudMode}
+          isCloudMode={cloudPolicy.isCloudMode}
           showTopProgress={bootstrap.showTopProgress || (bootstrap.shouldRenderEngine && !fontsReady)}
           contentMode={bootstrap.contentMode}
           contentFallback={bootstrap.contentFallback}

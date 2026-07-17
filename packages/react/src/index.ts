@@ -15,3 +15,15 @@ export { StudioProvider, useStudio } from './studio-mode/StudioContext';
 export { IconRegistryContext, useIconRegistry, type IconRegistry } from './icons/IconRegistryContext';
 export { DefaultNotFound } from './lib/DefaultNotFound';
 export { OlonFormsContext, useFormState, type FormState, type FormStatus } from './dna/lib/OlonFormsContext';
+export {
+  resolveCloudPolicy,
+  readCloudEnvFromVite,
+  buildApiCandidates,
+  createHotSaveHandler,
+  type CloudBootSource,
+  type CloudEnvInput,
+  type CloudPolicy,
+  type ViteCloudEnvBag,
+  type CreateHotSaveHandlerOptions,
+  type HotSaveHandler,
+} from './cloud';

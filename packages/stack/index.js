@@ -12,5 +12,8 @@ const data = JSON.parse(
 
 export default data;
 export const peerDependencies = data.peerDependencies ?? {};
+export const corePeerDependencies = data.corePeerDependencies ?? {};
+export const reactBindingPeerDependencies = data.reactBindingPeerDependencies ?? {};
+export const packages = data.packages ?? {};
 export const dependencies = data.dependencies ?? {};
 export const devDependencies = data.devDependencies ?? {};

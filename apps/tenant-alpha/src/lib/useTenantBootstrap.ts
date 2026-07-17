@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import { logBootstrapEvent, toCloudLoadFailure } from '@/lib/cloud/bootstrapTelemetry';
 
@@ -28,7 +28,7 @@ import {
 
 import type { JsonPagesConfig } from '@olonjs/core';
 
-import { APP_BASE_PATH, CLOUD_API_KEY, CLOUD_API_URL, SAVE2REPO_ENABLED } from '@/lib/tenantEnv';
+import { APP_BASE_PATH, CLOUD_API_KEY, CLOUD_API_URL, cloudPolicy } from '@/lib/tenantEnv';
 
 import type { MenuConfig, PageConfig, SiteConfig, ThemeConfig } from '@/types';
 
@@ -110,13 +110,10 @@ export function useTenantBootstrap({
 
 }: UseTenantBootstrapOptions) {
 
-  const isCloudMode = Boolean(CLOUD_API_URL && CLOUD_API_KEY);
+  const { isCloudMode, bootSource } = cloudPolicy;
 
-  const isSave2RepoMode = isCloudMode && SAVE2REPO_ENABLED;
-
-  const isHotSaveMode = isCloudMode && !isSave2RepoMode;
-
-  const useRenderBootstrap = isHotSaveMode;
+  /** Live SPP render boot — only when bootSource is live (not static Save2Repo). */
+  const useRenderBootstrap = bootSource === 'live';
 
 
 
@@ -180,7 +177,11 @@ export function useTenantBootstrap({
 
   const isTenantEmpty = Object.keys(pages).length === 0;
 
-
+  /** Call when live /admin content sync has finished (success, cache, or error). */
+  const markCloudContentReady = useCallback(() => {
+    setShowTopProgress(false);
+    setHasInitialCloudResolved(true);
+  }, []);
 
   const retryBootstrap = () => {
 
@@ -220,7 +221,7 @@ export function useTenantBootstrap({
 
 
 
-    if (isSave2RepoMode) {
+    if (bootSource === 'static') {
 
       if (contentLoadInFlight.current) return;
 
@@ -317,17 +318,12 @@ export function useTenantBootstrap({
 
 
     if (isAdminPath(window.location.pathname, APP_BASE_PATH)) {
-
+      // Live /admin: content comes from useAdminStudioContent — do not paint empty first.
       setContentMode('cloud');
-
       setContentFallback(null);
-
-      setShowTopProgress(false);
-
-      setHasInitialCloudResolved(true);
-
+      setShowTopProgress(true);
+      setHasInitialCloudResolved(false);
       return;
-
     }
 
 
@@ -624,7 +620,7 @@ export function useTenantBootstrap({
 
     isCloudMode,
 
-    isSave2RepoMode,
+    bootSource,
 
     useRenderBootstrap,
 
@@ -670,9 +666,7 @@ export function useTenantBootstrap({
 
     isCloudMode,
 
-    isSave2RepoMode,
-
-    isHotSaveMode,
+    bootSource,
 
     contentMode,
 
@@ -685,6 +679,8 @@ export function useTenantBootstrap({
     shouldRenderEngine,
 
     isTenantEmpty,
+
+    markCloudContentReady,
 
     retryBootstrap,
 

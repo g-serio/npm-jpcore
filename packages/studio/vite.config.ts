@@ -18,7 +18,7 @@ import tailwindcss from '@tailwindcss/vite';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-const EXTERNAL_DEPS = ['react', 'react-dom', 'react-router-dom', '@olonjs/core'];
+const EXTERNAL_DEPS = ['react', 'react-dom', 'react-router-dom', '@olonjs/core', 'zod'];
 
 export default defineConfig({
   plugins: [

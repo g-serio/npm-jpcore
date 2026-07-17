@@ -1,8 +1,7 @@
 import { useEffect, useRef } from 'react';
 import type { Dispatch, SetStateAction } from 'react';
-import type { JsonPagesConfig } from '@olonjs/core';
 import { applyLegacyCloudPayload, fetchLegacyCloudContentPayload } from '@/lib/cloud/cloudContentClient';
-import { cloudFingerprint, writeCachedCloudContent } from '@/lib/cloud/cloudCache';
+import { cloudFingerprint, readCachedPages, writeCachedCloudContent } from '@/lib/cloud/cloudCache';
 import { isAdminPath, patchHistoryNavigation } from '@/lib/spp';
 import { APP_BASE_PATH } from '@/lib/tenantEnv';
 import type { PageConfig, SiteConfig } from '@/types';
@@ -15,7 +14,8 @@ type UseAdminStudioContentOptions = {
   apiKey: string;
   setPages: Dispatch<SetStateAction<Record<string, PageConfig>>>;
   setSiteConfig: Dispatch<SetStateAction<SiteConfig>>;
-  setCollections: Dispatch<SetStateAction<NonNullable<JsonPagesConfig['collections']>>>;
+  /** Fired when /admin may paint — after cache hit and/or network attempt settles. */
+  onSettled?: () => void;
 };
 
 /** Studio `/admin` sync via legacy `/content` — never mixed into visitor `/render` bootstrap. */
@@ -25,13 +25,28 @@ export function useAdminStudioContent({
   apiKey,
   setPages,
   setSiteConfig,
-  setCollections,
+  onSettled,
 }: UseAdminStudioContentOptions) {
   const loadedRef = useRef(false);
   const inFlightRef = useRef<Promise<void> | null>(null);
+  const settledRef = useRef(false);
 
   useEffect(() => {
-    if (!enabled || apiCandidates.length === 0 || !apiKey.trim()) return;
+    settledRef.current = false;
+    loadedRef.current = false;
+
+    if (!enabled) return;
+
+    const settle = () => {
+      if (settledRef.current) return;
+      settledRef.current = true;
+      onSettled?.();
+    };
+
+    if (apiCandidates.length === 0 || !apiKey.trim()) {
+      settle();
+      return;
+    }
 
     const syncIfAdmin = () => {
       if (!isAdminPath(window.location.pathname, APP_BASE_PATH)) return;
@@ -39,6 +54,14 @@ export function useAdminStudioContent({
 
       const controller = new AbortController();
       const fingerprint = cloudFingerprint(apiCandidates[0]!, apiKey);
+
+      // Paint from cache immediately when present — then refresh from network.
+      const { cachedPages, cachedSite } = readCachedPages(fingerprint);
+      if (cachedPages && Object.keys(cachedPages).length > 0) {
+        setPages(cachedPages);
+        if (cachedSite) setSiteConfig(cachedSite);
+        settle();
+      }
 
       inFlightRef.current = fetchLegacyCloudContentPayload(
         apiCandidates,
@@ -66,6 +89,7 @@ export function useAdminStudioContent({
         })
         .finally(() => {
           inFlightRef.current = null;
+          settle();
         });
     };
 
@@ -75,5 +99,5 @@ export function useAdminStudioContent({
       unpatch();
       inFlightRef.current = null;
     };
-  }, [enabled, apiCandidates, apiKey, setPages, setSiteConfig, setCollections]);
+  }, [enabled, apiCandidates, apiKey, setPages, setSiteConfig, onSettled]);
 }

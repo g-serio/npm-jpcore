@@ -1,7 +1,7 @@
 {
   "version": "1.0.0",
   "kind": "olonjs-page-mcp-manifest",
-  "generatedAt": "2026-07-16T20:34:08.271Z",
+  "generatedAt": "2026-07-17T16:33:46.522Z",
   "slug": "libri/il-gattopardo",
   "title": "Dettaglio libro",
   "description": "Pagina dinamica dettaglio libro alimentata dalla collection libri.",

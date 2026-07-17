@@ -1817,11 +1817,14 @@ cat << 'END_OF_FILE_CONTENT' > "package.json"
     "@tiptap/extension-link": "^2.11.5",
     "@tiptap/react": "^2.11.5",
     "@tiptap/starter-kit": "^2.11.5",
-    "@olonjs/core": "^1.1.16",
+    "@olonjs/core": "^1.1.18",
+    "@olonjs/react": "^0.1.1",
+    "@olonjs/studio": "^0.1.1",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "lucide-react": "^0.474.0",
     "motion": "^12.23.24",
+    "radix-ui": "^1.4.3",
     "react": "^19.0.0",
     "react-markdown": "^9.0.1",
     "react-dom": "^19.0.0",
@@ -2191,8 +2194,6 @@ async function readJsonFile(filePath) {
 }
 
 async function expandCollectionTarget(slug, pageFilePath) {
-  if (!/\[[^\]]+\]/.test(slug)) return [slug];
-
   let pageConfig;
   try {
     pageConfig = await readJsonFile(pageFilePath);
@@ -2206,7 +2207,14 @@ async function expandCollectionTarget(slug, pageFilePath) {
   }
 
   const token = `[${binding.paramKey}]`;
-  if (!slug.includes(token)) return [slug];
+  // Prefer authored route pattern (page.slug) when the file path is not parametric.
+  const authoredSlug =
+    typeof pageConfig.slug === 'string'
+      ? pageConfig.slug.replace(/\\/g, '/').replace(/^\/+|\/+$/g, '')
+      : '';
+  const routePattern =
+    authoredSlug.includes(token) ? authoredSlug : slug.includes(token) ? slug : '';
+  if (!routePattern) return [slug];
 
   const collectionPath = path.resolve(collectionsDir, binding.source, `${binding.source}.json`);
   let collection;
@@ -2218,7 +2226,9 @@ async function expandCollectionTarget(slug, pageFilePath) {
 
   if (!collection || typeof collection !== 'object' || Array.isArray(collection)) return [slug];
   const itemIds = Object.keys(collection).sort((a, b) => a.localeCompare(b));
-  return itemIds.length > 0 ? itemIds.map((itemId) => slug.replace(token, itemId)) : [slug];
+  return itemIds.length > 0
+    ? itemIds.map((itemId) => routePattern.replace(token, itemId))
+    : [slug];
 }
 
 async function listJsonFilesRecursive(dir) {
@@ -2942,10 +2952,9 @@ cat << 'END_OF_FILE_CONTENT' > "src/App.tsx"
  * Bootstrap, persistence, and engine wiring — logic lives in lib/hooks.
  */
 import { useEffect, useMemo } from 'react';
-import { JsonPagesEngine } from '@olonjs/core';
+import { JsonPagesEngine, OlonFormsContext, createHotSaveHandler, persistenceUiFlags } from '@olonjs/react';
 import type { JsonPagesConfig, ProjectState } from '@olonjs/core';
 import { withBasePath } from '@olonjs/core';
-import { OlonFormsContext } from '@olonjs/core';
 import { ComponentRegistry } from '@/lib/ComponentRegistry';
 import { CollectionRegistry } from '@/lib/CollectionRegistry';
 import { SECTION_SCHEMAS } from '@/lib/schemas';
@@ -2976,7 +2985,7 @@ import {
   useInjectedTenantCss,
   useTenantFontsReady,
 } from '@/lib/tenantCss';
-import { APP_BASE_PATH, CLOUD_API_KEY, CLOUD_API_URL, TENANT_ID } from '@/lib/tenantEnv';
+import { APP_BASE_PATH, CLOUD_API_KEY, CLOUD_API_URL, TENANT_ID, cloudPolicy } from '@/lib/tenantEnv';
 import { useAssetsManifest } from '@/lib/useAssetsManifest';
 import { useCloudSave } from '@/lib/useCloudSave';
 import { useTenantBootstrap } from '@/lib/useTenantBootstrap';
@@ -3001,7 +3010,7 @@ function App() {
     themeConfigSeed,
   });
   useAdminStudioContent({
-    enabled: bootstrap.isHotSaveMode,
+    enabled: bootstrap.bootSource === 'live',
     apiCandidates: bootstrap.cloudApiCandidates,
     apiKey: CLOUD_API_KEY,
     setPages: bootstrap.setPages,
@@ -3010,6 +3019,30 @@ function App() {
   });
   const { assetsManifest, loadAssetsManifest, cloudApiCandidates } = useAssetsManifest(bootstrap.isCloudMode);
   const { cloudSaveUi, runCloudSave, closeCloudDrawer, retryCloudSave } = useCloudSave();
+
+  const hotSave = useMemo(
+    () =>
+      createHotSaveHandler({
+        apiUrl: cloudPolicy.apiUrl,
+        apiKey: cloudPolicy.apiKey,
+        onSuccess: ({ state, slug, apiUrl, apiKey }) => {
+          const keyFingerprint = cloudFingerprintFromUrl(apiUrl, apiKey);
+          const normalizedSlug = normalizeSlugForCache(slug);
+          const existing = readCachedCloudContent(keyFingerprint);
+          writeCachedCloudContent({
+            keyFingerprint,
+            savedAt: Date.now(),
+            siteConfig: state.site ?? null,
+            collections: state.collections,
+            pages: {
+              ...(existing?.pages ?? {}),
+              [normalizedSlug]: state.page,
+            },
+          });
+        },
+      }),
+    [],
+  );
 
   const tenantCssParts = useMemo(() => extractLeadingRemoteCssImports(tenantCss), []);
   const resolvedTenantCss = useMemo(
@@ -3049,9 +3082,11 @@ function App() {
   }, [canPaintVisitor, bootstrap.enginePages, bootstrap.siteConfig]);
 
   const engineCollections =
-    bootstrap.isHotSaveMode || Object.keys(bootstrap.collections).length > 0
+    bootstrap.bootSource === 'live' || Object.keys(bootstrap.collections).length > 0
       ? bootstrap.collections
       : fileCollections;
+
+      // TOASK: why this if we have a menuConfig Object?
   const engineRefDocuments = useMemo(
     () => ({
       'menu.json': bootstrap.menuConfig,
@@ -3060,7 +3095,7 @@ function App() {
     }),
     [bootstrap.menuConfig],
   );
-
+  // TOASK END
   const config: JsonPagesConfig = {
     tenantId: TENANT_ID,
     basePath: APP_BASE_PATH,
@@ -3099,48 +3134,11 @@ function App() {
           setCollections: bootstrap.setCollections,
         });
       },
-      async hotSave(state: ProjectState, slug: string): Promise<void> {
-        if (!bootstrap.isCloudMode || !CLOUD_API_URL || !CLOUD_API_KEY) {
-          throw new Error('Cloud mode is not configured for hot save.');
-        }
-        const apiBase = CLOUD_API_URL.replace(/\/$/, '');
-        const res = await fetch(`${apiBase}/hotSave`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${CLOUD_API_KEY}`,
-          },
-          body: JSON.stringify({
-            slug,
-            page: state.page,
-            siteConfig: state.site,
-            collections: state.collections,
-          }),
-        });
-        const body = (await res.json().catch(() => ({}))) as { error?: string; code?: string };
-        if (!res.ok) {
-          throw new Error(body.error || body.code || `Hot save failed: ${res.status}`);
-        }
-        const keyFingerprint = cloudFingerprintFromUrl(CLOUD_API_URL, CLOUD_API_KEY);
-        const normalizedSlug = normalizeSlugForCache(slug);
-        const existing = readCachedCloudContent(keyFingerprint);
-        writeCachedCloudContent({
-          keyFingerprint,
-          savedAt: Date.now(),
-          siteConfig: state.site ?? null,
-          collections: state.collections,
-          pages: {
-            ...(existing?.pages ?? {}),
-            [normalizedSlug]: state.page,
-          },
-        });
-      },
+      hotSave,
       async coldSave(state: ProjectState, slug: string): Promise<void> {
         await runCloudSave({ state, slug }, true);
       },
-      showLocalSave: !bootstrap.isCloudMode,
-      showHotSave: bootstrap.isHotSaveMode,
-      showColdSave: bootstrap.isSave2RepoMode,
+      ...persistenceUiFlags(cloudPolicy),
     },
     assets: {
       assetsBaseUrl: withBasePath('/assets', APP_BASE_PATH),
@@ -4077,16 +4075,16 @@ END_OF_FILE_CONTENT
 echo "Creating src/components/form-demo/View.tsx..."
 cat << 'END_OF_FILE_CONTENT' > "src/components/form-demo/View.tsx"
 import { Icon } from '@/lib/IconResolver';
-import { useFormState } from '@olonjs/core';
+import { useFormState } from '@olonjs/react';
+import { cloudPolicy } from '@/lib/tenantEnv';
 import type { FormDemoData } from './types';
 
 type FormDemoViewProps = {
   data: FormDemoData;
 };
 
-const missingEnv =
-  !import.meta.env.VITE_JSONPAGES_CLOUD_URL &&
-  !import.meta.env.VITE_OLONJS_CLOUD_URL;
+const missingCloudUrl = !cloudPolicy.apiUrl;
+const hasCloudKey = Boolean(cloudPolicy.apiKey);
 
 function SetupGuide({ recipientEmail }: { recipientEmail?: string }) {
   const steps = [
@@ -4096,14 +4094,14 @@ function SetupGuide({ recipientEmail }: { recipientEmail?: string }) {
       code: '"recipientEmail": "tu@esempio.it"',
     },
     {
-      done: !missingEnv,
-      label: 'VITE_JSONPAGES_CLOUD_URL nel file .env',
-      code: 'VITE_JSONPAGES_CLOUD_URL=https://cloud.olonjs.io',
+      done: !missingCloudUrl,
+      label: 'VITE_OLONJS_CLOUD_URL (o VITE_JSONPAGES_CLOUD_URL) nel file .env',
+      code: 'VITE_OLONJS_CLOUD_URL=https://cloud.olonjs.io/api/v1',
     },
     {
-      done: !!import.meta.env.VITE_JSONPAGES_API_KEY || !!import.meta.env.VITE_OLONJS_API_KEY,
-      label: 'VITE_JSONPAGES_API_KEY nel file .env',
-      code: 'VITE_JSONPAGES_API_KEY=sk-...',
+      done: hasCloudKey,
+      label: 'VITE_OLONJS_API_KEY (o VITE_JSONPAGES_API_KEY) nel file .env',
+      code: 'VITE_OLONJS_API_KEY=sk-...',
     },
   ];
 
@@ -5622,7 +5620,8 @@ import {
   Code2, Quote, SquareCode,
   Link2, Unlink2, ImagePlus, Eraser,
 } from 'lucide-react';
-import { STUDIO_EVENTS, useConfig, useStudio } from '@olonjs/core';
+import { STUDIO_EVENTS } from '@olonjs/core';
+import { useConfig, useStudio } from '@olonjs/react';
 import type { TiptapData, TiptapSettings } from './types';
 
 // ── UI primitives ─────────────────────────────────────────────────
@@ -8582,7 +8581,7 @@ cat << 'END_OF_FILE_CONTENT' > "src/data/collections/libri/libri.json"
     "id": "1984",
     "title": "1984",
     "author": {
-      "$ref": "../autori/autori.json#/alessandro-baricco"
+      "$ref": "../autori/autori.json#/george-orwell"
     },
     "year": 1949,
     "genre": "Distopia",
@@ -9686,14 +9685,8 @@ echo "Creating src/entry-ssg.tsx..."
 cat << 'END_OF_FILE_CONTENT' > "src/entry-ssg.tsx"
 import { renderToString } from 'react-dom/server';
 import { StaticRouter } from 'react-router-dom/server';
-import {
-  ConfigProvider,
-  PageRenderer,
-  StudioProvider,
-  contract,
-  resolvePageMatchFromRegistry,
-  resolveRuntimeConfig,
-} from '@olonjs/core';
+import { ConfigProvider, PageRenderer, StudioProvider } from '@olonjs/react';
+import { contract, resolvePageMatchFromRegistry, resolveRuntimeConfig } from '@olonjs/core';
 import type { JsonPagesConfig, PageConfig, SiteConfig, ThemeConfig } from '@/types';
 import { ThemeProvider } from '@/components/ThemeProvider';
 import { ComponentRegistry } from '@/lib/ComponentRegistry';
@@ -11445,7 +11438,6 @@ export function coerceSiteConfig(value: unknown): SiteConfig | null {
   }
   if (!isObjectRecord(input)) return null;
   if (!isObjectRecord(input.identity)) return null;
-  if (!Array.isArray(input.pages)) return null;
 
   return input as unknown as SiteConfig;
 }
@@ -11712,7 +11704,6 @@ export function getHydratedData(
 }
 
 END_OF_FILE_CONTENT
-mkdir -p "src/lib/editorial"
 echo "Creating src/lib/getFileCollections.ts..."
 cat << 'END_OF_FILE_CONTENT' > "src/lib/getFileCollections.ts"
 import type { JsonPagesConfig } from '@/types';
@@ -11889,40 +11880,31 @@ END_OF_FILE_CONTENT
 mkdir -p "src/lib/spp"
 echo "Creating src/lib/spp/cloudConfig.ts..."
 cat << 'END_OF_FILE_CONTENT' > "src/lib/spp/cloudConfig.ts"
-function normalizeApiBase(raw: string): string {
-  return raw.trim().replace(/\/+$/, '');
-}
+import { buildApiCandidates } from '@olonjs/react';
 
-export function buildApiCandidates(raw: string): string[] {
-  const base = normalizeApiBase(raw);
-  const withApi = /\/api\/v1$/i.test(base) ? base : `${base}/api/v1`;
-  return Array.from(new Set([withApi, base].filter(Boolean)));
-}
+import { cloudPolicy } from '@/lib/tenantEnv';
 
+export { buildApiCandidates };
+
+/**
+ * Browser-runtime SPP cloud slices.
+ * Credentials ⇒ cloud usable. Save2Repo does not mean “cloud off”
+ * (boot may still be static; live slices remain available).
+ * SSG/bake: local JSON only (SPP §3).
+ */
 export function getSppCloudConfig(): {
   enabled: boolean;
   apiBases: string[];
   apiKey: string;
 } {
-  const apiUrl =
-    import.meta.env.VITE_OLONJS_CLOUD_URL?.trim() ||
-    import.meta.env.VITE_JSONPAGES_CLOUD_URL?.trim() ||
-    '';
-  const apiKey =
-    import.meta.env.VITE_OLONJS_API_KEY?.trim() ||
-    import.meta.env.VITE_JSONPAGES_API_KEY?.trim() ||
-    '';
-  const save2Repo = import.meta.env.VITE_SAVE2REPO === 'true';
-
-  // SSG/bake: local resolved JSON only. Cloud slices are browser-runtime (SPP §3).
-  if (import.meta.env.SSR || !apiUrl || !apiKey || save2Repo) {
+  if (import.meta.env.SSR || !cloudPolicy.isCloudMode) {
     return { enabled: false, apiBases: [], apiKey: '' };
   }
 
   return {
     enabled: true,
-    apiBases: buildApiCandidates(apiUrl),
-    apiKey,
+    apiBases: buildApiCandidates(cloudPolicy.apiUrl),
+    apiKey: cloudPolicy.apiKey,
   };
 }
 
@@ -12940,8 +12922,9 @@ function isRemoteStylesheetHref(value: string): boolean {
 export function extractLeadingRemoteCssImports(cssText: string): { hrefs: string[]; rest: string } {
   const hrefs = new Set<string>();
   const leadingTriviaPattern = /^(?:\s+|\/\*[\s\S]*?\*\/)*/;
+  // Vite/Tailwind may emit `@import url("...")` or compacted `@import"https://..."`.
   const importPattern =
-    /^@import\s+url\(\s*(?:'([^']+)'|"([^"]+)"|([^'")\s][^)]*))\s*\)\s*([^;]*);/i;
+    /^@import(?:\s*url\(\s*(?:'([^']+)'|"([^"]+)"|([^'")\s][^)]*))\s*\)|\s*(['"])([^'"]+)\4)\s*([^;]*);/i;
   let rest = cssText;
 
   for (;;) {
@@ -12953,8 +12936,8 @@ export function extractLeadingRemoteCssImports(cssText: string): { hrefs: string
     const match = rest.match(importPattern);
     if (!match) break;
 
-    const href = (match[1] ?? match[2] ?? match[3] ?? '').trim();
-    const trailingDirectives = (match[4] ?? '').trim();
+    const href = (match[1] ?? match[2] ?? match[3] ?? match[5] ?? '').trim();
+    const trailingDirectives = (match[6] ?? '').trim();
 
     if (!isRemoteStylesheetHref(href) || trailingDirectives.length > 0) {
       break;
@@ -13087,12 +13070,17 @@ END_OF_FILE_CONTENT
 echo "Creating src/lib/tenantEnv.ts..."
 cat << 'END_OF_FILE_CONTENT' > "src/lib/tenantEnv.ts"
 import { normalizeBasePath } from '@olonjs/core';
+import { readCloudEnvFromVite, resolveCloudPolicy, type CloudPolicy } from '@olonjs/react';
 
-export const CLOUD_API_URL =
-  import.meta.env.VITE_OLONJS_CLOUD_URL ?? import.meta.env.VITE_JSONPAGES_CLOUD_URL;
-export const CLOUD_API_KEY =
-  import.meta.env.VITE_OLONJS_API_KEY ?? import.meta.env.VITE_JSONPAGES_API_KEY;
-export const SAVE2REPO_ENABLED = import.meta.env.VITE_SAVE2REPO === 'true';
+/** Single Vite → policy path. Prefer `cloudPolicy` over ad-hoc env reads. */
+const cloudEnv = readCloudEnvFromVite(import.meta.env as Record<string, unknown>);
+export const cloudPolicy: CloudPolicy = resolveCloudPolicy(cloudEnv);
+
+/** Empty string when unset — use `cloudPolicy.isCloudMode` for presence. */
+export const CLOUD_API_URL = cloudPolicy.apiUrl;
+export const CLOUD_API_KEY = cloudPolicy.apiKey;
+/** Raw `VITE_SAVE2REPO === 'true'` (may be set without credentials). */
+export const SAVE2REPO_ENABLED = cloudEnv.save2RepoFlag;
 export const APP_BASE_PATH = normalizeBasePath(import.meta.env.BASE_URL || '/');
 export const TENANT_ID = 'alpha';
 
@@ -13101,28 +13089,33 @@ echo "Creating src/lib/useAssetsManifest.ts..."
 cat << 'END_OF_FILE_CONTENT' > "src/lib/useAssetsManifest.ts"
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import type { LibraryImageEntry } from '@olonjs/core';
-import { buildApiCandidates } from '@/lib/sppCloudConfig';
-import { CLOUD_API_KEY, CLOUD_API_URL } from '@/lib/tenantEnv';
+import { buildApiCandidates } from '@olonjs/react';
+
+import { cloudPolicy } from '@/lib/tenantEnv';
 
 function normalizeApiBase(raw: string): string {
   return raw.trim().replace(/\/+$/, '');
 }
 
-export function useAssetsManifest(isCloudMode: boolean) {
+/** Asset library — cloud list when `cloudPolicy.isCloudMode`, else local `/api/list-assets`. */
+export function useAssetsManifest(isCloudMode: boolean = cloudPolicy.isCloudMode) {
   const [assetsManifest, setAssetsManifest] = useState<LibraryImageEntry[]>([]);
   const cloudApiCandidates = useMemo(
-    () => (isCloudMode && CLOUD_API_URL ? buildApiCandidates(CLOUD_API_URL) : []),
+    () => (isCloudMode && cloudPolicy.apiUrl ? buildApiCandidates(cloudPolicy.apiUrl) : []),
     [isCloudMode],
   );
 
   const loadAssetsManifest = useCallback(async (): Promise<void> => {
-    if (isCloudMode && CLOUD_API_URL && CLOUD_API_KEY) {
-      const apiBases = cloudApiCandidates.length > 0 ? cloudApiCandidates : [normalizeApiBase(CLOUD_API_URL)];
+    if (isCloudMode && cloudPolicy.apiUrl && cloudPolicy.apiKey) {
+      const apiBases =
+        cloudApiCandidates.length > 0
+          ? cloudApiCandidates
+          : [normalizeApiBase(cloudPolicy.apiUrl)];
       for (const apiBase of apiBases) {
         try {
           const res = await fetch(`${apiBase}/assets/list?limit=200`, {
             method: 'GET',
-            headers: { Authorization: `Bearer ${CLOUD_API_KEY}` },
+            headers: { Authorization: `Bearer ${cloudPolicy.apiKey}` },
           });
           const body = (await res.json().catch(() => ({}))) as { items?: LibraryImageEntry[] };
           if (!res.ok) continue;
@@ -13396,6 +13389,8 @@ echo "Creating src/lib/useFormSubmit.ts..."
 cat << 'END_OF_FILE_CONTENT' > "src/lib/useFormSubmit.ts"
 import { useState, useCallback } from 'react';
 
+import { cloudPolicy } from '@/lib/tenantEnv';
+
 export type SubmitStatus = 'idle' | 'submitting' | 'success' | 'error';
 
 interface UseFormSubmitOptions {
@@ -13408,22 +13403,20 @@ export function useFormSubmit({ source, tenantId }: UseFormSubmitOptions) {
   const [message, setMessage] = useState<string>('');
 
   const submit = useCallback(async (
-    formData: FormData, 
-    recipientEmail: string, 
-    pageSlug: string, 
+    formData: FormData,
+    recipientEmail: string,
+    pageSlug: string,
     sectionId: string
   ) => {
-    const cloudApiUrl = import.meta.env.VITE_JSONPAGES_CLOUD_URL as string | undefined;
-    const cloudApiKey = import.meta.env.VITE_JSONPAGES_API_KEY as string | undefined;
+    const { apiUrl, apiKey } = cloudPolicy;
 
-    if (!cloudApiUrl || !cloudApiKey) {
+    if (!apiUrl || !apiKey) {
       setStatus('error');
       setMessage('Configurazione API non disponibile. Riprova tra poco.');
       return false;
     }
 
-    // Trasformiamo FormData in un oggetto piatto per il payload JSON
-    const data: Record<string, any> = {};
+    const data: Record<string, string> = {};
     formData.forEach((value, key) => {
       data[key] = String(value).trim();
     });
@@ -13438,18 +13431,17 @@ export function useFormSubmit({ source, tenantId }: UseFormSubmitOptions) {
       submittedAt: new Date().toISOString(),
     };
 
-    // Idempotency Key per evitare doppi invii accidentali
     const idempotencyKey = `form-${sectionId}-${Date.now()}`;
 
     setStatus('submitting');
     setMessage('Invio in corso...');
 
     try {
-      const apiBase = cloudApiUrl.replace(/\/$/, '');
+      const apiBase = apiUrl.replace(/\/$/, '');
       const response = await fetch(`${apiBase}/forms/submit`, {
         method: 'POST',
         headers: {
-          Authorization: `Bearer ${cloudApiKey}`,
+          Authorization: `Bearer ${apiKey}`,
           'Content-Type': 'application/json',
           'Idempotency-Key': idempotencyKey,
         },
@@ -13480,22 +13472,17 @@ export function useFormSubmit({ source, tenantId }: UseFormSubmitOptions) {
 
   return { submit, status, message, reset };
 }
+
 END_OF_FILE_CONTENT
 echo "Creating src/lib/useOlonForms.ts..."
 cat << 'END_OF_FILE_CONTENT' > "src/lib/useOlonForms.ts"
 import { useCallback, useEffect, useState } from 'react';
-import type { FormState } from '@olonjs/core';
+import type { FormState } from '@olonjs/react';
 
-const API_BASE =
-  (import.meta.env.VITE_OLONJS_CLOUD_URL as string | undefined) ??
-  (import.meta.env.VITE_JSONPAGES_CLOUD_URL as string | undefined);
-
-const API_KEY =
-  (import.meta.env.VITE_OLONJS_API_KEY as string | undefined) ??
-  (import.meta.env.VITE_JSONPAGES_API_KEY as string | undefined);
+import { cloudPolicy } from '@/lib/tenantEnv';
 
 interface UseOlonFormsOptions {
-  /** Override the submit endpoint. Defaults to VITE_OLONJS_CLOUD_URL/forms/submit */
+  /** Override the submit endpoint. Defaults to cloudPolicy.apiUrl/forms/submit */
   endpoint?: string;
 }
 
@@ -13514,13 +13501,16 @@ export function useOlonForms(options?: UseOlonFormsOptions): { states: Record<st
   }, []);
 
   useEffect(() => {
+    const apiUrl = cloudPolicy.apiUrl;
+    const apiKey = cloudPolicy.apiKey;
+
     const resolvedBase = options?.endpoint
       ? options.endpoint.replace(/\/$/, '')
-      : API_BASE
-        ? API_BASE.replace(/\/$/, '')
+      : apiUrl
+        ? apiUrl.replace(/\/$/, '')
         : null;
 
-    if (!resolvedBase || !API_KEY) {
+    if (!resolvedBase || !apiKey) {
       console.warn('[useOlonForms] Missing API endpoint or key — forms will not submit.');
       return;
     }
@@ -13563,7 +13553,7 @@ export function useOlonForms(options?: UseOlonFormsOptions): { states: Record<st
         const response = await fetch(endpoint, {
           method: 'POST',
           headers: {
-            Authorization: `Bearer ${API_KEY}`,
+            Authorization: `Bearer ${apiKey}`,
             'Content-Type': 'application/json',
             'Idempotency-Key': `form-${formId}-${Date.now()}`,
           },
@@ -13644,7 +13634,7 @@ import {
 
 import type { JsonPagesConfig } from '@olonjs/core';
 
-import { APP_BASE_PATH, CLOUD_API_KEY, CLOUD_API_URL, SAVE2REPO_ENABLED } from '@/lib/tenantEnv';
+import { APP_BASE_PATH, CLOUD_API_KEY, CLOUD_API_URL, cloudPolicy } from '@/lib/tenantEnv';
 
 import type { MenuConfig, PageConfig, SiteConfig, ThemeConfig } from '@/types';
 
@@ -13726,13 +13716,10 @@ export function useTenantBootstrap({
 
 }: UseTenantBootstrapOptions) {
 
-  const isCloudMode = Boolean(CLOUD_API_URL && CLOUD_API_KEY);
+  const { isCloudMode, bootSource, hotSaveEnabled, save2RepoEnabled } = cloudPolicy;
 
-  const isSave2RepoMode = isCloudMode && SAVE2REPO_ENABLED;
-
-  const isHotSaveMode = isCloudMode && !isSave2RepoMode;
-
-  const useRenderBootstrap = isHotSaveMode;
+  /** Live SPP render boot — only when bootSource is live (not static Save2Repo). */
+  const useRenderBootstrap = bootSource === 'live';
 
 
 
@@ -13836,7 +13823,7 @@ export function useTenantBootstrap({
 
 
 
-    if (isSave2RepoMode) {
+    if (bootSource === 'static') {
 
       if (contentLoadInFlight.current) return;
 
@@ -14240,7 +14227,7 @@ export function useTenantBootstrap({
 
     isCloudMode,
 
-    isSave2RepoMode,
+    bootSource,
 
     useRenderBootstrap,
 
@@ -14286,9 +14273,11 @@ export function useTenantBootstrap({
 
     isCloudMode,
 
-    isSave2RepoMode,
+    bootSource,
 
-    isHotSaveMode,
+    hotSaveEnabled,
+
+    save2RepoEnabled,
 
     contentMode,
 

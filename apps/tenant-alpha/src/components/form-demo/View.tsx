@@ -1,14 +1,14 @@
 import { Icon } from '@/lib/IconResolver';
 import { useFormState } from '@olonjs/react';
+import { cloudPolicy } from '@/lib/tenantEnv';
 import type { FormDemoData } from './types';
 
 type FormDemoViewProps = {
   data: FormDemoData;
 };
 
-const missingEnv =
-  !import.meta.env.VITE_JSONPAGES_CLOUD_URL &&
-  !import.meta.env.VITE_OLONJS_CLOUD_URL;
+const missingCloudUrl = !cloudPolicy.apiUrl;
+const hasCloudKey = Boolean(cloudPolicy.apiKey);
 
 function SetupGuide({ recipientEmail }: { recipientEmail?: string }) {
   const steps = [
@@ -18,14 +18,14 @@ function SetupGuide({ recipientEmail }: { recipientEmail?: string }) {
       code: '"recipientEmail": "tu@esempio.it"',
     },
     {
-      done: !missingEnv,
-      label: 'VITE_JSONPAGES_CLOUD_URL nel file .env',
-      code: 'VITE_JSONPAGES_CLOUD_URL=https://cloud.olonjs.io',
+      done: !missingCloudUrl,
+      label: 'VITE_OLONJS_CLOUD_URL (o VITE_JSONPAGES_CLOUD_URL) nel file .env',
+      code: 'VITE_OLONJS_CLOUD_URL=https://cloud.olonjs.io/api/v1',
     },
     {
-      done: !!import.meta.env.VITE_JSONPAGES_API_KEY || !!import.meta.env.VITE_OLONJS_API_KEY,
-      label: 'VITE_JSONPAGES_API_KEY nel file .env',
-      code: 'VITE_JSONPAGES_API_KEY=sk-...',
+      done: hasCloudKey,
+      label: 'VITE_OLONJS_API_KEY (o VITE_JSONPAGES_API_KEY) nel file .env',
+      code: 'VITE_OLONJS_API_KEY=sk-...',
     },
   ];
 

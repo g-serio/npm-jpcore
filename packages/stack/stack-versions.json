@@ -1,1 +1,49 @@
-{"description":"Single source of truth for OlonJS tenant stack. Core peerDependencies and CLI-projected tenant dependencies MUST derive from this manifest.","peerDependencies":{"react":"^19.0.0","react-dom":"^19.0.0","react-router-dom":"^6.29.0","zod":"^3.24.1"},"dependencies":{"@dnd-kit/core":"^6.3.0","@dnd-kit/modifiers":"^7.0.0","@dnd-kit/sortable":"^9.0.0","@dnd-kit/utilities":"^3.2.2","@olonjs/core":"^1.0.7","clsx":"^2.1.1","lucide-react":"^0.474.0","radix-ui":"^1.4.3","react":"^19.0.0","react-dom":"^19.0.0","react-router-dom":"^6.29.0","tailwind-merge":"^3.0.1","zod":"^3.24.1"},"devDependencies":{"vite":"^6.0.0","@vitejs/plugin-react":"^4.0.0","typescript":"^5.7.3","@tailwindcss/vite":"^4.0.0","tailwindcss":"^4.0.0","@types/node":"^22.13.1","@types/react":"^19.0.0","@types/react-dom":"^19.0.0"}}
+{
+  "description": "Single source of truth for the OlonJS tenant stack. Post-ADR-0016 (core/react/studio split): `corePeerDependencies` is what @olonjs/core itself peer-declares (framework-agnostic, zero React), `reactBindingPeerDependencies` is the shared React-family peer set synced into both @olonjs/react and @olonjs/studio. `peerDependencies` remains the full union for CLI-projected tenant package.json files. `dependencies` pins all three @olonjs packages plus their tenant-facing UI deps.",
+  "peerDependencies": {
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "react-router-dom": "^6.29.0",
+    "zod": "^3.24.1"
+  },
+  "corePeerDependencies": {
+    "zod": "^3.24.1"
+  },
+  "reactBindingPeerDependencies": {
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "react-router-dom": "^6.29.0"
+  },
+  "packages": {
+    "@olonjs/core": "^1.1.17",
+    "@olonjs/react": "^0.1.0",
+    "@olonjs/studio": "^0.1.0"
+  },
+  "dependencies": {
+    "@dnd-kit/core": "^6.3.0",
+    "@dnd-kit/modifiers": "^7.0.0",
+    "@dnd-kit/sortable": "^9.0.0",
+    "@dnd-kit/utilities": "^3.2.2",
+    "@olonjs/core": "^1.1.17",
+    "@olonjs/react": "^0.1.0",
+    "@olonjs/studio": "^0.1.0",
+    "clsx": "^2.1.1",
+    "lucide-react": "^0.474.0",
+    "radix-ui": "^1.4.3",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "react-router-dom": "^6.29.0",
+    "tailwind-merge": "^3.0.1",
+    "zod": "^3.24.1"
+  },
+  "devDependencies": {
+    "vite": "^6.0.0",
+    "@vitejs/plugin-react": "^4.0.0",
+    "typescript": "^5.7.3",
+    "@tailwindcss/vite": "^4.0.0",
+    "tailwindcss": "^4.0.0",
+    "@types/node": "^22.13.1",
+    "@types/react": "^19.0.0",
+    "@types/react-dom": "^19.0.0"
+  }
+}

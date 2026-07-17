@@ -1,16 +1,10 @@
 import { useCallback, useEffect, useState } from 'react';
 import type { FormState } from '@olonjs/react';
 
-const API_BASE =
-  (import.meta.env.VITE_OLONJS_CLOUD_URL as string | undefined) ??
-  (import.meta.env.VITE_JSONPAGES_CLOUD_URL as string | undefined);
-
-const API_KEY =
-  (import.meta.env.VITE_OLONJS_API_KEY as string | undefined) ??
-  (import.meta.env.VITE_JSONPAGES_API_KEY as string | undefined);
+import { cloudPolicy } from '@/lib/tenantEnv';
 
 interface UseOlonFormsOptions {
-  /** Override the submit endpoint. Defaults to VITE_OLONJS_CLOUD_URL/forms/submit */
+  /** Override the submit endpoint. Defaults to cloudPolicy.apiUrl/forms/submit */
   endpoint?: string;
 }
 
@@ -29,13 +23,16 @@ export function useOlonForms(options?: UseOlonFormsOptions): { states: Record<st
   }, []);
 
   useEffect(() => {
+    const apiUrl = cloudPolicy.apiUrl;
+    const apiKey = cloudPolicy.apiKey;
+
     const resolvedBase = options?.endpoint
       ? options.endpoint.replace(/\/$/, '')
-      : API_BASE
-        ? API_BASE.replace(/\/$/, '')
+      : apiUrl
+        ? apiUrl.replace(/\/$/, '')
         : null;
 
-    if (!resolvedBase || !API_KEY) {
+    if (!resolvedBase || !apiKey) {
       console.warn('[useOlonForms] Missing API endpoint or key — forms will not submit.');
       return;
     }
@@ -78,7 +75,7 @@ export function useOlonForms(options?: UseOlonFormsOptions): { states: Record<st
         const response = await fetch(endpoint, {
           method: 'POST',
           headers: {
-            Authorization: `Bearer ${API_KEY}`,
+            Authorization: `Bearer ${apiKey}`,
             'Content-Type': 'application/json',
             'Idempotency-Key': `form-${formId}-${Date.now()}`,
           },

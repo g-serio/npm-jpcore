@@ -53,3 +53,19 @@ export * from '@olonjs/core';
 - [ADR-0016](../../docs/decisions/ADR-0016-core-react-studio-package-split.md) — decisione architetturale corrente (tre pacchetti)
 - [ADR-0009](../../docs/decisions/ADR-0009-core-studio-split-via-runtime-subpath.md) — meccanismo predecessore, superato
 - `docs/ARCHITECTURE.md` § Build and Distribution Topology — vista architettura dei package
+
+---
+
+## Cloud mode (HotSave + Save2Repo)
+
+Unica lettura env: `src/lib/tenantEnv.ts` → `cloudPolicy` (`resolveCloudPolicy` in `@olonjs/react`). Non leggere `import.meta.env` cloud altrove.
+
+| Env | Boot | Studio save |
+|---|---|---|
+| Nessuna credenziale | locale | Local only |
+| `VITE_OLONJS_CLOUD_URL` + `VITE_OLONJS_API_KEY` | **live** (SPP `/render`) | HotSave |
+| + `VITE_SAVE2REPO=true` | **static** (JSON pubblicati) | HotSave **e** Cold/Save2Repo |
+
+Alias: `VITE_JSONPAGES_CLOUD_URL` / `VITE_JSONPAGES_API_KEY`.
+
+Regola: Save2Repo cambia solo il **boot** (live → static). Non spegne HotSave.
