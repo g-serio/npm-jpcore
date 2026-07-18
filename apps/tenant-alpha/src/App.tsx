@@ -14,15 +14,15 @@ import type { MenuConfig, SiteConfig, ThemeConfig } from '@/types';
 import siteData from '@/data/config/site.json';
 import themeData from '@/data/config/theme.json';
 import menuData from '@/data/config/menu.json';
-import { getFileCollections } from '@/lib/getFileCollections';
-import { getFilePages } from '@/lib/getFilePages';
+import { getFileCollections } from '@/lib/loaders/getFileCollections';
+import { getFilePages } from '@/lib/loaders/getFilePages';
 import { DopaDrawer } from '@/components/save-drawer/DopaDrawer';
 import { EmptyTenantView } from '@/components/empty-tenant';
 import { TenantBootstrapChrome } from '@/components/TenantBootstrapChrome';
 import { ThemeProvider } from '@/components/ThemeProvider';
-import { useOlonForms } from '@/lib/useOlonForms';
+import { useOlonForms } from '@/lib/forms/useOlonForms';
 import { iconMap } from '@/lib/IconResolver';
-import { uploadTenantAsset } from '@/lib/assetUpload';
+import { uploadTenantAsset } from '@/lib/assets/assetUpload';
 import {
   cloudFingerprintFromUrl,
   normalizeSlugForCache,
@@ -30,18 +30,18 @@ import {
   writeCachedCloudContent,
 } from '@/lib/cloud/cloudCache';
 import {
-  buildThemeFontVarsCss,
   extractLeadingRemoteCssImports,
   setTenantPreviewReady,
   useInjectedTenantCss,
   useTenantFontsReady,
-} from '@/lib/tenantCss';
-import { APP_BASE_PATH, TENANT_ID, cloudPolicy } from '@/lib/tenantEnv';
-import { useAssetsManifest } from '@/lib/useAssetsManifest';
-import { useCloudSave } from '@/lib/useCloudSave';
-import { useTenantBootstrap } from '@/lib/useTenantBootstrap';
+  warnIfThemeFontsMissing,
+} from '@/lib/css/tenantCss';
+import { APP_BASE_PATH, TENANT_ID, cloudPolicy } from '@/lib/env/tenantEnv';
+import { useAssetsManifest } from '@/lib/assets/useAssetsManifest';
+import { useCloudSave } from '@/lib/cloud/useCloudSave';
+import { useTenantBootstrap } from '@/lib/bootstrap/useTenantBootstrap';
 import { useAdminStudioContent } from '@/lib/cloud/useAdminStudioContent';
-import { hydrateLocalProjectState } from '@/lib/hydrateLocalProjectState';
+import { hydrateLocalProjectState } from '@/lib/cloud/hydrateLocalProjectState';
 
 import tenantCss from './index.css?inline';
 
@@ -96,13 +96,15 @@ function App() {
   );
 
   const tenantCssParts = useMemo(() => extractLeadingRemoteCssImports(tenantCss), []);
-  const resolvedTenantCss = useMemo(
-    () => [buildThemeFontVarsCss(bootstrap.themeConfig), tenantCssParts.rest].filter(Boolean).join('\n'),
-    [bootstrap.themeConfig, tenantCssParts],
-  );
+  // Font tokens: core theme chain (`buildThemeVariableMap`) — not reinvented here.
+  const resolvedTenantCss = tenantCssParts.rest;
   useInjectedTenantCss(resolvedTenantCss);
   const fontsReady = useTenantFontsReady(tenantCssParts.hrefs);
   const canPaintVisitor = bootstrap.shouldRenderEngine && fontsReady;
+
+  useEffect(() => {
+    warnIfThemeFontsMissing(bootstrap.themeConfig);
+  }, [bootstrap.themeConfig]);
 
   useEffect(() => {
     setTenantPreviewReady(false);

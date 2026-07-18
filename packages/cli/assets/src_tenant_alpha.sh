@@ -1817,9 +1817,9 @@ cat << 'END_OF_FILE_CONTENT' > "package.json"
     "@tiptap/extension-link": "^2.11.5",
     "@tiptap/react": "^2.11.5",
     "@tiptap/starter-kit": "^2.11.5",
-    "@olonjs/core": "^1.1.18",
-    "@olonjs/react": "^0.1.1",
-    "@olonjs/studio": "^0.1.1",
+    "@olonjs/core": "^1.1.19",
+    "@olonjs/react": "^0.1.2",
+    "@olonjs/studio": "^0.1.2",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "lucide-react": "^0.474.0",
@@ -2952,7 +2952,7 @@ cat << 'END_OF_FILE_CONTENT' > "src/App.tsx"
  * Bootstrap, persistence, and engine wiring — logic lives in lib/hooks.
  */
 import { useEffect, useMemo } from 'react';
-import { JsonPagesEngine, OlonFormsContext, createHotSaveHandler, persistenceUiFlags } from '@olonjs/react';
+import { JsonPagesEngine, OlonFormsContext, createHotSaveHandler } from '@olonjs/react';
 import type { JsonPagesConfig, ProjectState } from '@olonjs/core';
 import { withBasePath } from '@olonjs/core';
 import { ComponentRegistry } from '@/lib/ComponentRegistry';
@@ -2985,7 +2985,7 @@ import {
   useInjectedTenantCss,
   useTenantFontsReady,
 } from '@/lib/tenantCss';
-import { APP_BASE_PATH, CLOUD_API_KEY, CLOUD_API_URL, TENANT_ID, cloudPolicy } from '@/lib/tenantEnv';
+import { APP_BASE_PATH, TENANT_ID, cloudPolicy } from '@/lib/tenantEnv';
 import { useAssetsManifest } from '@/lib/useAssetsManifest';
 import { useCloudSave } from '@/lib/useCloudSave';
 import { useTenantBootstrap } from '@/lib/useTenantBootstrap';
@@ -3012,12 +3012,12 @@ function App() {
   useAdminStudioContent({
     enabled: bootstrap.bootSource === 'live',
     apiCandidates: bootstrap.cloudApiCandidates,
-    apiKey: CLOUD_API_KEY,
+    apiKey: cloudPolicy.apiKey,
     setPages: bootstrap.setPages,
     setSiteConfig: bootstrap.setSiteConfig,
-    setCollections: bootstrap.setCollections,
+    onSettled: bootstrap.markCloudContentReady,
   });
-  const { assetsManifest, loadAssetsManifest, cloudApiCandidates } = useAssetsManifest(bootstrap.isCloudMode);
+  const { assetsManifest, loadAssetsManifest, cloudApiCandidates } = useAssetsManifest(cloudPolicy.isCloudMode);
   const { cloudSaveUi, runCloudSave, closeCloudDrawer, retryCloudSave } = useCloudSave();
 
   const hotSave = useMemo(
@@ -3086,7 +3086,6 @@ function App() {
       ? bootstrap.collections
       : fileCollections;
 
-      // TOASK: why this if we have a menuConfig Object?
   const engineRefDocuments = useMemo(
     () => ({
       'menu.json': bootstrap.menuConfig,
@@ -3095,7 +3094,6 @@ function App() {
     }),
     [bootstrap.menuConfig],
   );
-  // TOASK END
   const config: JsonPagesConfig = {
     tenantId: TENANT_ID,
     basePath: APP_BASE_PATH,
@@ -3138,7 +3136,9 @@ function App() {
       async coldSave(state: ProjectState, slug: string): Promise<void> {
         await runCloudSave({ state, slug }, true);
       },
-      ...persistenceUiFlags(cloudPolicy),
+      showLocalSave: cloudPolicy.showLocalSave,
+      showHotSave: cloudPolicy.showHotSave,
+      showColdSave: cloudPolicy.showColdSave,
     },
     assets: {
       assetsBaseUrl: withBasePath('/assets', APP_BASE_PATH),
@@ -3146,9 +3146,9 @@ function App() {
       onAssetUpload: (file) =>
         uploadTenantAsset(file, {
           basePath: APP_BASE_PATH,
-          isCloudMode: bootstrap.isCloudMode,
-          cloudApiUrl: CLOUD_API_URL,
-          cloudApiKey: CLOUD_API_KEY,
+          isCloudMode: cloudPolicy.isCloudMode,
+          cloudApiUrl: cloudPolicy.apiUrl,
+          cloudApiKey: cloudPolicy.apiKey,
           apiBases: cloudApiCandidates,
           onUploaded: loadAssetsManifest,
         }),
@@ -3159,7 +3159,7 @@ function App() {
     <ThemeProvider>
       <OlonFormsContext.Provider value={formStates}>
         <TenantBootstrapChrome
-          isCloudMode={bootstrap.isCloudMode}
+          isCloudMode={cloudPolicy.isCloudMode}
           showTopProgress={bootstrap.showTopProgress || (bootstrap.shouldRenderEngine && !fontsReady)}
           contentMode={bootstrap.contentMode}
           contentFallback={bootstrap.contentFallback}
@@ -11597,9 +11597,8 @@ echo "Creating src/lib/cloud/useAdminStudioContent.ts..."
 cat << 'END_OF_FILE_CONTENT' > "src/lib/cloud/useAdminStudioContent.ts"
 import { useEffect, useRef } from 'react';
 import type { Dispatch, SetStateAction } from 'react';
-import type { JsonPagesConfig } from '@olonjs/core';
 import { applyLegacyCloudPayload, fetchLegacyCloudContentPayload } from '@/lib/cloud/cloudContentClient';
-import { cloudFingerprint, writeCachedCloudContent } from '@/lib/cloud/cloudCache';
+import { cloudFingerprint, readCachedPages, writeCachedCloudContent } from '@/lib/cloud/cloudCache';
 import { isAdminPath, patchHistoryNavigation } from '@/lib/spp';
 import { APP_BASE_PATH } from '@/lib/tenantEnv';
 import type { PageConfig, SiteConfig } from '@/types';
@@ -11612,7 +11611,8 @@ type UseAdminStudioContentOptions = {
   apiKey: string;
   setPages: Dispatch<SetStateAction<Record<string, PageConfig>>>;
   setSiteConfig: Dispatch<SetStateAction<SiteConfig>>;
-  setCollections: Dispatch<SetStateAction<NonNullable<JsonPagesConfig['collections']>>>;
+  /** Fired when /admin may paint — after cache hit and/or network attempt settles. */
+  onSettled?: () => void;
 };
 
 /** Studio `/admin` sync via legacy `/content` — never mixed into visitor `/render` bootstrap. */
@@ -11622,13 +11622,28 @@ export function useAdminStudioContent({
   apiKey,
   setPages,
   setSiteConfig,
-  setCollections,
+  onSettled,
 }: UseAdminStudioContentOptions) {
   const loadedRef = useRef(false);
   const inFlightRef = useRef<Promise<void> | null>(null);
+  const settledRef = useRef(false);
 
   useEffect(() => {
-    if (!enabled || apiCandidates.length === 0 || !apiKey.trim()) return;
+    settledRef.current = false;
+    loadedRef.current = false;
+
+    if (!enabled) return;
+
+    const settle = () => {
+      if (settledRef.current) return;
+      settledRef.current = true;
+      onSettled?.();
+    };
+
+    if (apiCandidates.length === 0 || !apiKey.trim()) {
+      settle();
+      return;
+    }
 
     const syncIfAdmin = () => {
       if (!isAdminPath(window.location.pathname, APP_BASE_PATH)) return;
@@ -11636,6 +11651,14 @@ export function useAdminStudioContent({
 
       const controller = new AbortController();
       const fingerprint = cloudFingerprint(apiCandidates[0]!, apiKey);
+
+      // Paint from cache immediately when present — then refresh from network.
+      const { cachedPages, cachedSite } = readCachedPages(fingerprint);
+      if (cachedPages && Object.keys(cachedPages).length > 0) {
+        setPages(cachedPages);
+        if (cachedSite) setSiteConfig(cachedSite);
+        settle();
+      }
 
       inFlightRef.current = fetchLegacyCloudContentPayload(
         apiCandidates,
@@ -11663,6 +11686,7 @@ export function useAdminStudioContent({
         })
         .finally(() => {
           inFlightRef.current = null;
+          settle();
         });
     };
 
@@ -11672,7 +11696,7 @@ export function useAdminStudioContent({
       unpatch();
       inFlightRef.current = null;
     };
-  }, [enabled, apiCandidates, apiKey, setPages, setSiteConfig, setCollections]);
+  }, [enabled, apiCandidates, apiKey, setPages, setSiteConfig, onSettled]);
 }
 
 END_OF_FILE_CONTENT
@@ -13073,14 +13097,13 @@ import { normalizeBasePath } from '@olonjs/core';
 import { readCloudEnvFromVite, resolveCloudPolicy, type CloudPolicy } from '@olonjs/react';
 
 /** Single Vite → policy path. Prefer `cloudPolicy` over ad-hoc env reads. */
-const cloudEnv = readCloudEnvFromVite(import.meta.env as Record<string, unknown>);
-export const cloudPolicy: CloudPolicy = resolveCloudPolicy(cloudEnv);
+export const cloudPolicy: CloudPolicy = resolveCloudPolicy(
+  readCloudEnvFromVite(import.meta.env as Record<string, unknown>),
+);
 
-/** Empty string when unset — use `cloudPolicy.isCloudMode` for presence. */
+/** Aliases of `cloudPolicy.apiUrl` / `apiKey` for DNA helpers. */
 export const CLOUD_API_URL = cloudPolicy.apiUrl;
 export const CLOUD_API_KEY = cloudPolicy.apiKey;
-/** Raw `VITE_SAVE2REPO === 'true'` (may be set without credentials). */
-export const SAVE2REPO_ENABLED = cloudEnv.save2RepoFlag;
 export const APP_BASE_PATH = normalizeBasePath(import.meta.env.BASE_URL || '/');
 export const TENANT_ID = 'alpha';
 
@@ -13604,7 +13627,7 @@ export function useOlonForms(options?: UseOlonFormsOptions): { states: Record<st
 END_OF_FILE_CONTENT
 echo "Creating src/lib/useTenantBootstrap.ts..."
 cat << 'END_OF_FILE_CONTENT' > "src/lib/useTenantBootstrap.ts"
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import { logBootstrapEvent, toCloudLoadFailure } from '@/lib/cloud/bootstrapTelemetry';
 
@@ -13716,7 +13739,7 @@ export function useTenantBootstrap({
 
 }: UseTenantBootstrapOptions) {
 
-  const { isCloudMode, bootSource, hotSaveEnabled, save2RepoEnabled } = cloudPolicy;
+  const { isCloudMode, bootSource } = cloudPolicy;
 
   /** Live SPP render boot — only when bootSource is live (not static Save2Repo). */
   const useRenderBootstrap = bootSource === 'live';
@@ -13783,7 +13806,11 @@ export function useTenantBootstrap({
 
   const isTenantEmpty = Object.keys(pages).length === 0;
 
-
+  /** Call when live /admin content sync has finished (success, cache, or error). */
+  const markCloudContentReady = useCallback(() => {
+    setShowTopProgress(false);
+    setHasInitialCloudResolved(true);
+  }, []);
 
   const retryBootstrap = () => {
 
@@ -13920,17 +13947,12 @@ export function useTenantBootstrap({
 
 
     if (isAdminPath(window.location.pathname, APP_BASE_PATH)) {
-
+      // Live /admin: content comes from useAdminStudioContent — do not paint empty first.
       setContentMode('cloud');
-
       setContentFallback(null);
-
-      setShowTopProgress(false);
-
-      setHasInitialCloudResolved(true);
-
+      setShowTopProgress(true);
+      setHasInitialCloudResolved(false);
       return;
-
     }
 
 
@@ -14275,10 +14297,6 @@ export function useTenantBootstrap({
 
     bootSource,
 
-    hotSaveEnabled,
-
-    save2RepoEnabled,
-
     contentMode,
 
     contentFallback,
@@ -14290,6 +14308,8 @@ export function useTenantBootstrap({
     shouldRenderEngine,
 
     isTenantEmpty,
+
+    markCloudContentReady,
 
     retryBootstrap,
 

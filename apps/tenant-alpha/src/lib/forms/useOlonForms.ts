@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import type { FormState } from '@olonjs/react';
 
-import { cloudPolicy } from '@/lib/tenantEnv';
+import { cloudPolicy } from '@/lib/env/tenantEnv';
 
 interface UseOlonFormsOptions {
   /** Override the submit endpoint. Defaults to cloudPolicy.apiUrl/forms/submit */

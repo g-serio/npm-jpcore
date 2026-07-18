@@ -3,7 +3,7 @@ import type { Dispatch, SetStateAction } from 'react';
 import { applyLegacyCloudPayload, fetchLegacyCloudContentPayload } from '@/lib/cloud/cloudContentClient';
 import { cloudFingerprint, readCachedPages, writeCachedCloudContent } from '@/lib/cloud/cloudCache';
 import { isAdminPath, patchHistoryNavigation } from '@/lib/spp';
-import { APP_BASE_PATH } from '@/lib/tenantEnv';
+import { APP_BASE_PATH } from '@/lib/env/tenantEnv';
 import type { PageConfig, SiteConfig } from '@/types';
 
 const MAX_RETRIES = 2;

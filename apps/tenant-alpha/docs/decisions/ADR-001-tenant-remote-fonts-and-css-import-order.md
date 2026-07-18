@@ -22,11 +22,11 @@ SSR (`entry-ssg.tsx`) concatenates flattened theme CSS with the tenant bundle; t
 
 ## Decision
 
-1. **Single implementation** of `extractLeadingRemoteCssImports` in `src/lib/extractLeadingRemoteCssImports.ts`, imported by both `App.tsx` and `entry-ssg.tsx`. Patterns must cover minified forms: `@import` + optional whitespace + `url("...")` / `url('...')` / unquoted URL, and `@import"https://..."` / `@import'https://...'`.
+1. **Single implementation** of `extractLeadingRemoteCssImports` in `src/lib/css/tenantCss.ts`, imported by both `App.tsx` and `entry-ssg.tsx`. Patterns must cover minified forms: `@import` + optional whitespace + `url("...")` / `url('...')` / unquoted URL, and `@import"https://..."` / `@import'https://...'`.
 
 2. **Concatenation order** when merging generated theme CSS with the tenant CSS remainder:
-   - **Client (`App.tsx`):** `[tenantCssParts.rest, buildThemeFontVarsCss(themeConfig)]` so any `@import` that remains in `rest` stays at the top of the injected sheet; font variables follow.
-   - **SSR (`getCss`):** `${rest}\n${themeCss}` so flattened `:root` theme variables never precede leading `@import` in `rest`.
+   - **Client (`App.tsx`):** inject `tenantCssParts.rest` only. Font CSS variables come from core `buildThemeVariableMap` / theme chain (not a DNA helper with branded fallbacks). Leading remote `@import`s are extracted to `<link>` so they never sit after other rules.
+   - **SSR (`getCss`):** `${rest}\n${themeCss}` so flattened `:root` theme variables never precede leading `@import` in `rest`. Theme CSS is built via core `buildThemeVariableMap` (no DNA flatten duplicate).
 
 3. **Promotion to `<link>`:** Leading remote `http(s)` imports are still extracted in the client and emitted as `<link rel="stylesheet" data-jp-tenant-remote-css>` in `document.head`, which avoids `@import` ordering constraints for those resources entirely when extraction succeeds.
 
@@ -47,13 +47,18 @@ Not chosen as the primary fix; could be added later as an optional hardening lay
 Pros: no third-party `@import`, full control.  
 Cons: larger repo, licensing/hosting overhead, out of scope for the immediate regression.
 
+### D. DNA `buildThemeFontVarsCss` with branded font fallbacks
+
+Rejected: invents Instrument/JetBrains (etc.) when tokens are missing and duplicates core’s theme chain. Prefer DEV warn (`warnIfThemeFontsMissing`) + core publish-or-skip.
+
 ## Consequences
 
 - Anyone changing how tenant CSS is assembled must **preserve** remote imports at the start of the string passed to `extractLeadingRemoteCssImports`, or rely on extraction + `<link>` injection.
-- Changes to the minifier output may require extending `matchLeadingRemoteImport` if new `@import` syntax variants appear.
+- Changes to the minifier output may require extending the import regex if new `@import` syntax variants appear.
 - Agents and humans should read this ADR before reordering `themeCss` / `resolvedTenantCss` or duplicating import-parsing logic.
 
 ## References
 
 - CSS 2.1 / CSS Cascading: `@import` must precede other rules in a stylesheet.
-- Implementation: `src/lib/extractLeadingRemoteCssImports.ts`, `src/App.tsx` (`resolvedTenantCss`, `tenantCssBundled`), `src/entry-ssg.tsx` (`getCss`, `getRemoteStylesheets`).
+- Implementation: `src/lib/css/tenantCss.ts`, `src/App.tsx` (`resolvedTenantCss`), `src/entry-ssg.tsx` (`getCss`, `getRemoteStylesheets`).
+- Core: `buildThemeVariableMap` in `@olonjs/core` (theme chain SOT for CSS variables).

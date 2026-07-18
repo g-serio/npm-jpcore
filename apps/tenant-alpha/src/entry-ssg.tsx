@@ -1,11 +1,12 @@
 import { renderToString } from 'react-dom/server';
 import { StaticRouter } from 'react-router-dom/server';
 import { ConfigProvider, PageRenderer, StudioProvider } from '@olonjs/react';
-import { contract, resolvePageMatchFromRegistry, resolveRuntimeConfig } from '@olonjs/core';
+import { buildThemeVariableMap, contract, resolvePageMatchFromRegistry, resolveRuntimeConfig } from '@olonjs/core';
 import type { JsonPagesConfig, PageConfig, SiteConfig, ThemeConfig } from '@/types';
 import { ThemeProvider } from '@/components/ThemeProvider';
 import { ComponentRegistry } from '@/lib/ComponentRegistry';
 import { SECTION_SCHEMAS } from '@/lib/schemas';
+import { extractLeadingRemoteCssImports } from '@/lib/css/tenantCss';
 import { collectionSchemas, collections, menuConfig, pages, refDocuments, siteConfig, themeConfig } from '@/runtime';
 import tenantCss from '@/index.css?inline';
 
@@ -43,68 +44,12 @@ function resolvePage(slug: string): { slug: string; registrySlug: string; page: 
   return { slug: fallbackSlug, registrySlug: fallbackSlug, page: pages[fallbackSlug], params: {} };
 }
 
-function flattenThemeTokens(
-  input: unknown,
-  pathSegments: string[] = [],
-  out: Array<{ name: string; value: string }> = []
-): Array<{ name: string; value: string }> {
-  if (typeof input === 'string') {
-    const cleaned = input.trim();
-    if (cleaned.length > 0 && pathSegments.length > 0) {
-      out.push({ name: `--theme-${pathSegments.join('-')}`, value: cleaned });
-    }
-    return out;
-  }
-
-  if (!isRecord(input)) return out;
-
-  const entries = Object.entries(input).sort(([a], [b]) => a.localeCompare(b));
-  for (const [key, value] of entries) {
-    flattenThemeTokens(value, [...pathSegments, key], out);
-  }
-  return out;
-}
-
 function buildThemeCssFromSot(theme: ThemeConfig): string {
-  const root: Record<string, unknown> = isRecord(theme) ? theme : {};
-  const tokens = root['tokens'];
-  const flattened = flattenThemeTokens(tokens);
-  if (flattened.length === 0) return '';
-  const serialized = flattened.map((item) => `${item.name}:${item.value}`).join(';');
+  const mappings = buildThemeVariableMap(theme);
+  const entries = Object.entries(mappings);
+  if (entries.length === 0) return '';
+  const serialized = entries.map(([name, value]) => `${name}:${value}`).join(';');
   return `:root{${serialized}}`;
-}
-
-function isRemoteStylesheetHref(value: string): boolean {
-  return /^https?:\/\//i.test(value.trim());
-}
-
-function extractLeadingRemoteCssImports(cssText: string): { hrefs: string[]; rest: string } {
-  const hrefs = new Set<string>();
-  const leadingTriviaPattern = /^(?:\s+|\/\*[\s\S]*?\*\/)*/;
-  const importPattern =
-    /^@import(?:\s+url\(\s*(?:'([^']+)'|"([^"]+)"|([^'")\s][^)]*))\s*\)|\s*(['"])([^'"]+)\4)\s*([^;]*);/i;
-  let rest = cssText;
-
-  for (;;) {
-    const trivia = rest.match(leadingTriviaPattern);
-    if (trivia && trivia[0]) {
-      rest = rest.slice(trivia[0].length);
-    }
-
-    const match = rest.match(importPattern);
-    if (!match) break;
-
-    const href = (match[1] ?? match[2] ?? match[3] ?? match[5] ?? '').trim();
-    const trailingDirectives = (match[6] ?? '').trim();
-    if (!isRemoteStylesheetHref(href) || trailingDirectives.length > 0) {
-      break;
-    }
-
-    hrefs.add(href);
-    rest = rest.slice(match[0].length);
-  }
-
-  return { hrefs: Array.from(hrefs), rest };
 }
 
 function resolveTenantId(): string {
@@ -168,7 +113,8 @@ export function getCss(): string {
   const themeCss = buildThemeCssFromSot(themeConfig);
   const { rest } = extractLeadingRemoteCssImports(tenantCss);
   if (!themeCss) return rest;
-  return `${themeCss}\n${rest}`;
+  // rest first: any leftover @import must precede :root (ADR-001)
+  return `${rest}\n${themeCss}`;
 }
 
 export function getRemoteStylesheets(): string[] {

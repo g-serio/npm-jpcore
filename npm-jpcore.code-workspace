@@ -26,6 +26,9 @@
 		},
 		{
 			"path": "../temp/inkwellV2"
+		},
+		{
+			"path": "../temp/empty"
 		}
 	],
 	"settings": {

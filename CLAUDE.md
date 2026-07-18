@@ -45,7 +45,7 @@ Monorepo con due workspaces:
 | Menu config | `src/data/config/menu.json` | `MenuConfig` — source of truth per menu |
 | Theme config | `src/data/config/theme.json` | `ThemeConfig` — source of truth per token visivi |
 | Page data | `src/data/pages/<slug>.json` | `PageConfig` per pagina |
-| Base schemas | `src/lib/base-schemas.ts` | `BaseSectionData`, `BaseArrayItem`, `CtaSchema`, ecc. |
+| Base schemas | `@olonjs/core` (`dna/lib/base-schemas`) | `BaseSectionData`, `BaseArrayItem`, `CtaSchema`, ecc. |
 | Schema aggregate | `src/lib/schemas.ts` | `SECTION_SCHEMAS` keyed by `SectionType` |
 | Registry | `src/lib/ComponentRegistry.tsx` | `ComponentRegistry` |
 | Add-section config | `src/lib/addSectionConfig.ts` | `AddSectionConfig` |
@@ -108,9 +108,9 @@ Ogni sezione vive in `apps/tenant-alpha/src/components/<name>/`:
 3. Registrare il componente in `apps/tenant-alpha/src/lib/ComponentRegistry.tsx`
 4. Registrare lo schema in `apps/tenant-alpha/src/lib/schemas.ts`
 
-### Base Schemas (`src/lib/base-schemas.ts`) — BSDS v1.1
+### Base Schemas (`@olonjs/core`) — BSDS v1.1
 
-Ogni schema capsule deve estendere questi:
+Importare da `@olonjs/core` (non da un re-export tenant). Ogni schema capsule deve estendere questi:
 - `BaseSectionData` — aggiunge `id?` e `anchorId?`
 - `BaseSectionSettingsSchema` — aggiunge `paddingTop`, `paddingBottom`, `theme`, `container`
 - `BaseArrayItem` — aggiunge `id?` per array items (obbligatorio per stabilità React keys)

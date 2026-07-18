@@ -198,7 +198,7 @@ Legacy flat fields (`itemPath`, `itemField`, `itemId` as top-level) are **transi
 | `ui:select` | `z.enum([...])` | Dropdown | Any enum field — always pair with `z.enum` |
 | `ui:number` | `z.number()` | Numeric input | Counts, durations, pixel values |
 | `ui:list` | `z.array(...)` | Array editor with add/remove/reorder | Repeating items (cards, links, features) — items must extend `BaseArrayItem` |
-| `ui:image-picker` | `z.object({ url, alt? })` | Image picker + upload | Any image field — always use `ImageSelectionSchema` from `base-schemas.ts` |
+| `ui:image-picker` | `z.object({ url, alt? })` | Image picker + upload | Any image field — always use `ImageSelectionSchema` from `@olonjs/core` |
 | `ui:icon-picker` | `z.string()` | Icon selector | Icon name fields |
 
 **Rules:**

@@ -1138,7 +1138,7 @@ Important distinction:
 | Menu config | `src/data/config/menu.json` | `MenuConfig` |
 | Theme config | `src/data/config/theme.json` | `ThemeConfig` |
 | Page data | `src/data/pages/<slug>.json` | `PageConfig` |
-| Base schemas | `src/lib/base-schemas.ts` | Base fragments |
+| Base schemas | `@olonjs/core` | Base fragments (BSDS) |
 | Schema aggregate | `src/lib/schemas.ts` | `SECTION_SCHEMAS` |
 | Registry | `src/lib/ComponentRegistry.tsx` | `ComponentRegistry` |
 | Add-section config | `src/lib/addSectionConfig.ts` | `AddSectionConfig` |

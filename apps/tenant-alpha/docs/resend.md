@@ -42,7 +42,7 @@ const { status, message } = useFormState('my-form-id');
 ## Section schema
 
 ```ts
-import { WithFormRecipient } from '@/lib/base-schemas';
+import { BaseSectionData, WithFormRecipient } from '@olonjs/core';
 
 export const MySchema = BaseSectionData.merge(WithFormRecipient).extend({
   // ...

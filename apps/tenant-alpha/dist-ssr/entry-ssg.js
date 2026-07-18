@@ -31814,7 +31814,7 @@ function zt({
   }
   return i;
 }
-function $t(e, t, o) {
+function $t$1(e, t, o) {
   var i, l, a;
   if (e.trim() === "collection:current") {
     const c = (i = o.collectionContext) == null ? void 0 : i.currentItem;
@@ -31858,7 +31858,7 @@ function F(e, t, o) {
       );
       return ee$1(a) ? { ...a, ...p } : a;
     }
-    const n = $t(e.$ref, t, o);
+    const n = $t$1(e.$ref, t, o);
     if (!n)
       return console.warn("[JsonPages] Unresolved $ref", e.$ref), Object.fromEntries(
         Object.entries(e).map(([a, c]) => [a, F(c, t, o)])
@@ -32262,7 +32262,7 @@ function Dt(e) {
   const t = e.data && typeof e.data == "object" ? e.data : {};
   return typeof t.title == "string" && t.title.trim() ? t.title.trim() : typeof t.sectionTitle == "string" && t.sectionTitle.trim() ? t.sectionTitle.trim() : typeof t.label == "string" && t.label.trim() ? t.label.trim() : e.type ?? "section";
 }
-function Ut$1() {
+function Ut() {
   return "update-section";
 }
 function pe$1(e) {
@@ -32303,7 +32303,7 @@ function ze({
     label: Dt(y)
   })), w = a.filter((y) => c[y] != null).length > 0 ? [
     {
-      name: Ut$1(),
+      name: Ut(),
       description: "Update a section field in the Studio draft. Does not persist — call save when all updates are complete. Use sectionType to select the matching schema from sectionSchemas.",
       inputSchema: Bt()
     },
@@ -35599,7 +35599,7 @@ function tt() {
         switch (typeof t.tag == "number" && console.error(
           "Received an unexpected object in getComponentNameFromType(). This is likely a bug in React. Please file an issue."
         ), t.$$typeof) {
-          case x2:
+          case S:
             return "Portal";
           case g:
             return t.displayName || "Context";
@@ -35651,7 +35651,7 @@ function tt() {
       }
     }
     function s() {
-      var t = $2.A;
+      var t = U.A;
       return t === null ? null : t.getOwner();
     }
     function i() {
@@ -35676,7 +35676,7 @@ function tt() {
         configurable: true
       });
     }
-    function S() {
+    function x2() {
       var t = e(this.type);
       return O2[t] || (O2[t] = true, console.error(
         "Accessing element.ref was removed in React 19. ref is now a regular prop. It will be removed from the JSX Element type in a future release."
@@ -35692,7 +35692,7 @@ function tt() {
         _owner: _2
       }, (R2 !== void 0 ? R2 : null) !== null ? Object.defineProperty(t, "ref", {
         enumerable: false,
-        get: S
+        get: x2
       }) : Object.defineProperty(t, "ref", { enumerable: false, value: null }), t._store = {}, Object.defineProperty(t._store, "validated", {
         configurable: false,
         enumerable: false,
@@ -35769,7 +35769,7 @@ React keys must be passed directly to JSX without using spread:
     function f(t) {
       return typeof t == "object" && t !== null && t.$$typeof === d2;
     }
-    var c = ge$1, d2 = Symbol.for("react.transitional.element"), x2 = Symbol.for("react.portal"), h = Symbol.for("react.fragment"), C = Symbol.for("react.strict_mode"), A = Symbol.for("react.profiler"), b2 = Symbol.for("react.consumer"), g = Symbol.for("react.context"), m = Symbol.for("react.forward_ref"), w = Symbol.for("react.suspense"), k = Symbol.for("react.suspense_list"), T2 = Symbol.for("react.memo"), P = Symbol.for("react.lazy"), I = Symbol.for("react.activity"), D2 = Symbol.for("react.client.reference"), $2 = c.__CLIENT_INTERNALS_DO_NOT_USE_OR_WARN_USERS_THEY_CANNOT_UPGRADE, Y = Object.prototype.hasOwnProperty, B2 = Array.isArray, z = console.createTask ? console.createTask : function() {
+    var c = ge$1, d2 = Symbol.for("react.transitional.element"), S = Symbol.for("react.portal"), h = Symbol.for("react.fragment"), C = Symbol.for("react.strict_mode"), A = Symbol.for("react.profiler"), b2 = Symbol.for("react.consumer"), g = Symbol.for("react.context"), m = Symbol.for("react.forward_ref"), w = Symbol.for("react.suspense"), k = Symbol.for("react.suspense_list"), T2 = Symbol.for("react.memo"), P = Symbol.for("react.lazy"), I = Symbol.for("react.activity"), D2 = Symbol.for("react.client.reference"), U = c.__CLIENT_INTERNALS_DO_NOT_USE_OR_WARN_USERS_THEY_CANNOT_UPGRADE, Y = Object.prototype.hasOwnProperty, B2 = Array.isArray, z = console.createTask ? console.createTask : function() {
       return null;
     };
     c = {
@@ -35782,7 +35782,7 @@ React keys must be passed directly to JSX without using spread:
       i
     )(), H2 = z(a(i)), W = {};
     G.Fragment = h, G.jsx = function(t, u2, j) {
-      var _2 = 1e4 > $2.recentlyCreatedOwnerStacks++;
+      var _2 = 1e4 > U.recentlyCreatedOwnerStacks++;
       return p(
         t,
         u2,
@@ -35792,7 +35792,7 @@ React keys must be passed directly to JSX without using spread:
         _2 ? z(a(t)) : H2
       );
     }, G.jsxs = function(t, u2, j) {
-      var _2 = 1e4 > $2.recentlyCreatedOwnerStacks++;
+      var _2 = 1e4 > U.recentlyCreatedOwnerStacks++;
       return p(
         t,
         u2,
@@ -35886,10 +35886,10 @@ const dt = reactExports.forwardRef(
     children: i,
     iconNode: l,
     ...v2
-  }, S) => reactExports.createElement(
+  }, x2) => reactExports.createElement(
     "svg",
     {
-      ref: S,
+      ref: x2,
       ...ct,
       width: n,
       height: n,
@@ -35977,7 +35977,7 @@ class vt extends reactExports.Component {
   }
 }
 const bt = ({ type: e, scope: n, isSelected: o, sectionId: a, sectionIndex: s = 0, totalSections: i = 0, onReorder: l }) => {
-  const v2 = typeof s == "number" && s > 0 && l, S = typeof s == "number" && s < i - 1 && l;
+  const v2 = typeof s == "number" && s > 0 && l, x2 = typeof s == "number" && s < i - 1 && l;
   return /* @__PURE__ */ r.jsx(
     "div",
     {
@@ -36017,9 +36017,9 @@ const bt = ({ type: e, scope: n, isSelected: o, sectionId: a, sectionIndex: s = 
                 {
                   type: "button",
                   onClick: (y) => {
-                    y.stopPropagation(), S && l(a, s + 2);
+                    y.stopPropagation(), x2 && l(a, s + 2);
                   },
-                  disabled: !S,
+                  disabled: !x2,
                   className: "inline-flex items-center justify-center min-w-[18px] min-h-[18px] rounded bg-white/20 hover:bg-white/30 disabled:opacity-30 disabled:pointer-events-none",
                   title: "Move section down",
                   "aria-label": "Move section down",
@@ -36044,7 +36044,7 @@ const bt = ({ type: e, scope: n, isSelected: o, sectionId: a, sectionIndex: s = 
   totalSections: i,
   onReorder: l
 }) => {
-  const { mode: v2 } = it(), { registry: S, overlayDisabledSectionTypes: y } = at(), p = v2 === "studio", E = p && o === e.id, f = S[e.type], c = e.type === "header" || e.type === "footer" ? "global" : "local", d2 = Array.isArray(y) ? y.includes(e.type) : false, x2 = e.type === "header" && typeof e.settings == "object" && e.settings !== null && "sticky" in e.settings && !!e.settings.sticky;
+  const { mode: v2 } = it(), { registry: x2, overlayDisabledSectionTypes: y } = at(), p = v2 === "studio", E = p && o === e.id, f = x2[e.type], c = e.type === "header" || e.type === "footer" ? "global" : "local", d2 = Array.isArray(y) ? y.includes(e.type) : false, S = e.type === "header" && typeof e.settings == "object" && e.settings !== null && "sticky" in e.settings && !!e.settings.sticky;
   if (!f)
     return /* @__PURE__ */ r.jsxs("div", { className: "p-6 m-4 bg-red-500/10 text-red-400 border border-red-500/20 rounded-lg text-sm font-mono", children: [
       /* @__PURE__ */ r.jsx("strong", { children: "Missing Component:" }),
@@ -36066,7 +36066,7 @@ const bt = ({ type: e, scope: n, isSelected: o, sectionId: a, sectionIndex: s = 
       className: ur(
         "relative w-full",
         p && !d2 && "group cursor-pointer",
-        p && x2 ? "sticky top-0 z-[60]" : e.type === "header" ? "relative" : "relative z-0",
+        p && S ? "sticky top-0 z-[60]" : e.type === "header" ? "relative" : "relative z-0",
         E && "z-[70]"
       ),
       children: [
@@ -36102,7 +36102,7 @@ const bt = ({ type: e, scope: n, isSelected: o, sectionId: a, sectionIndex: s = 
   onActiveSectionChange: l
 }) => {
   yt(e.meta);
-  const [v2, S] = reactExports.useState(null), y = reactExports.useRef({}), p = reactExports.useRef(l);
+  const [v2, x2] = reactExports.useState(null), y = reactExports.useRef({}), p = reactExports.useRef(l);
   p.current = l;
   const E = tt$1(e, n), f = E ? n.header ?? null : null, c = n.footer ?? null, d2 = (b2) => {
     var g;
@@ -36141,12 +36141,12 @@ const bt = ({ type: e, scope: n, isSelected: o, sectionId: a, sectionIndex: s = 
       w = true, cancelAnimationFrame(k), m.disconnect();
     };
   }, [c, f, e.sections, e["global-header"], E]);
-  const x2 = (b2, g) => {
-    b2.preventDefault(), b2.dataTransfer.dropEffect = "move", S(g);
+  const S = (b2, g) => {
+    b2.preventDefault(), b2.dataTransfer.dropEffect = "move", x2(g);
   }, h = () => {
-    S(null);
+    x2(null);
   }, C = (b2, g) => {
-    if (b2.preventDefault(), S(null), !!s)
+    if (b2.preventDefault(), x2(null), !!s)
       try {
         const m = b2.dataTransfer.getData(Et), { sectionId: w } = JSON.parse(m);
         typeof w == "string" && s(w, g);
@@ -36180,7 +36180,7 @@ const bt = ({ type: e, scope: n, isSelected: o, sectionId: a, sectionIndex: s = 
                   backgroundColor: k ? "rgba(59, 130, 246, 0.4)" : "transparent",
                   borderTop: k ? "2px solid rgb(96, 165, 250)" : "2px solid transparent"
                 },
-                onDragOver: (T2) => x2(T2, w),
+                onDragOver: (T2) => S(T2, w),
                 onDragLeave: h,
                 onDrop: (T2) => C(T2, w)
               }
@@ -36238,7 +36238,7 @@ const bt = ({ type: e, scope: n, isSelected: o, sectionId: a, sectionIndex: s = 
               backgroundColor: w ? "rgba(59, 130, 246, 0.4)" : "transparent",
               borderTop: w ? "2px solid rgb(96, 165, 250)" : "2px solid transparent"
             },
-            onDragOver: (k) => x2(k, m),
+            onDragOver: (k) => S(k, m),
             onDragLeave: h,
             onDrop: (k) => C(k, m)
           },
@@ -36314,7 +36314,7 @@ function te(e, n) {
   const o = e[n];
   return typeof o == "string" ? o.trim() : "";
 }
-function Ut(e) {
+function $t(e) {
   const n = te(e, "VITE_OLONJS_CLOUD_URL") || te(e, "VITE_JSONPAGES_CLOUD_URL"), o = te(e, "VITE_OLONJS_API_KEY") || te(e, "VITE_JSONPAGES_API_KEY"), a = e.VITE_SAVE2REPO === "true";
   return { apiUrl: n, apiKey: o, save2RepoFlag: a };
 }
@@ -36968,8 +36968,9 @@ const Icon = ({ name: name2, size = 20, className }) => {
   return /* @__PURE__ */ jsxRuntimeExports.jsx(IconComponent, { size, className });
 };
 const __vite_import_meta_env__ = { "BASE_URL": "/", "DEV": false, "MODE": "production", "PROD": true, "SSR": true };
-const cloudEnv = Ut(__vite_import_meta_env__);
-const cloudPolicy = Ft(cloudEnv);
+const cloudPolicy = Ft(
+  $t(__vite_import_meta_env__)
+);
 et$1("/");
 const missingCloudUrl = !cloudPolicy.apiUrl;
 const hasCloudKey = Boolean(cloudPolicy.apiKey);
@@ -37117,6 +37118,31 @@ const SECTION_SCHEMAS = {
   footer: FooterSchema,
   "form-demo": FormDemoSchema
 };
+function isRemoteStylesheetHref(value) {
+  return /^https?:\/\//i.test(value.trim());
+}
+function extractLeadingRemoteCssImports(cssText) {
+  const hrefs = /* @__PURE__ */ new Set();
+  const leadingTriviaPattern = /^(?:\s+|\/\*[\s\S]*?\*\/)*/;
+  const importPattern = /^@import(?:\s*url\(\s*(?:'([^']+)'|"([^"]+)"|([^'")\s][^)]*))\s*\)|\s*(['"])([^'"]+)\4)\s*([^;]*);/i;
+  let rest = cssText;
+  for (; ; ) {
+    const trivia = rest.match(leadingTriviaPattern);
+    if (trivia && trivia[0]) {
+      rest = rest.slice(trivia[0].length);
+    }
+    const match = rest.match(importPattern);
+    if (!match) break;
+    const href = (match[1] ?? match[2] ?? match[3] ?? match[5] ?? "").trim();
+    const trailingDirectives = (match[6] ?? "").trim();
+    if (!isRemoteStylesheetHref(href) || trailingDirectives.length > 0) {
+      break;
+    }
+    hrefs.add(href);
+    rest = rest.slice(match[0].length);
+  }
+  return { hrefs: Array.from(hrefs), rest };
+}
 const CollectionRegistry = {
   autori: AutoriCollectionSchema,
   libri: LibriCollectionSchema
@@ -37446,53 +37472,12 @@ function resolvePage(slug2) {
   const fallbackSlug = home2 ?? slugs[0];
   return { slug: fallbackSlug, registrySlug: fallbackSlug, page: pages[fallbackSlug], params: {} };
 }
-function flattenThemeTokens(input, pathSegments = [], out = []) {
-  if (typeof input === "string") {
-    const cleaned = input.trim();
-    if (cleaned.length > 0 && pathSegments.length > 0) {
-      out.push({ name: `--theme-${pathSegments.join("-")}`, value: cleaned });
-    }
-    return out;
-  }
-  if (!isRecord(input)) return out;
-  const entries = Object.entries(input).sort(([a], [b2]) => a.localeCompare(b2));
-  for (const [key, value] of entries) {
-    flattenThemeTokens(value, [...pathSegments, key], out);
-  }
-  return out;
-}
 function buildThemeCssFromSot(theme) {
-  const root = isRecord(theme) ? theme : {};
-  const tokens2 = root["tokens"];
-  const flattened = flattenThemeTokens(tokens2);
-  if (flattened.length === 0) return "";
-  const serialized = flattened.map((item) => `${item.name}:${item.value}`).join(";");
+  const mappings = Vt(theme);
+  const entries = Object.entries(mappings);
+  if (entries.length === 0) return "";
+  const serialized = entries.map(([name2, value]) => `${name2}:${value}`).join(";");
   return `:root{${serialized}}`;
-}
-function isRemoteStylesheetHref(value) {
-  return /^https?:\/\//i.test(value.trim());
-}
-function extractLeadingRemoteCssImports(cssText) {
-  const hrefs = /* @__PURE__ */ new Set();
-  const leadingTriviaPattern = /^(?:\s+|\/\*[\s\S]*?\*\/)*/;
-  const importPattern = /^@import(?:\s+url\(\s*(?:'([^']+)'|"([^"]+)"|([^'")\s][^)]*))\s*\)|\s*(['"])([^'"]+)\4)\s*([^;]*);/i;
-  let rest = cssText;
-  for (; ; ) {
-    const trivia = rest.match(leadingTriviaPattern);
-    if (trivia && trivia[0]) {
-      rest = rest.slice(trivia[0].length);
-    }
-    const match = rest.match(importPattern);
-    if (!match) break;
-    const href = (match[1] ?? match[2] ?? match[3] ?? match[5] ?? "").trim();
-    const trailingDirectives = (match[6] ?? "").trim();
-    if (!isRemoteStylesheetHref(href) || trailingDirectives.length > 0) {
-      break;
-    }
-    hrefs.add(href);
-    rest = rest.slice(match[0].length);
-  }
-  return { hrefs: Array.from(hrefs), rest };
 }
 function resolveTenantId() {
   const site = isRecord(siteConfig) ? siteConfig : {};
@@ -37550,8 +37535,8 @@ function getCss() {
   const themeCss = buildThemeCssFromSot(themeConfig);
   const { rest } = extractLeadingRemoteCssImports(tenantCss);
   if (!themeCss) return rest;
-  return `${themeCss}
-${rest}`;
+  return `${rest}
+${themeCss}`;
 }
 function getRemoteStylesheets() {
   return extractLeadingRemoteCssImports(tenantCss).hrefs;

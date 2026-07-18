@@ -1,28 +1,45 @@
+import { useEffect, useState } from 'react';
+import type { ThemeConfig } from '@/types';
+
+const REMOTE_CSS_LINK_ATTR = 'data-jp-tenant-remote-css';
+const TENANT_SHELL_STYLE_ATTR = 'data-jp-tenant-shell-css';
+
 function isObjectRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null;
 }
 
-export function buildThemeFontVarsCss(input: unknown): string {
-  if (!isObjectRecord(input)) return '';
-  const tokens = isObjectRecord(input.tokens) ? input.tokens : null;
+/**
+ * Font tokens come from theme.json via core `buildThemeVariableMap` — no branded DNA fallbacks.
+ * Warn in DEV when typography.fontFamily is missing or incomplete.
+ */
+export function warnIfThemeFontsMissing(theme: ThemeConfig | unknown): void {
+  if (typeof import.meta !== 'undefined' && import.meta.env && !import.meta.env.DEV) return;
+
+  if (!isObjectRecord(theme)) {
+    console.warn('[tenantCss] missing theme.json / themeConfig — font tokens will not be published by core');
+    return;
+  }
+
+  const tokens = isObjectRecord(theme.tokens) ? theme.tokens : null;
   const typography = tokens && isObjectRecord(tokens.typography) ? tokens.typography : null;
   const fontFamily = typography && isObjectRecord(typography.fontFamily) ? typography.fontFamily : null;
-  const primary =
-    typeof fontFamily?.primary === 'string'
-      ? fontFamily.primary
-      : "'Instrument Sans', system-ui, sans-serif";
-  const display =
-    typeof fontFamily?.display === 'string'
-      ? fontFamily.display
-      : typeof fontFamily?.serif === 'string'
-        ? fontFamily.serif
-        : "'Instrument Serif', Georgia, serif";
-  const mono = typeof fontFamily?.mono === 'string' ? fontFamily.mono : "'JetBrains Mono', monospace";
-  return `:root{--theme-font-primary:${primary};--theme-font-display:${display};--theme-font-mono:${mono};}`;
-}
 
-const REMOTE_CSS_LINK_ATTR = 'data-jp-tenant-remote-css';
-const TENANT_SHELL_STYLE_ATTR = 'data-jp-tenant-shell-css';
+  if (!fontFamily) {
+    console.warn(
+      '[tenantCss] missing theme.tokens.typography.fontFamily in theme.json — expected primary/display/mono',
+    );
+    return;
+  }
+
+  const missing = (['primary', 'display', 'mono'] as const).filter(
+    (key) => typeof fontFamily[key] !== 'string' || !String(fontFamily[key]).trim(),
+  );
+  if (missing.length > 0) {
+    console.warn(
+      `[tenantCss] incomplete theme.tokens.typography.fontFamily — missing: ${missing.join(', ')}`,
+    );
+  }
+}
 
 function isRemoteStylesheetHref(value: string): boolean {
   return /^https?:\/\//i.test(value.trim());
@@ -67,8 +84,6 @@ export function setTenantPreviewReady(ready: boolean): void {
     document.body.dataset.previewReady = ready ? '1' : '0';
   }
 }
-
-import { useEffect, useState } from 'react';
 
 export function useInjectedTenantCss(css: string): void {
   useEffect(() => {

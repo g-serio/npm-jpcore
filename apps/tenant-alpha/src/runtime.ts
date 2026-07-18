@@ -1,8 +1,8 @@
 import type { JsonPagesConfig, MenuConfig, PageConfig, SiteConfig, ThemeConfig } from '@/types';
 import { CollectionRegistry } from '@/lib/CollectionRegistry';
 import { SECTION_SCHEMAS } from '@/lib/schemas';
-import { getFileCollections } from '@/lib/getFileCollections';
-import { getFilePages } from '@/lib/getFilePages';
+import { getFileCollections } from '@/lib/loaders/getFileCollections';
+import { getFilePages } from '@/lib/loaders/getFilePages';
 import siteData from '@/data/config/site.json';
 import menuData from '@/data/config/menu.json';
 import themeData from '@/data/config/theme.json';

@@ -58,7 +58,7 @@ export * from '@olonjs/core';
 
 ## Cloud mode (HotSave + Save2Repo)
 
-Unica lettura env: `src/lib/tenantEnv.ts` → `cloudPolicy` (`resolveCloudPolicy` in `@olonjs/react`). Non leggere `import.meta.env` cloud altrove.
+Unica lettura env: `src/lib/env/tenantEnv.ts` → `cloudPolicy` (`resolveCloudPolicy` in `@olonjs/react`). Non leggere `import.meta.env` cloud altrove.
 
 | Env | Boot | Studio save |
 |---|---|---|

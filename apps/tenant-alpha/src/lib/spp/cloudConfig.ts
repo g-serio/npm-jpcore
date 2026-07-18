@@ -1,6 +1,6 @@
 import { buildApiCandidates } from '@olonjs/react';
 
-import { cloudPolicy } from '@/lib/tenantEnv';
+import { cloudPolicy } from '@/lib/env/tenantEnv';
 
 export { buildApiCandidates };
 
