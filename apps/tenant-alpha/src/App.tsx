@@ -2,33 +2,45 @@
  * Thin Entry Point (Tenant).
  * Bootstrap, persistence, and engine wiring — logic lives in lib/hooks.
  */
-import { useEffect, useMemo } from 'react';
-import { JsonPagesEngine, OlonFormsContext, createHotSaveHandler } from '@olonjs/react';
+import { lazy, Suspense, useEffect, useMemo } from 'react';
 import type { JsonPagesConfig, ProjectState } from '@olonjs/core';
 import { withBasePath } from '@olonjs/core';
-import { ComponentRegistry } from '@/lib/ComponentRegistry';
-import { CollectionRegistry } from '@/lib/CollectionRegistry';
-import { SECTION_SCHEMAS } from '@/lib/schemas';
-import { addSectionConfig } from '@/lib/addSectionConfig';
+import { JsonPagesEngine, OlonFormsContext, createHotSaveHandler } from '@olonjs/react';
+
 import type { MenuConfig, SiteConfig, ThemeConfig } from '@/types';
+
+// Protocol (tenant-authored)
+import { addSectionConfig } from '@/lib/addSectionConfig';
+import { CollectionRegistry } from '@/lib/CollectionRegistry';
+import { ComponentRegistry } from '@/lib/ComponentRegistry';
+import { iconMap } from '@/lib/IconResolver';
+import { SECTION_SCHEMAS } from '@/lib/schemas';
+
+// Data seeds + local loaders
 import siteData from '@/data/config/site.json';
 import themeData from '@/data/config/theme.json';
 import menuData from '@/data/config/menu.json';
 import { getFileCollections } from '@/lib/loaders/getFileCollections';
 import { getFilePages } from '@/lib/loaders/getFilePages';
-import { DopaDrawer } from '@/components/save-drawer/DopaDrawer';
+
+// Shell UI
 import { EmptyTenantView } from '@/components/empty-tenant';
 import { TenantBootstrapChrome } from '@/components/TenantBootstrapChrome';
 import { ThemeProvider } from '@/components/ThemeProvider';
-import { useOlonForms } from '@/lib/forms/useOlonForms';
-import { iconMap } from '@/lib/IconResolver';
+
+// Harness
 import { uploadTenantAsset } from '@/lib/assets/assetUpload';
+import { useAssetsManifest } from '@/lib/assets/useAssetsManifest';
+import { useTenantBootstrap } from '@/lib/bootstrap/useTenantBootstrap';
 import {
   cloudFingerprintFromUrl,
   normalizeSlugForCache,
   readCachedCloudContent,
   writeCachedCloudContent,
 } from '@/lib/cloud/cloudCache';
+import { hydrateLocalProjectState } from '@/lib/cloud/hydrateLocalProjectState';
+import { useAdminStudioContent } from '@/lib/cloud/useAdminStudioContent';
+import { useCloudSave } from '@/lib/cloud/useCloudSave';
 import {
   extractLeadingRemoteCssImports,
   setTenantPreviewReady,
@@ -37,13 +49,14 @@ import {
   warnIfThemeFontsMissing,
 } from '@/lib/css/tenantCss';
 import { APP_BASE_PATH, TENANT_ID, cloudPolicy } from '@/lib/env/tenantEnv';
-import { useAssetsManifest } from '@/lib/assets/useAssetsManifest';
-import { useCloudSave } from '@/lib/cloud/useCloudSave';
-import { useTenantBootstrap } from '@/lib/bootstrap/useTenantBootstrap';
-import { useAdminStudioContent } from '@/lib/cloud/useAdminStudioContent';
-import { hydrateLocalProjectState } from '@/lib/cloud/hydrateLocalProjectState';
+import { useOlonForms } from '@/lib/forms/useOlonForms';
 
 import tenantCss from './index.css?inline';
+
+/** Cold-save UI — admin/Save2Repo only; keep out of the visitor main chunk. */
+const DopaDrawer = lazy(() =>
+  import('@/components/save-drawer/DopaDrawer').then((m) => ({ default: m.DopaDrawer })),
+);
 
 const themeConfigSeed = themeData as unknown as ThemeConfig;
 const menuConfigSeed = menuData as unknown as MenuConfig;
@@ -70,6 +83,7 @@ function App() {
   });
   const { assetsManifest, loadAssetsManifest, cloudApiCandidates } = useAssetsManifest(cloudPolicy.isCloudMode);
   const { cloudSaveUi, runCloudSave, closeCloudDrawer, retryCloudSave } = useCloudSave();
+  const mountDopaDrawer = cloudSaveUi.isOpen || cloudSaveUi.phase !== 'idle';
 
   const hotSave = useMemo(
     () =>
@@ -225,17 +239,21 @@ function App() {
             <JsonPagesEngine config={config} />
           )
         ) : null}
-        <DopaDrawer
-          isOpen={cloudSaveUi.isOpen}
-          phase={cloudSaveUi.phase}
-          currentStepId={cloudSaveUi.currentStepId}
-          doneSteps={cloudSaveUi.doneSteps}
-          progress={cloudSaveUi.progress}
-          errorMessage={cloudSaveUi.errorMessage}
-          deployUrl={cloudSaveUi.deployUrl}
-          onClose={closeCloudDrawer}
-          onRetry={retryCloudSave}
-        />
+        {mountDopaDrawer ? (
+          <Suspense fallback={null}>
+            <DopaDrawer
+              isOpen={cloudSaveUi.isOpen}
+              phase={cloudSaveUi.phase}
+              currentStepId={cloudSaveUi.currentStepId}
+              doneSteps={cloudSaveUi.doneSteps}
+              progress={cloudSaveUi.progress}
+              errorMessage={cloudSaveUi.errorMessage}
+              deployUrl={cloudSaveUi.deployUrl}
+              onClose={closeCloudDrawer}
+              onRetry={retryCloudSave}
+            />
+          </Suspense>
+        ) : null}
       </OlonFormsContext.Provider>
     </ThemeProvider>
   );

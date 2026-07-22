@@ -1,0 +1,1 @@
+import x from "./vite.config.ts"; console.log("plugins", x.default.plugins.length);

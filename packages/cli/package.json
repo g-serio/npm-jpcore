@@ -1,6 +1,6 @@
 {
     "name": "@olonjs/cli",
-    "version": "3.0.152",
+    "version": "3.0.153",
     "description": "The Sovereign CLI Engine for OlonJS.",
     "type": "module",
     "bin": {

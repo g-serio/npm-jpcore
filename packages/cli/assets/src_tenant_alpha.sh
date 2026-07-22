@@ -1817,9 +1817,9 @@ cat << 'END_OF_FILE_CONTENT' > "package.json"
     "@tiptap/extension-link": "^2.11.5",
     "@tiptap/react": "^2.11.5",
     "@tiptap/starter-kit": "^2.11.5",
-    "@olonjs/core": "^1.1.19",
-    "@olonjs/react": "^0.1.2",
-    "@olonjs/studio": "^0.1.2",
+    "@olonjs/core": "^1.1.20",
+    "@olonjs/react": "^0.1.3",
+    "@olonjs/studio": "^0.1.3",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "lucide-react": "^0.474.0",
@@ -2963,15 +2963,15 @@ import type { MenuConfig, SiteConfig, ThemeConfig } from '@/types';
 import siteData from '@/data/config/site.json';
 import themeData from '@/data/config/theme.json';
 import menuData from '@/data/config/menu.json';
-import { getFileCollections } from '@/lib/getFileCollections';
-import { getFilePages } from '@/lib/getFilePages';
+import { getFileCollections } from '@/lib/loaders/getFileCollections';
+import { getFilePages } from '@/lib/loaders/getFilePages';
 import { DopaDrawer } from '@/components/save-drawer/DopaDrawer';
 import { EmptyTenantView } from '@/components/empty-tenant';
 import { TenantBootstrapChrome } from '@/components/TenantBootstrapChrome';
 import { ThemeProvider } from '@/components/ThemeProvider';
-import { useOlonForms } from '@/lib/useOlonForms';
+import { useOlonForms } from '@/lib/forms/useOlonForms';
 import { iconMap } from '@/lib/IconResolver';
-import { uploadTenantAsset } from '@/lib/assetUpload';
+import { uploadTenantAsset } from '@/lib/assets/assetUpload';
 import {
   cloudFingerprintFromUrl,
   normalizeSlugForCache,
@@ -2979,18 +2979,18 @@ import {
   writeCachedCloudContent,
 } from '@/lib/cloud/cloudCache';
 import {
-  buildThemeFontVarsCss,
   extractLeadingRemoteCssImports,
   setTenantPreviewReady,
   useInjectedTenantCss,
   useTenantFontsReady,
-} from '@/lib/tenantCss';
-import { APP_BASE_PATH, TENANT_ID, cloudPolicy } from '@/lib/tenantEnv';
-import { useAssetsManifest } from '@/lib/useAssetsManifest';
-import { useCloudSave } from '@/lib/useCloudSave';
-import { useTenantBootstrap } from '@/lib/useTenantBootstrap';
+  warnIfThemeFontsMissing,
+} from '@/lib/css/tenantCss';
+import { APP_BASE_PATH, TENANT_ID, cloudPolicy } from '@/lib/env/tenantEnv';
+import { useAssetsManifest } from '@/lib/assets/useAssetsManifest';
+import { useCloudSave } from '@/lib/cloud/useCloudSave';
+import { useTenantBootstrap } from '@/lib/bootstrap/useTenantBootstrap';
 import { useAdminStudioContent } from '@/lib/cloud/useAdminStudioContent';
-import { hydrateLocalProjectState } from '@/lib/hydrateLocalProjectState';
+import { hydrateLocalProjectState } from '@/lib/cloud/hydrateLocalProjectState';
 
 import tenantCss from './index.css?inline';
 
@@ -3045,13 +3045,15 @@ function App() {
   );
 
   const tenantCssParts = useMemo(() => extractLeadingRemoteCssImports(tenantCss), []);
-  const resolvedTenantCss = useMemo(
-    () => [buildThemeFontVarsCss(bootstrap.themeConfig), tenantCssParts.rest].filter(Boolean).join('\n'),
-    [bootstrap.themeConfig, tenantCssParts],
-  );
+  // Font tokens: core theme chain (`buildThemeVariableMap`) — not reinvented here.
+  const resolvedTenantCss = tenantCssParts.rest;
   useInjectedTenantCss(resolvedTenantCss);
   const fontsReady = useTenantFontsReady(tenantCssParts.hrefs);
   const canPaintVisitor = bootstrap.shouldRenderEngine && fontsReady;
+
+  useEffect(() => {
+    warnIfThemeFontsMissing(bootstrap.themeConfig);
+  }, [bootstrap.themeConfig]);
 
   useEffect(() => {
     setTenantPreviewReady(false);
@@ -4076,7 +4078,7 @@ echo "Creating src/components/form-demo/View.tsx..."
 cat << 'END_OF_FILE_CONTENT' > "src/components/form-demo/View.tsx"
 import { Icon } from '@/lib/IconResolver';
 import { useFormState } from '@olonjs/react';
-import { cloudPolicy } from '@/lib/tenantEnv';
+import { cloudPolicy } from '@/lib/env/tenantEnv';
 import type { FormDemoData } from './types';
 
 type FormDemoViewProps = {
@@ -9686,11 +9688,12 @@ cat << 'END_OF_FILE_CONTENT' > "src/entry-ssg.tsx"
 import { renderToString } from 'react-dom/server';
 import { StaticRouter } from 'react-router-dom/server';
 import { ConfigProvider, PageRenderer, StudioProvider } from '@olonjs/react';
-import { contract, resolvePageMatchFromRegistry, resolveRuntimeConfig } from '@olonjs/core';
+import { buildThemeVariableMap, contract, resolvePageMatchFromRegistry, resolveRuntimeConfig } from '@olonjs/core';
 import type { JsonPagesConfig, PageConfig, SiteConfig, ThemeConfig } from '@/types';
 import { ThemeProvider } from '@/components/ThemeProvider';
 import { ComponentRegistry } from '@/lib/ComponentRegistry';
 import { SECTION_SCHEMAS } from '@/lib/schemas';
+import { extractLeadingRemoteCssImports } from '@/lib/css/tenantCss';
 import { collectionSchemas, collections, menuConfig, pages, refDocuments, siteConfig, themeConfig } from '@/runtime';
 import tenantCss from '@/index.css?inline';
 
@@ -9728,68 +9731,12 @@ function resolvePage(slug: string): { slug: string; registrySlug: string; page: 
   return { slug: fallbackSlug, registrySlug: fallbackSlug, page: pages[fallbackSlug], params: {} };
 }
 
-function flattenThemeTokens(
-  input: unknown,
-  pathSegments: string[] = [],
-  out: Array<{ name: string; value: string }> = []
-): Array<{ name: string; value: string }> {
-  if (typeof input === 'string') {
-    const cleaned = input.trim();
-    if (cleaned.length > 0 && pathSegments.length > 0) {
-      out.push({ name: `--theme-${pathSegments.join('-')}`, value: cleaned });
-    }
-    return out;
-  }
-
-  if (!isRecord(input)) return out;
-
-  const entries = Object.entries(input).sort(([a], [b]) => a.localeCompare(b));
-  for (const [key, value] of entries) {
-    flattenThemeTokens(value, [...pathSegments, key], out);
-  }
-  return out;
-}
-
 function buildThemeCssFromSot(theme: ThemeConfig): string {
-  const root: Record<string, unknown> = isRecord(theme) ? theme : {};
-  const tokens = root['tokens'];
-  const flattened = flattenThemeTokens(tokens);
-  if (flattened.length === 0) return '';
-  const serialized = flattened.map((item) => `${item.name}:${item.value}`).join(';');
+  const mappings = buildThemeVariableMap(theme);
+  const entries = Object.entries(mappings);
+  if (entries.length === 0) return '';
+  const serialized = entries.map(([name, value]) => `${name}:${value}`).join(';');
   return `:root{${serialized}}`;
-}
-
-function isRemoteStylesheetHref(value: string): boolean {
-  return /^https?:\/\//i.test(value.trim());
-}
-
-function extractLeadingRemoteCssImports(cssText: string): { hrefs: string[]; rest: string } {
-  const hrefs = new Set<string>();
-  const leadingTriviaPattern = /^(?:\s+|\/\*[\s\S]*?\*\/)*/;
-  const importPattern =
-    /^@import(?:\s+url\(\s*(?:'([^']+)'|"([^"]+)"|([^'")\s][^)]*))\s*\)|\s*(['"])([^'"]+)\4)\s*([^;]*);/i;
-  let rest = cssText;
-
-  for (;;) {
-    const trivia = rest.match(leadingTriviaPattern);
-    if (trivia && trivia[0]) {
-      rest = rest.slice(trivia[0].length);
-    }
-
-    const match = rest.match(importPattern);
-    if (!match) break;
-
-    const href = (match[1] ?? match[2] ?? match[3] ?? match[5] ?? '').trim();
-    const trailingDirectives = (match[6] ?? '').trim();
-    if (!isRemoteStylesheetHref(href) || trailingDirectives.length > 0) {
-      break;
-    }
-
-    hrefs.add(href);
-    rest = rest.slice(match[0].length);
-  }
-
-  return { hrefs: Array.from(hrefs), rest };
 }
 
 function resolveTenantId(): string {
@@ -9853,7 +9800,8 @@ export function getCss(): string {
   const themeCss = buildThemeCssFromSot(themeConfig);
   const { rest } = extractLeadingRemoteCssImports(tenantCss);
   if (!themeCss) return rest;
-  return `${themeCss}\n${rest}`;
+  // rest first: any leftover @import must precede :root (ADR-001)
+  return `${rest}\n${themeCss}`;
 }
 
 export function getRemoteStylesheets(): string[] {
@@ -11002,8 +10950,9 @@ export const addSectionConfig: AddSectionConfig = {
 };
 
 END_OF_FILE_CONTENT
-echo "Creating src/lib/assetUpload.ts..."
-cat << 'END_OF_FILE_CONTENT' > "src/lib/assetUpload.ts"
+mkdir -p "src/lib/assets"
+echo "Creating src/lib/assets/assetUpload.ts..."
+cat << 'END_OF_FILE_CONTENT' > "src/lib/assets/assetUpload.ts"
 import { withBasePath } from '@olonjs/core';
 import { backoffDelayMs, isRetryableStatus, sleep } from '@/lib/cloud/cloudHttp';
 
@@ -11163,15 +11112,566 @@ export async function uploadTenantAsset(
 }
 
 END_OF_FILE_CONTENT
-echo "Creating src/lib/base-schemas.ts..."
-cat << 'END_OF_FILE_CONTENT' > "src/lib/base-schemas.ts"
-export {
-  BaseSectionData,
-  BaseArrayItem,
-  BaseSectionSettingsSchema,
-  CtaSchema,
-  ImageSelectionSchema,
-} from '@olonjs/core';
+echo "Creating src/lib/assets/useAssetsManifest.ts..."
+cat << 'END_OF_FILE_CONTENT' > "src/lib/assets/useAssetsManifest.ts"
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import type { LibraryImageEntry } from '@olonjs/core';
+import { buildApiCandidates } from '@olonjs/react';
+
+import { cloudPolicy } from '@/lib/env/tenantEnv';
+
+function normalizeApiBase(raw: string): string {
+  return raw.trim().replace(/\/+$/, '');
+}
+
+/** Asset library — cloud list when `cloudPolicy.isCloudMode`, else local `/api/list-assets`. */
+export function useAssetsManifest(isCloudMode: boolean = cloudPolicy.isCloudMode) {
+  const [assetsManifest, setAssetsManifest] = useState<LibraryImageEntry[]>([]);
+  const cloudApiCandidates = useMemo(
+    () => (isCloudMode && cloudPolicy.apiUrl ? buildApiCandidates(cloudPolicy.apiUrl) : []),
+    [isCloudMode],
+  );
+
+  const loadAssetsManifest = useCallback(async (): Promise<void> => {
+    if (isCloudMode && cloudPolicy.apiUrl && cloudPolicy.apiKey) {
+      const apiBases =
+        cloudApiCandidates.length > 0
+          ? cloudApiCandidates
+          : [normalizeApiBase(cloudPolicy.apiUrl)];
+      for (const apiBase of apiBases) {
+        try {
+          const res = await fetch(`${apiBase}/assets/list?limit=200`, {
+            method: 'GET',
+            headers: { Authorization: `Bearer ${cloudPolicy.apiKey}` },
+          });
+          const body = (await res.json().catch(() => ({}))) as { items?: LibraryImageEntry[] };
+          if (!res.ok) continue;
+          const items = Array.isArray(body.items) ? body.items : [];
+          setAssetsManifest(items);
+          return;
+        } catch {
+          // try next candidate
+        }
+      }
+      setAssetsManifest([]);
+      return;
+    }
+
+    fetch('/api/list-assets')
+      .then((r) => (r.ok ? r.json() : []))
+      .then((list: LibraryImageEntry[]) => setAssetsManifest(Array.isArray(list) ? list : []))
+      .catch(() => setAssetsManifest([]));
+  }, [isCloudMode, cloudApiCandidates]);
+
+  useEffect(() => {
+    void loadAssetsManifest();
+  }, [loadAssetsManifest]);
+
+  return { assetsManifest, loadAssetsManifest, cloudApiCandidates };
+}
+
+END_OF_FILE_CONTENT
+mkdir -p "src/lib/bootstrap"
+echo "Creating src/lib/bootstrap/applyCachedBootstrap.ts..."
+cat << 'END_OF_FILE_CONTENT' > "src/lib/bootstrap/applyCachedBootstrap.ts"
+import type { JsonPagesConfig } from '@olonjs/core';
+import type { PageConfig, SiteConfig } from '@/types';
+
+export function applyCachedBootstrap(params: {
+  cachedPages: Record<string, PageConfig> | null;
+  cachedSite: SiteConfig | null;
+  cachedCollections?: JsonPagesConfig['collections'];
+  setPages: (pages: Record<string, PageConfig>) => void;
+  setSiteConfig: (site: SiteConfig) => void;
+  setCollections: (collections: NonNullable<JsonPagesConfig['collections']>) => void;
+}): boolean {
+  const { cachedPages, cachedSite, cachedCollections, setPages, setSiteConfig, setCollections } = params;
+  const hasPages = Boolean(cachedPages && Object.keys(cachedPages).length > 0);
+  const hasSite = Boolean(cachedSite);
+  if (!hasPages && !hasSite) return false;
+  if (cachedPages && hasPages) setPages(cachedPages);
+  if (cachedSite) setSiteConfig(cachedSite);
+  if (cachedCollections) setCollections(cachedCollections);
+  return true;
+}
+
+END_OF_FILE_CONTENT
+echo "Creating src/lib/bootstrap/bootLive.ts..."
+cat << 'END_OF_FILE_CONTENT' > "src/lib/bootstrap/bootLive.ts"
+import type { MutableRefObject } from 'react';
+import { logBootstrapEvent, toCloudLoadFailure } from '@/lib/cloud/bootstrapTelemetry';
+import { cloudFingerprint, readCachedPages, writeCachedCloudContent } from '@/lib/cloud/cloudCache';
+import type { CloudLoadFailure } from '@/lib/cloud/types';
+import {
+  fetchRenderProjection,
+  isAdminPath,
+  normalizeRenderPath,
+  patchHistoryNavigation,
+  resolveRegistrySlugFromRender,
+  type RenderProjectionResponse,
+} from '@/lib/spp';
+import { APP_BASE_PATH, CLOUD_API_KEY, CLOUD_API_URL } from '@/lib/env/tenantEnv';
+import { applyCachedBootstrap } from './applyCachedBootstrap';
+import type { BootstrapContentSetters, BootstrapInFlightRef } from './types';
+
+const MAX_BOOTSTRAP_RETRIES = 2;
+
+type BootLiveParams = {
+  cloudApiCandidates: string[];
+  contentLoadInFlight: BootstrapInFlightRef;
+  sppRenderInFlightRef: MutableRefObject<string | null>;
+  sppBootstrappedRef: MutableRefObject<boolean>;
+  setters: BootstrapContentSetters;
+};
+
+/**
+ * Live cloud boot via SPP `/render`.
+ * On `/admin`, defer paint — content sync is `useAdminStudioContent` + `markCloudContentReady`.
+ */
+export function bootLive({
+  cloudApiCandidates,
+  contentLoadInFlight,
+  sppRenderInFlightRef,
+  sppBootstrappedRef,
+  setters,
+}: BootLiveParams): (() => void) | void {
+  if (contentLoadInFlight.current) return;
+
+  const {
+    setPages,
+    setSiteConfig,
+    setMenuConfig,
+    setCollections,
+    setContentMode,
+    setContentFallback,
+    setShowTopProgress,
+    setHasInitialCloudResolved,
+  } = setters;
+
+  if (isAdminPath(window.location.pathname, APP_BASE_PATH)) {
+    setContentMode('cloud');
+    setContentFallback(null);
+    setShowTopProgress(true);
+    setHasInitialCloudResolved(false);
+    return;
+  }
+
+  const controller = new AbortController();
+  const startedAt = Date.now();
+  const primaryApiBase = cloudApiCandidates[0] ?? CLOUD_API_URL.trim().replace(/\/+$/, '');
+  const fingerprint = cloudFingerprint(primaryApiBase, CLOUD_API_KEY);
+  const { cached, cachedSite } = readCachedPages(fingerprint);
+
+  sppBootstrappedRef.current = false;
+  setContentMode('cloud');
+  setContentFallback(null);
+  setShowTopProgress(true);
+  setHasInitialCloudResolved(false);
+  logBootstrapEvent('boot.start', {
+    mode: 'spp-render',
+    apiCandidates: cloudApiCandidates.length,
+  });
+
+  const applyRenderPayload = (result: RenderProjectionResponse) => {
+    if (!result.page) return;
+    const registrySlug = resolveRegistrySlugFromRender(result.page);
+    setPages((prev) => ({ ...prev, [registrySlug]: result.page! }));
+    if (result.context?.siteConfig) setSiteConfig(result.context.siteConfig);
+    if (result.context?.menuConfig) setMenuConfig(result.context.menuConfig);
+    writeCachedCloudContent({
+      keyFingerprint: fingerprint,
+      savedAt: Date.now(),
+      siteConfig: result.context?.siteConfig ?? cachedSite ?? null,
+      pages: {
+        ...(cached?.pages ?? {}),
+        [registrySlug]: result.page,
+      },
+      collections: cached?.collections,
+    });
+  };
+
+  const loadRenderPath = async (pathname: string, options?: { initial?: boolean }) => {
+    if (controller.signal.aborted) return;
+    if (isAdminPath(pathname, APP_BASE_PATH)) return;
+
+    const renderPath = normalizeRenderPath(pathname, APP_BASE_PATH);
+    const inFlightKey = renderPath;
+    if (sppRenderInFlightRef.current === inFlightKey) return;
+    sppRenderInFlightRef.current = inFlightKey;
+
+    try {
+      const result = await fetchRenderProjection(
+        cloudApiCandidates,
+        CLOUD_API_KEY,
+        renderPath,
+        { signal: controller.signal, maxRetryAttempts: MAX_BOOTSTRAP_RETRIES },
+      );
+
+      if (!result.ok) {
+        if (options?.initial) {
+          throw {
+            reasonCode: result.code || 'RENDER_FAILED',
+            message: result.error || 'Render projection failed',
+            correlationId: result.correlationId,
+          } satisfies CloudLoadFailure;
+        }
+        logBootstrapEvent('boot.spp_render.route_error', {
+          path: renderPath,
+          code: result.code ?? null,
+        });
+        return;
+      }
+
+      applyRenderPayload(result);
+
+      if (options?.initial) {
+        sppBootstrappedRef.current = true;
+        setContentMode('cloud');
+        setContentFallback(null);
+        setHasInitialCloudResolved(true);
+        logBootstrapEvent('boot.spp_render.success', {
+          elapsedMs: Date.now() - startedAt,
+          projectionMode: result.diagnostics?.projectionMode ?? null,
+          correlationId: result.correlationId ?? null,
+        });
+      } else {
+        logBootstrapEvent('boot.spp_render.route_success', {
+          path: renderPath,
+          correlationId: result.correlationId ?? null,
+        });
+      }
+    } finally {
+      if (sppRenderInFlightRef.current === inFlightKey) {
+        sppRenderInFlightRef.current = null;
+      }
+    }
+  };
+
+  const run = async () => {
+    try {
+      await loadRenderPath(window.location.pathname, { initial: true });
+    } catch (error: unknown) {
+      if (controller.signal.aborted) return;
+      const failure = toCloudLoadFailure(error);
+      const { cachedPages, cachedSite: fallbackSite } = readCachedPages(fingerprint);
+      const hasCachedFallback = applyCachedBootstrap({
+        cachedPages,
+        cachedSite: fallbackSite,
+        cachedCollections: cached?.collections,
+        setPages,
+        setSiteConfig,
+        setCollections,
+      });
+      if (hasCachedFallback) {
+        setContentMode('cloud');
+        setContentFallback({
+          reasonCode: 'RENDER_FAILED',
+          message: failure.message,
+          correlationId: failure.correlationId,
+        });
+        setHasInitialCloudResolved(true);
+      } else {
+        setContentMode('error');
+        setContentFallback(failure);
+        setHasInitialCloudResolved(true);
+      }
+      logBootstrapEvent('boot.spp_render.error', {
+        reasonCode: failure.reasonCode,
+        correlationId: failure.correlationId ?? null,
+      });
+    } finally {
+      setShowTopProgress(false);
+    }
+  };
+
+  let inFlight: Promise<void> | null = null;
+  inFlight = run().finally(() => {
+    if (contentLoadInFlight.current === inFlight) {
+      contentLoadInFlight.current = null;
+    }
+  });
+  contentLoadInFlight.current = inFlight;
+
+  const unpatchHistory = patchHistoryNavigation(() => {
+    if (!sppBootstrappedRef.current) return;
+    void loadRenderPath(window.location.pathname);
+  });
+
+  return () => {
+    controller.abort();
+    unpatchHistory();
+    contentLoadInFlight.current = null;
+  };
+}
+
+END_OF_FILE_CONTENT
+echo "Creating src/lib/bootstrap/bootLocal.ts..."
+cat << 'END_OF_FILE_CONTENT' > "src/lib/bootstrap/bootLocal.ts"
+import { logBootstrapEvent } from '@/lib/cloud/bootstrapTelemetry';
+import type { BootstrapContentSetters } from './types';
+
+/** No-cloud boot: local draft/files already in React state. */
+export function bootLocal(setters: Pick<
+  BootstrapContentSetters,
+  'setContentMode' | 'setContentFallback' | 'setShowTopProgress' | 'setHasInitialCloudResolved'
+>): void {
+  setters.setContentMode('cloud');
+  setters.setContentFallback(null);
+  setters.setShowTopProgress(false);
+  setters.setHasInitialCloudResolved(true);
+  logBootstrapEvent('boot.local.ready', { mode: 'local' });
+}
+
+END_OF_FILE_CONTENT
+echo "Creating src/lib/bootstrap/bootStatic.ts..."
+cat << 'END_OF_FILE_CONTENT' > "src/lib/bootstrap/bootStatic.ts"
+import { logBootstrapEvent, toCloudLoadFailure } from '@/lib/cloud/bootstrapTelemetry';
+import { loadPublishedStaticContent } from '@/lib/cloud/staticContent';
+import { APP_BASE_PATH } from '@/lib/env/tenantEnv';
+import type { PageConfig } from '@/types';
+import type { BootstrapContentSetters, BootstrapInFlightRef } from './types';
+
+type BootStaticParams = {
+  filePages: Record<string, PageConfig>;
+  contentLoadInFlight: BootstrapInFlightRef;
+  setters: Pick<
+    BootstrapContentSetters,
+    | 'setPages'
+    | 'setSiteConfig'
+    | 'setContentMode'
+    | 'setContentFallback'
+    | 'setShowTopProgress'
+    | 'setHasInitialCloudResolved'
+  >;
+};
+
+/** Save2Repo boot: published static JSON under public/. */
+export function bootStatic({
+  filePages,
+  contentLoadInFlight,
+  setters,
+}: BootStaticParams): (() => void) | void {
+  if (contentLoadInFlight.current) return;
+
+  const {
+    setPages,
+    setSiteConfig,
+    setContentMode,
+    setContentFallback,
+    setShowTopProgress,
+    setHasInitialCloudResolved,
+  } = setters;
+
+  setContentMode('cloud');
+  setContentFallback(null);
+  setShowTopProgress(true);
+  setHasInitialCloudResolved(false);
+  logBootstrapEvent('boot.start', {
+    mode: 'save2repo-static',
+    pageCount: Object.keys(filePages).length,
+  });
+
+  let inFlight: Promise<void> | null = null;
+  inFlight = loadPublishedStaticContent(Object.keys(filePages), APP_BASE_PATH)
+    .then(({ pages: nextPages, siteConfig: nextSite }) => {
+      setPages(nextPages);
+      setSiteConfig(nextSite);
+      setContentMode('cloud');
+      setContentFallback(null);
+      setHasInitialCloudResolved(true);
+      logBootstrapEvent('boot.save2repo.success', {
+        mode: 'save2repo-static',
+        pageCount: Object.keys(nextPages).length,
+      });
+    })
+    .catch((error: unknown) => {
+      const failure = toCloudLoadFailure(error);
+      setContentMode('error');
+      setContentFallback(failure);
+      setHasInitialCloudResolved(true);
+      logBootstrapEvent('boot.save2repo.error', {
+        mode: 'save2repo-static',
+        reasonCode: failure.reasonCode,
+        correlationId: failure.correlationId ?? null,
+      });
+    })
+    .finally(() => {
+      setShowTopProgress(false);
+      if (contentLoadInFlight.current === inFlight) {
+        contentLoadInFlight.current = null;
+      }
+    });
+
+  contentLoadInFlight.current = inFlight;
+  return () => {
+    contentLoadInFlight.current = null;
+  };
+}
+
+END_OF_FILE_CONTENT
+echo "Creating src/lib/bootstrap/types.ts..."
+cat << 'END_OF_FILE_CONTENT' > "src/lib/bootstrap/types.ts"
+import type { Dispatch, SetStateAction, MutableRefObject } from 'react';
+import type { JsonPagesConfig } from '@olonjs/core';
+import type { CloudLoadFailure, ContentMode } from '@/lib/cloud/types';
+import type { MenuConfig, PageConfig, SiteConfig } from '@/types';
+
+export type BootstrapContentSetters = {
+  setPages: Dispatch<SetStateAction<Record<string, PageConfig>>>;
+  setSiteConfig: Dispatch<SetStateAction<SiteConfig>>;
+  setMenuConfig: Dispatch<SetStateAction<MenuConfig>>;
+  setCollections: Dispatch<SetStateAction<NonNullable<JsonPagesConfig['collections']>>>;
+  setContentMode: Dispatch<SetStateAction<ContentMode>>;
+  setContentFallback: Dispatch<SetStateAction<CloudLoadFailure | null>>;
+  setShowTopProgress: Dispatch<SetStateAction<boolean>>;
+  setHasInitialCloudResolved: Dispatch<SetStateAction<boolean>>;
+};
+
+export type BootstrapInFlightRef = MutableRefObject<Promise<void> | null>;
+
+END_OF_FILE_CONTENT
+echo "Creating src/lib/bootstrap/useTenantBootstrap.ts..."
+cat << 'END_OF_FILE_CONTENT' > "src/lib/bootstrap/useTenantBootstrap.ts"
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import type { JsonPagesConfig } from '@olonjs/core';
+import { buildApiCandidates } from '@/lib/spp';
+import type { CloudLoadFailure, ContentMode } from '@/lib/cloud/types';
+import { getHydratedData } from '@/lib/cloud/draftStorage';
+import { CLOUD_API_KEY, CLOUD_API_URL, cloudPolicy } from '@/lib/env/tenantEnv';
+import type { MenuConfig, PageConfig, SiteConfig, ThemeConfig } from '@/types';
+import { bootLive } from './bootLive';
+import { bootLocal } from './bootLocal';
+import { bootStatic } from './bootStatic';
+import type { BootstrapContentSetters } from './types';
+
+const EMPTY_COLLECTIONS = {} as NonNullable<JsonPagesConfig['collections']>;
+
+type UseTenantBootstrapOptions = {
+  tenantId: string;
+  filePages: Record<string, PageConfig>;
+  fileSiteConfig: SiteConfig;
+  menuConfigSeed: MenuConfig;
+  themeConfigSeed: ThemeConfig;
+};
+
+/**
+ * Tenant content bootstrap — thin dispatcher on `cloudPolicy.bootSource`.
+ * Paths: `bootLocal` | `bootStatic` | `bootLive`.
+ */
+export function useTenantBootstrap({
+  tenantId,
+  filePages,
+  fileSiteConfig,
+  menuConfigSeed,
+  themeConfigSeed,
+}: UseTenantBootstrapOptions) {
+  const { isCloudMode, bootSource } = cloudPolicy;
+
+  const localInitialData = useMemo(
+    () => (isCloudMode ? null : getHydratedData(tenantId, filePages, fileSiteConfig)),
+    [isCloudMode, tenantId, filePages, fileSiteConfig],
+  );
+  const localInitialPages = useMemo(() => {
+    if (!localInitialData) return {};
+    return localInitialData.pages;
+  }, [localInitialData]);
+
+  const [pages, setPages] = useState<Record<string, PageConfig>>(localInitialPages);
+  const [siteConfig, setSiteConfig] = useState<SiteConfig>(localInitialData?.siteConfig ?? fileSiteConfig);
+  const [menuConfig, setMenuConfig] = useState<MenuConfig>(menuConfigSeed);
+  const [themeConfig, setThemeConfig] = useState<ThemeConfig>(themeConfigSeed);
+  const [collections, setCollections] = useState<NonNullable<JsonPagesConfig['collections']>>(EMPTY_COLLECTIONS);
+  const [contentMode, setContentMode] = useState<ContentMode>('cloud');
+  const [contentFallback, setContentFallback] = useState<CloudLoadFailure | null>(null);
+  const [showTopProgress, setShowTopProgress] = useState(false);
+  const [hasInitialCloudResolved, setHasInitialCloudResolved] = useState(!isCloudMode);
+  const [bootstrapRunId, setBootstrapRunId] = useState(0);
+
+  const contentLoadInFlight = useRef<Promise<void> | null>(null);
+  const sppRenderInFlightRef = useRef<string | null>(null);
+  const sppBootstrappedRef = useRef(false);
+
+  const cloudApiCandidates = useMemo(
+    () => (isCloudMode && CLOUD_API_URL ? buildApiCandidates(CLOUD_API_URL) : []),
+    [isCloudMode],
+  );
+
+  const isTenantEmpty = Object.keys(pages).length === 0;
+
+  /** Live /admin: call when useAdminStudioContent has settled. */
+  const markCloudContentReady = useCallback(() => {
+    setShowTopProgress(false);
+    setHasInitialCloudResolved(true);
+  }, []);
+
+  const retryBootstrap = () => {
+    contentLoadInFlight.current = null;
+    setContentMode('cloud');
+    setContentFallback(null);
+    setHasInitialCloudResolved(false);
+    setShowTopProgress(true);
+    setBootstrapRunId((prev) => prev + 1);
+  };
+
+  useEffect(() => {
+    const setters: BootstrapContentSetters = {
+      setPages,
+      setSiteConfig,
+      setMenuConfig,
+      setCollections,
+      setContentMode,
+      setContentFallback,
+      setShowTopProgress,
+      setHasInitialCloudResolved,
+    };
+
+    if (!isCloudMode || !CLOUD_API_URL || !CLOUD_API_KEY) {
+      bootLocal(setters);
+      return;
+    }
+
+    if (bootSource === 'static') {
+      return bootStatic({ filePages, contentLoadInFlight, setters });
+    }
+
+    if (bootSource === 'live') {
+      return bootLive({
+        cloudApiCandidates,
+        contentLoadInFlight,
+        sppRenderInFlightRef,
+        sppBootstrappedRef,
+        setters,
+      });
+    }
+  }, [isCloudMode, bootSource, cloudApiCandidates, filePages, bootstrapRunId]);
+
+  const shouldRenderEngine = !isCloudMode || hasInitialCloudResolved;
+
+  return {
+    pages,
+    siteConfig,
+    menuConfig,
+    themeConfig,
+    enginePages: pages,
+    collections,
+    setPages,
+    setSiteConfig,
+    setMenuConfig,
+    setThemeConfig,
+    setCollections,
+    cloudApiCandidates,
+    isCloudMode,
+    bootSource,
+    contentMode,
+    contentFallback,
+    showTopProgress,
+    hasInitialCloudResolved,
+    shouldRenderEngine,
+    isTenantEmpty,
+    markCloudContentReady,
+    retryBootstrap,
+  };
+}
 
 END_OF_FILE_CONTENT
 mkdir -p "src/lib/cloud"
@@ -11511,6 +12011,75 @@ export function extractContentSources(payload: ContentResponse | Record<string, 
 }
 
 END_OF_FILE_CONTENT
+echo "Creating src/lib/cloud/draftStorage.ts..."
+cat << 'END_OF_FILE_CONTENT' > "src/lib/cloud/draftStorage.ts"
+/**
+ * Tenant initial data — file-backed only (no localStorage).
+ */
+
+import type { PageConfig, SiteConfig } from '@/types';
+
+export interface HydratedData {
+  pages: Record<string, PageConfig>;
+  siteConfig: SiteConfig;
+}
+
+/**
+ * Return pages and siteConfig from file-backed data only.
+ */
+export function getHydratedData(
+  _tenantId: string,
+  filePages: Record<string, PageConfig>,
+  fileSiteConfig: SiteConfig
+): HydratedData {
+  return {
+    pages: { ...filePages },
+    siteConfig: fileSiteConfig,
+  };
+}
+
+END_OF_FILE_CONTENT
+echo "Creating src/lib/cloud/hydrateLocalProjectState.ts..."
+cat << 'END_OF_FILE_CONTENT' > "src/lib/cloud/hydrateLocalProjectState.ts"
+import type { JsonPagesConfig, ProjectState } from '@olonjs/core';
+import type { MenuConfig, PageConfig, SiteConfig, ThemeConfig } from '@/types';
+
+type HydrateLocalProjectStateArgs = {
+  state: ProjectState;
+  slug: string;
+  setPages: (updater: (prev: Record<string, PageConfig>) => Record<string, PageConfig>) => void;
+  setSiteConfig: (site: SiteConfig) => void;
+  setMenuConfig: (menu: MenuConfig) => void;
+  setThemeConfig: (theme: ThemeConfig) => void;
+  setCollections: (collections: NonNullable<JsonPagesConfig['collections']>) => void;
+};
+
+/**
+ * Write-through hydrate after local `/api/save-to-file`.
+ * Pushes only the slices present in the saved ProjectState into bootstrap state —
+ * no disk re-read, no full remount. Brand-agnostic.
+ */
+export function hydrateLocalProjectState({
+  state,
+  slug,
+  setPages,
+  setSiteConfig,
+  setMenuConfig,
+  setThemeConfig,
+  setCollections,
+}: HydrateLocalProjectStateArgs): void {
+  if (state.menu != null) setMenuConfig(state.menu);
+  if (state.site != null) setSiteConfig(state.site);
+  if (state.theme != null) setThemeConfig(state.theme);
+  if (state.page != null) {
+    setPages((prev) => ({ ...prev, [slug]: state.page }));
+  }
+  if (state.collections != null) {
+    setCollections(state.collections as NonNullable<JsonPagesConfig['collections']>);
+  }
+}
+
+END_OF_FILE_CONTENT
 echo "Creating src/lib/cloud/staticContent.ts..."
 cat << 'END_OF_FILE_CONTENT' > "src/lib/cloud/staticContent.ts"
 import { withBasePath } from '@olonjs/core';
@@ -11600,7 +12169,7 @@ import type { Dispatch, SetStateAction } from 'react';
 import { applyLegacyCloudPayload, fetchLegacyCloudContentPayload } from '@/lib/cloud/cloudContentClient';
 import { cloudFingerprint, readCachedPages, writeCachedCloudContent } from '@/lib/cloud/cloudCache';
 import { isAdminPath, patchHistoryNavigation } from '@/lib/spp';
-import { APP_BASE_PATH } from '@/lib/tenantEnv';
+import { APP_BASE_PATH } from '@/lib/env/tenantEnv';
 import type { PageConfig, SiteConfig } from '@/types';
 
 const MAX_RETRIES = 2;
@@ -11700,36 +12269,682 @@ export function useAdminStudioContent({
 }
 
 END_OF_FILE_CONTENT
-echo "Creating src/lib/draftStorage.ts..."
-cat << 'END_OF_FILE_CONTENT' > "src/lib/draftStorage.ts"
-/**
- * Tenant initial data — file-backed only (no localStorage).
- */
+echo "Creating src/lib/cloud/useCloudSave.ts..."
+cat << 'END_OF_FILE_CONTENT' > "src/lib/cloud/useCloudSave.ts"
+import { useCallback, useEffect, useRef, useState } from 'react';
+import type { DeployPhase, ProjectState, StepId } from '@olonjs/core';
+import { DEPLOY_STEPS, startCloudSaveStream } from '@olonjs/core';
+import { APP_BASE_PATH, CLOUD_API_KEY, CLOUD_API_URL } from '@/lib/env/tenantEnv';
 
-import type { PageConfig, SiteConfig } from '@/types';
-
-export interface HydratedData {
-  pages: Record<string, PageConfig>;
-  siteConfig: SiteConfig;
+interface CloudSaveUiState {
+  isOpen: boolean;
+  phase: DeployPhase;
+  currentStepId: StepId | null;
+  doneSteps: StepId[];
+  progress: number;
+  errorMessage?: string;
+  deployUrl?: string;
 }
 
-/**
- * Return pages and siteConfig from file-backed data only.
- */
-export function getHydratedData(
-  _tenantId: string,
-  filePages: Record<string, PageConfig>,
-  fileSiteConfig: SiteConfig
-): HydratedData {
+function getInitialCloudSaveUiState(): CloudSaveUiState {
   return {
-    pages: { ...filePages },
-    siteConfig: fileSiteConfig,
+    isOpen: false,
+    phase: 'idle',
+    currentStepId: null,
+    doneSteps: [],
+    progress: 0,
   };
 }
 
+function stepProgress(doneSteps: StepId[]): number {
+  return Math.round((doneSteps.length / DEPLOY_STEPS.length) * 100);
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+function cloneJson<T>(value: T): T {
+  return JSON.parse(JSON.stringify(value)) as T;
+}
+
+function normalizePathSegments(value: string): string {
+  return value
+    .split('/')
+    .map((segment) => segment.trim())
+    .filter(Boolean)
+    .join('/');
+}
+
+function resolveAdminContentSlug(): string | null {
+  if (typeof window === 'undefined') return null;
+
+  const normalizedBase = APP_BASE_PATH.replace(/\/+$/, '');
+  let path = window.location.pathname;
+  if (normalizedBase && normalizedBase !== '/' && path.startsWith(normalizedBase)) {
+    path = path.slice(normalizedBase.length) || '/';
+  }
+
+  const slug = normalizePathSegments(path.replace(/^\/admin\/?/, ''));
+  return slug || null;
+}
+
+function resolveTemplateParamValue(templateSlug: string, concreteSlug: string, paramKey: string): string | null {
+  const templateSegments = normalizePathSegments(templateSlug).split('/').filter(Boolean);
+  const concreteSegments = normalizePathSegments(concreteSlug).split('/').filter(Boolean);
+  if (templateSegments.length !== concreteSegments.length) return null;
+
+  for (let index = 0; index < templateSegments.length; index += 1) {
+    const templateSegment = templateSegments[index];
+    const concreteSegment = concreteSegments[index];
+    const paramMatch = templateSegment.match(/^\[([A-Za-z0-9_-]+)\]$/);
+    if (paramMatch?.[1] === paramKey) return concreteSegment;
+    if (!paramMatch && templateSegment !== concreteSegment) return null;
+  }
+
+  return null;
+}
+
+function hasCollectionCurrentRef(value: unknown): boolean {
+  if (Array.isArray(value)) return value.some(hasCollectionCurrentRef);
+  if (!isRecord(value)) return false;
+  if (value.$ref === 'collection:current') return true;
+  return Object.values(value).some(hasCollectionCurrentRef);
+}
+
+function replaceCollectionCurrentRefs(value: unknown, currentItem: unknown): unknown {
+  if (Array.isArray(value)) return value.map((item) => replaceCollectionCurrentRefs(item, currentItem));
+  if (!isRecord(value)) return value;
+  if (value.$ref === 'collection:current') return cloneJson(currentItem);
+  return Object.fromEntries(
+    Object.entries(value).map(([key, entryValue]) => [key, replaceCollectionCurrentRefs(entryValue, currentItem)]),
+  );
+}
+
+function buildSaveStreamPagePayload(state: ProjectState, fallbackSlug: string): { slug: string; page: ProjectState['page'] } {
+  const page = state.page;
+  const collection = page.collection;
+  if (!collection || !hasCollectionCurrentRef(page)) {
+    return { slug: fallbackSlug, page };
+  }
+
+  const concreteSlug = resolveAdminContentSlug();
+  if (!concreteSlug) {
+    throw new Error('Cannot resolve concrete admin route for collection page save.');
+  }
+
+  const paramValue = resolveTemplateParamValue(page.slug, concreteSlug, collection.paramKey);
+  if (!paramValue) {
+    throw new Error(`Cannot resolve collection param "${collection.paramKey}" from route "${concreteSlug}".`);
+  }
+
+  const collectionDocument = state.collections?.[collection.source];
+  const currentItem = isRecord(collectionDocument) ? collectionDocument[paramValue] : undefined;
+  if (!currentItem) {
+    throw new Error(`Cannot resolve collection item "${collection.source}/${paramValue}" for save.`);
+  }
+
+  const resolvedPage = replaceCollectionCurrentRefs(page, currentItem) as ProjectState['page'];
+  return {
+    slug: concreteSlug,
+    page: {
+      ...resolvedPage,
+      slug: concreteSlug,
+    },
+  };
+}
+
+export function useCloudSave() {
+  const [cloudSaveUi, setCloudSaveUi] = useState<CloudSaveUiState>(getInitialCloudSaveUiState);
+  const activeCloudSaveController = useRef<AbortController | null>(null);
+  const pendingCloudSave = useRef<{ state: ProjectState; slug: string } | null>(null);
+
+  useEffect(() => {
+    return () => {
+      activeCloudSaveController.current?.abort();
+    };
+  }, []);
+
+  const runCloudSave = useCallback(
+    async (payload: { state: ProjectState; slug: string }, rejectOnError: boolean): Promise<void> => {
+      if (!CLOUD_API_URL || !CLOUD_API_KEY) {
+        const noCloudError = new Error('Cloud mode is not configured.');
+        if (rejectOnError) throw noCloudError;
+        return;
+      }
+
+      pendingCloudSave.current = payload;
+      activeCloudSaveController.current?.abort();
+      const controller = new AbortController();
+      activeCloudSaveController.current = controller;
+
+      setCloudSaveUi({
+        isOpen: true,
+        phase: 'running',
+        currentStepId: null,
+        doneSteps: [],
+        progress: 0,
+      });
+
+      try {
+        const savePage = buildSaveStreamPagePayload(payload.state, payload.slug);
+        await startCloudSaveStream({
+          apiBaseUrl: CLOUD_API_URL,
+          apiKey: CLOUD_API_KEY,
+          path: `src/data/pages/${savePage.slug}.json`,
+          content: savePage.page,
+          additionalFiles: [
+            { path: 'src/data/config/site.json', content: payload.state.site },
+            { path: 'src/data/config/menu.json', content: payload.state.menu },
+          ],
+          changedScopes: ['page', 'site', 'menu'],
+          message: `Content update for ${savePage.slug} via Visual Editor`,
+          signal: controller.signal,
+          onStep: (event) => {
+            setCloudSaveUi((prev) => {
+              if (event.status === 'running') {
+                return {
+                  ...prev,
+                  isOpen: true,
+                  phase: 'running',
+                  currentStepId: event.id,
+                  errorMessage: undefined,
+                };
+              }
+
+              if (prev.doneSteps.includes(event.id)) {
+                return prev;
+              }
+
+              const nextDone = [...prev.doneSteps, event.id];
+              return {
+                ...prev,
+                isOpen: true,
+                phase: 'running',
+                currentStepId: event.id,
+                doneSteps: nextDone,
+                progress: stepProgress(nextDone),
+              };
+            });
+          },
+          onDone: (event) => {
+            const completed = DEPLOY_STEPS.map((step) => step.id);
+            setCloudSaveUi({
+              isOpen: true,
+              phase: 'done',
+              currentStepId: 'live',
+              doneSteps: completed,
+              progress: 100,
+              deployUrl: event.deployUrl,
+            });
+          },
+        });
+      } catch (error: unknown) {
+        const message = error instanceof Error ? error.message : 'Cloud save failed.';
+        setCloudSaveUi((prev) => ({
+          ...prev,
+          isOpen: true,
+          phase: 'error',
+          errorMessage: message,
+        }));
+        if (rejectOnError) throw new Error(message);
+      } finally {
+        if (activeCloudSaveController.current === controller) {
+          activeCloudSaveController.current = null;
+        }
+      }
+    },
+    [],
+  );
+
+  const closeCloudDrawer = useCallback(() => {
+    setCloudSaveUi(getInitialCloudSaveUiState());
+  }, []);
+
+  const retryCloudSave = useCallback(() => {
+    if (!pendingCloudSave.current) return;
+    void runCloudSave(pendingCloudSave.current, false);
+  }, [runCloudSave]);
+
+  return { cloudSaveUi, runCloudSave, closeCloudDrawer, retryCloudSave };
+}
+
 END_OF_FILE_CONTENT
-echo "Creating src/lib/getFileCollections.ts..."
-cat << 'END_OF_FILE_CONTENT' > "src/lib/getFileCollections.ts"
+mkdir -p "src/lib/css"
+echo "Creating src/lib/css/tenantCss.ts..."
+cat << 'END_OF_FILE_CONTENT' > "src/lib/css/tenantCss.ts"
+import { useEffect, useState } from 'react';
+import type { ThemeConfig } from '@/types';
+
+const REMOTE_CSS_LINK_ATTR = 'data-jp-tenant-remote-css';
+const TENANT_SHELL_STYLE_ATTR = 'data-jp-tenant-shell-css';
+
+function isObjectRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null;
+}
+
+/**
+ * Font tokens come from theme.json via core `buildThemeVariableMap` — no branded DNA fallbacks.
+ * Warn in DEV when typography.fontFamily is missing or incomplete.
+ */
+export function warnIfThemeFontsMissing(theme: ThemeConfig | unknown): void {
+  if (typeof import.meta !== 'undefined' && import.meta.env && !import.meta.env.DEV) return;
+
+  if (!isObjectRecord(theme)) {
+    console.warn('[tenantCss] missing theme.json / themeConfig — font tokens will not be published by core');
+    return;
+  }
+
+  const tokens = isObjectRecord(theme.tokens) ? theme.tokens : null;
+  const typography = tokens && isObjectRecord(tokens.typography) ? tokens.typography : null;
+  const fontFamily = typography && isObjectRecord(typography.fontFamily) ? typography.fontFamily : null;
+
+  if (!fontFamily) {
+    console.warn(
+      '[tenantCss] missing theme.tokens.typography.fontFamily in theme.json — expected primary/display/mono',
+    );
+    return;
+  }
+
+  const missing = (['primary', 'display', 'mono'] as const).filter(
+    (key) => typeof fontFamily[key] !== 'string' || !String(fontFamily[key]).trim(),
+  );
+  if (missing.length > 0) {
+    console.warn(
+      `[tenantCss] incomplete theme.tokens.typography.fontFamily — missing: ${missing.join(', ')}`,
+    );
+  }
+}
+
+function isRemoteStylesheetHref(value: string): boolean {
+  return /^https?:\/\//i.test(value.trim());
+}
+
+export function extractLeadingRemoteCssImports(cssText: string): { hrefs: string[]; rest: string } {
+  const hrefs = new Set<string>();
+  const leadingTriviaPattern = /^(?:\s+|\/\*[\s\S]*?\*\/)*/;
+  // Vite/Tailwind may emit `@import url("...")` or compacted `@import"https://..."`.
+  const importPattern =
+    /^@import(?:\s*url\(\s*(?:'([^']+)'|"([^"]+)"|([^'")\s][^)]*))\s*\)|\s*(['"])([^'"]+)\4)\s*([^;]*);/i;
+  let rest = cssText;
+
+  for (;;) {
+    const trivia = rest.match(leadingTriviaPattern);
+    if (trivia && trivia[0]) {
+      rest = rest.slice(trivia[0].length);
+    }
+
+    const match = rest.match(importPattern);
+    if (!match) break;
+
+    const href = (match[1] ?? match[2] ?? match[3] ?? match[5] ?? '').trim();
+    const trailingDirectives = (match[6] ?? '').trim();
+
+    if (!isRemoteStylesheetHref(href) || trailingDirectives.length > 0) {
+      break;
+    }
+
+    hrefs.add(href);
+    rest = rest.slice(match[0].length);
+  }
+
+  return { hrefs: Array.from(hrefs), rest };
+}
+
+export function setTenantPreviewReady(ready: boolean): void {
+  if (typeof window !== 'undefined') {
+    (window as Window & { __TENANT_PREVIEW_READY__?: boolean }).__TENANT_PREVIEW_READY__ = ready;
+  }
+  if (typeof document !== 'undefined' && document.body) {
+    document.body.dataset.previewReady = ready ? '1' : '0';
+  }
+}
+
+export function useInjectedTenantCss(css: string): void {
+  useEffect(() => {
+    if (typeof document === 'undefined' || !css.trim()) return;
+
+    let style = document.querySelector(`style[${TENANT_SHELL_STYLE_ATTR}]`) as HTMLStyleElement | null;
+    if (!style) {
+      style = document.createElement('style');
+      style.setAttribute(TENANT_SHELL_STYLE_ATTR, '1');
+      document.head.appendChild(style);
+    }
+    style.textContent = css;
+  }, [css]);
+}
+
+function ensureFontPreconnects(): void {
+  if (typeof document === 'undefined') return;
+
+  const targets = [
+    { href: 'https://fonts.googleapis.com', crossOrigin: null },
+    { href: 'https://fonts.gstatic.com', crossOrigin: 'anonymous' },
+  ] as const;
+
+  targets.forEach(({ href, crossOrigin }) => {
+    const existing = Array.from(document.querySelectorAll('link[rel="preconnect"]')).find(
+      (link) => (link as HTMLLinkElement).href === href,
+    );
+    if (existing) return;
+
+    const link = document.createElement('link');
+    link.rel = 'preconnect';
+    link.href = href;
+    if (crossOrigin) link.crossOrigin = crossOrigin;
+    document.head.appendChild(link);
+  });
+}
+
+export function ensureRemoteStylesheetLinks(hrefs: string[]): void {
+  if (typeof document === 'undefined') return;
+
+  ensureFontPreconnects();
+
+  hrefs.forEach((href) => {
+    const existing = Array.from(document.querySelectorAll('link[rel="stylesheet"]')).find(
+      (link) => (link as HTMLLinkElement).href === href,
+    ) as HTMLLinkElement | undefined;
+    if (existing) return;
+
+    const link = document.createElement('link');
+    link.rel = 'stylesheet';
+    link.href = href;
+    link.setAttribute(REMOTE_CSS_LINK_ATTR, href);
+    document.head.appendChild(link);
+  });
+}
+
+export function waitForTenantFonts(hrefs: string[]): Promise<void> {
+  if (typeof document === 'undefined') return Promise.resolve();
+
+  ensureRemoteStylesheetLinks(hrefs);
+  if (hrefs.length === 0 || !document.fonts?.ready) return Promise.resolve();
+
+  return document.fonts.ready.then(() => undefined);
+}
+
+export function useTenantFontsReady(hrefs: string[]): boolean {
+  const [ready, setReady] = useState(false);
+  const hrefKey = hrefs.join('\0');
+
+  useEffect(() => {
+    let cancelled = false;
+    setReady(false);
+
+    void waitForTenantFonts(hrefs).then(() => {
+      if (!cancelled) setReady(true);
+    });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [hrefKey, hrefs]);
+
+  return ready;
+}
+
+export function useRemoteStylesheetLinks(hrefs: string[]): void {
+  const hrefKey = hrefs.join('\0');
+
+  useEffect(() => {
+    ensureRemoteStylesheetLinks(hrefs);
+
+    if (typeof document === 'undefined') return undefined;
+
+    const createdLinks = Array.from(
+      document.querySelectorAll(`link[${REMOTE_CSS_LINK_ATTR}]`),
+    ) as HTMLLinkElement[];
+
+    return () => {
+      createdLinks.forEach((link) => {
+        if (link.getAttribute(REMOTE_CSS_LINK_ATTR) !== link.href) return;
+        link.parentNode?.removeChild(link);
+      });
+    };
+  }, [hrefKey, hrefs]);
+}
+
+END_OF_FILE_CONTENT
+mkdir -p "src/lib/env"
+echo "Creating src/lib/env/tenantEnv.ts..."
+cat << 'END_OF_FILE_CONTENT' > "src/lib/env/tenantEnv.ts"
+import { normalizeBasePath } from '@olonjs/core';
+import { readCloudEnvFromVite, resolveCloudPolicy, type CloudPolicy } from '@olonjs/react';
+
+/** Single Vite → policy path. Prefer `cloudPolicy` over ad-hoc env reads. */
+export const cloudPolicy: CloudPolicy = resolveCloudPolicy(
+  readCloudEnvFromVite(import.meta.env as Record<string, unknown>),
+);
+
+/** Aliases of `cloudPolicy.apiUrl` / `apiKey` for DNA helpers. */
+export const CLOUD_API_URL = cloudPolicy.apiUrl;
+export const CLOUD_API_KEY = cloudPolicy.apiKey;
+export const APP_BASE_PATH = normalizeBasePath(import.meta.env.BASE_URL || '/');
+export const TENANT_ID = 'alpha';
+
+END_OF_FILE_CONTENT
+mkdir -p "src/lib/forms"
+echo "Creating src/lib/forms/useFormSubmit.ts..."
+cat << 'END_OF_FILE_CONTENT' > "src/lib/forms/useFormSubmit.ts"
+import { useState, useCallback } from 'react';
+
+import { cloudPolicy } from '@/lib/env/tenantEnv';
+
+export type SubmitStatus = 'idle' | 'submitting' | 'success' | 'error';
+
+interface UseFormSubmitOptions {
+  source: string;
+  tenantId: string;
+}
+
+export function useFormSubmit({ source, tenantId }: UseFormSubmitOptions) {
+  const [status, setStatus] = useState<SubmitStatus>('idle');
+  const [message, setMessage] = useState<string>('');
+
+  const submit = useCallback(async (
+    formData: FormData,
+    recipientEmail: string,
+    pageSlug: string,
+    sectionId: string
+  ) => {
+    const { apiUrl, apiKey } = cloudPolicy;
+
+    if (!apiUrl || !apiKey) {
+      setStatus('error');
+      setMessage('Configurazione API non disponibile. Riprova tra poco.');
+      return false;
+    }
+
+    const data: Record<string, string> = {};
+    formData.forEach((value, key) => {
+      data[key] = String(value).trim();
+    });
+
+    const payload = {
+      ...data,
+      recipientEmail,
+      page: pageSlug,
+      section: sectionId,
+      tenant: tenantId,
+      source: source,
+      submittedAt: new Date().toISOString(),
+    };
+
+    const idempotencyKey = `form-${sectionId}-${Date.now()}`;
+
+    setStatus('submitting');
+    setMessage('Invio in corso...');
+
+    try {
+      const apiBase = apiUrl.replace(/\/$/, '');
+      const response = await fetch(`${apiBase}/forms/submit`, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${apiKey}`,
+          'Content-Type': 'application/json',
+          'Idempotency-Key': idempotencyKey,
+        },
+        body: JSON.stringify(payload),
+      });
+
+      const body = (await response.json().catch(() => ({}))) as { error?: string; code?: string };
+
+      if (!response.ok) {
+        throw new Error(body.error || body.code || `Submit failed (${response.status})`);
+      }
+
+      setStatus('success');
+      setMessage('Richiesta inviata con successo. Ti risponderemo al più presto.');
+      return true;
+    } catch (error: unknown) {
+      const errorMsg = error instanceof Error ? error.message : 'Invio non riuscito. Riprova tra poco.';
+      setStatus('error');
+      setMessage(errorMsg);
+      return false;
+    }
+  }, [source, tenantId]);
+
+  const reset = useCallback(() => {
+    setStatus('idle');
+    setMessage('');
+  }, []);
+
+  return { submit, status, message, reset };
+}
+
+END_OF_FILE_CONTENT
+echo "Creating src/lib/forms/useOlonForms.ts..."
+cat << 'END_OF_FILE_CONTENT' > "src/lib/forms/useOlonForms.ts"
+import { useCallback, useEffect, useState } from 'react';
+import type { FormState } from '@olonjs/react';
+
+import { cloudPolicy } from '@/lib/env/tenantEnv';
+
+interface UseOlonFormsOptions {
+  /** Override the submit endpoint. Defaults to cloudPolicy.apiUrl/forms/submit */
+  endpoint?: string;
+}
+
+/**
+ * Mount once in App.tsx. Scans the DOM for all <form data-olon-recipient="...">
+ * elements and attaches submit handlers. Returns per-form states to be provided
+ * via OlonFormsContext.Provider.
+ *
+ * Views consume state via useFormState(formId) — no direct coupling to this hook.
+ */
+export function useOlonForms(options?: UseOlonFormsOptions): { states: Record<string, FormState> } {
+  const [states, setStates] = useState<Record<string, FormState>>({});
+
+  const setFormState = useCallback((formId: string, state: FormState) => {
+    setStates((prev) => ({ ...prev, [formId]: state }));
+  }, []);
+
+  useEffect(() => {
+    const apiUrl = cloudPolicy.apiUrl;
+    const apiKey = cloudPolicy.apiKey;
+
+    const resolvedBase = options?.endpoint
+      ? options.endpoint.replace(/\/$/, '')
+      : apiUrl
+        ? apiUrl.replace(/\/$/, '')
+        : null;
+
+    if (!resolvedBase || !apiKey) {
+      console.warn('[useOlonForms] Missing API endpoint or key — forms will not submit.');
+      return;
+    }
+
+    const endpoint = resolvedBase.endsWith('/forms/submit')
+      ? resolvedBase
+      : `${resolvedBase}/forms/submit`;
+
+    const forms = Array.from(
+      document.querySelectorAll<HTMLFormElement>('form[data-olon-recipient]')
+    );
+
+    const controllers: AbortController[] = [];
+
+    async function handleSubmit(form: HTMLFormElement, event: SubmitEvent) {
+      event.preventDefault();
+
+      const formId = form.id || form.dataset.olonRecipient || 'olon-form';
+      const recipientEmail = form.dataset.olonRecipient ?? '';
+
+      setFormState(formId, { status: 'submitting', message: 'Invio in corso...' });
+
+      const raw: Record<string, string> = {};
+      new FormData(form).forEach((value, key) => {
+        raw[key] = String(value).trim();
+      });
+
+      const payload = {
+        ...raw,
+        recipientEmail,
+        page: window.location.pathname,
+        source: 'olon-form',
+        submittedAt: new Date().toISOString(),
+      };
+
+      const controller = new AbortController();
+      controllers.push(controller);
+
+      try {
+        const response = await fetch(endpoint, {
+          method: 'POST',
+          headers: {
+            Authorization: `Bearer ${apiKey}`,
+            'Content-Type': 'application/json',
+            'Idempotency-Key': `form-${formId}-${Date.now()}`,
+          },
+          body: JSON.stringify(payload),
+          signal: controller.signal,
+        });
+
+        const body = (await response.json().catch(() => ({}))) as {
+          error?: string;
+          code?: string;
+        };
+
+        if (!response.ok) {
+          throw new Error(body.error ?? body.code ?? `Submit failed (${response.status})`);
+        }
+
+        setFormState(formId, {
+          status: 'success',
+          message: 'Richiesta inviata con successo.',
+        });
+        form.reset();
+      } catch (error: unknown) {
+        if (error instanceof Error && error.name === 'AbortError') return;
+        const message =
+          error instanceof Error ? error.message : 'Invio non riuscito. Riprova.';
+        setFormState(formId, { status: 'error', message });
+      }
+    }
+
+    type Listener = { form: HTMLFormElement; handler: (e: Event) => void };
+    const listeners: Listener[] = [];
+
+    forms.forEach((form) => {
+      const handler = (e: Event) => void handleSubmit(form, e as SubmitEvent);
+      form.addEventListener('submit', handler);
+      listeners.push({ form, handler });
+    });
+
+    return () => {
+      controllers.forEach((c) => c.abort());
+      listeners.forEach(({ form, handler }) => form.removeEventListener('submit', handler));
+    };
+  }, [options?.endpoint, setFormState]);
+
+  return { states };
+}
+
+END_OF_FILE_CONTENT
+mkdir -p "src/lib/loaders"
+echo "Creating src/lib/loaders/getFileCollections.ts..."
+cat << 'END_OF_FILE_CONTENT' > "src/lib/loaders/getFileCollections.ts"
 import type { JsonPagesConfig } from '@/types';
 
 type CollectionDocuments = NonNullable<JsonPagesConfig['collections']>;
@@ -11771,8 +12986,8 @@ export function getFileCollections(): CollectionDocuments {
 }
 
 END_OF_FILE_CONTENT
-echo "Creating src/lib/getFilePages.ts..."
-cat << 'END_OF_FILE_CONTENT' > "src/lib/getFilePages.ts"
+echo "Creating src/lib/loaders/getFilePages.ts..."
+cat << 'END_OF_FILE_CONTENT' > "src/lib/loaders/getFilePages.ts"
 /**
  * Page registry loaded from nested JSON files under src/data/pages.
  * Add a JSON file in that directory tree to register a page; no manual list in App.tsx.
@@ -11816,47 +13031,6 @@ export function getFilePages(): Record<string, PageConfig> {
     if (config) record[slug] = config;
   }
   return record;
-}
-
-END_OF_FILE_CONTENT
-echo "Creating src/lib/hydrateLocalProjectState.ts..."
-cat << 'END_OF_FILE_CONTENT' > "src/lib/hydrateLocalProjectState.ts"
-import type { JsonPagesConfig, ProjectState } from '@olonjs/core';
-import type { MenuConfig, PageConfig, SiteConfig, ThemeConfig } from '@/types';
-
-type HydrateLocalProjectStateArgs = {
-  state: ProjectState;
-  slug: string;
-  setPages: (updater: (prev: Record<string, PageConfig>) => Record<string, PageConfig>) => void;
-  setSiteConfig: (site: SiteConfig) => void;
-  setMenuConfig: (menu: MenuConfig) => void;
-  setThemeConfig: (theme: ThemeConfig) => void;
-  setCollections: (collections: NonNullable<JsonPagesConfig['collections']>) => void;
-};
-
-/**
- * Write-through hydrate after local `/api/save-to-file`.
- * Pushes only the slices present in the saved ProjectState into bootstrap state —
- * no disk re-read, no full remount. Brand-agnostic.
- */
-export function hydrateLocalProjectState({
-  state,
-  slug,
-  setPages,
-  setSiteConfig,
-  setMenuConfig,
-  setThemeConfig,
-  setCollections,
-}: HydrateLocalProjectStateArgs): void {
-  if (state.menu != null) setMenuConfig(state.menu);
-  if (state.site != null) setSiteConfig(state.site);
-  if (state.theme != null) setThemeConfig(state.theme);
-  if (state.page != null) {
-    setPages((prev) => ({ ...prev, [slug]: state.page }));
-  }
-  if (state.collections != null) {
-    setCollections(state.collections as NonNullable<JsonPagesConfig['collections']>);
-  }
 }
 
 END_OF_FILE_CONTENT
@@ -11906,7 +13080,7 @@ echo "Creating src/lib/spp/cloudConfig.ts..."
 cat << 'END_OF_FILE_CONTENT' > "src/lib/spp/cloudConfig.ts"
 import { buildApiCandidates } from '@olonjs/react';
 
-import { cloudPolicy } from '@/lib/tenantEnv';
+import { cloudPolicy } from '@/lib/env/tenantEnv';
 
 export { buildApiCandidates };
 
@@ -12888,1438 +14062,6 @@ export function useTagPostTotals(tagSlugs: string[]) {
 }
 
 END_OF_FILE_CONTENT
-echo "Creating src/lib/sppCloudConfig.ts..."
-cat << 'END_OF_FILE_CONTENT' > "src/lib/sppCloudConfig.ts"
-export { buildApiCandidates, getSppCloudConfig } from '@/lib/spp';
-
-END_OF_FILE_CONTENT
-echo "Creating src/lib/sppCollectionsClient.ts..."
-cat << 'END_OF_FILE_CONTENT' > "src/lib/sppCollectionsClient.ts"
-import { readCollectionSliceDescriptor } from '@/lib/spp';
-
-export function readCollectionRefLimit(value: unknown, fallback?: number): number | undefined {
-  const { limit } = readCollectionSliceDescriptor(value, { limit: fallback, pageSize: fallback });
-  return limit;
-}
-
-export { fetchCollectionSlice, readCollectionSliceDescriptor } from '@/lib/spp';
-export type { CollectionPagination, CollectionSliceSort } from '@/lib/spp';
-
-END_OF_FILE_CONTENT
-echo "Creating src/lib/sppRenderClient.ts..."
-cat << 'END_OF_FILE_CONTENT' > "src/lib/sppRenderClient.ts"
-export * from './spp/renderClient';
-
-END_OF_FILE_CONTENT
-echo "Creating src/lib/tenantCss.ts..."
-cat << 'END_OF_FILE_CONTENT' > "src/lib/tenantCss.ts"
-function isObjectRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null;
-}
-
-export function buildThemeFontVarsCss(input: unknown): string {
-  if (!isObjectRecord(input)) return '';
-  const tokens = isObjectRecord(input.tokens) ? input.tokens : null;
-  const typography = tokens && isObjectRecord(tokens.typography) ? tokens.typography : null;
-  const fontFamily = typography && isObjectRecord(typography.fontFamily) ? typography.fontFamily : null;
-  const primary =
-    typeof fontFamily?.primary === 'string'
-      ? fontFamily.primary
-      : "'Instrument Sans', system-ui, sans-serif";
-  const display =
-    typeof fontFamily?.display === 'string'
-      ? fontFamily.display
-      : typeof fontFamily?.serif === 'string'
-        ? fontFamily.serif
-        : "'Instrument Serif', Georgia, serif";
-  const mono = typeof fontFamily?.mono === 'string' ? fontFamily.mono : "'JetBrains Mono', monospace";
-  return `:root{--theme-font-primary:${primary};--theme-font-display:${display};--theme-font-mono:${mono};}`;
-}
-
-const REMOTE_CSS_LINK_ATTR = 'data-jp-tenant-remote-css';
-const TENANT_SHELL_STYLE_ATTR = 'data-jp-tenant-shell-css';
-
-function isRemoteStylesheetHref(value: string): boolean {
-  return /^https?:\/\//i.test(value.trim());
-}
-
-export function extractLeadingRemoteCssImports(cssText: string): { hrefs: string[]; rest: string } {
-  const hrefs = new Set<string>();
-  const leadingTriviaPattern = /^(?:\s+|\/\*[\s\S]*?\*\/)*/;
-  // Vite/Tailwind may emit `@import url("...")` or compacted `@import"https://..."`.
-  const importPattern =
-    /^@import(?:\s*url\(\s*(?:'([^']+)'|"([^"]+)"|([^'")\s][^)]*))\s*\)|\s*(['"])([^'"]+)\4)\s*([^;]*);/i;
-  let rest = cssText;
-
-  for (;;) {
-    const trivia = rest.match(leadingTriviaPattern);
-    if (trivia && trivia[0]) {
-      rest = rest.slice(trivia[0].length);
-    }
-
-    const match = rest.match(importPattern);
-    if (!match) break;
-
-    const href = (match[1] ?? match[2] ?? match[3] ?? match[5] ?? '').trim();
-    const trailingDirectives = (match[6] ?? '').trim();
-
-    if (!isRemoteStylesheetHref(href) || trailingDirectives.length > 0) {
-      break;
-    }
-
-    hrefs.add(href);
-    rest = rest.slice(match[0].length);
-  }
-
-  return { hrefs: Array.from(hrefs), rest };
-}
-
-export function setTenantPreviewReady(ready: boolean): void {
-  if (typeof window !== 'undefined') {
-    (window as Window & { __TENANT_PREVIEW_READY__?: boolean }).__TENANT_PREVIEW_READY__ = ready;
-  }
-  if (typeof document !== 'undefined' && document.body) {
-    document.body.dataset.previewReady = ready ? '1' : '0';
-  }
-}
-
-import { useEffect, useState } from 'react';
-
-export function useInjectedTenantCss(css: string): void {
-  useEffect(() => {
-    if (typeof document === 'undefined' || !css.trim()) return;
-
-    let style = document.querySelector(`style[${TENANT_SHELL_STYLE_ATTR}]`) as HTMLStyleElement | null;
-    if (!style) {
-      style = document.createElement('style');
-      style.setAttribute(TENANT_SHELL_STYLE_ATTR, '1');
-      document.head.appendChild(style);
-    }
-    style.textContent = css;
-  }, [css]);
-}
-
-function ensureFontPreconnects(): void {
-  if (typeof document === 'undefined') return;
-
-  const targets = [
-    { href: 'https://fonts.googleapis.com', crossOrigin: null },
-    { href: 'https://fonts.gstatic.com', crossOrigin: 'anonymous' },
-  ] as const;
-
-  targets.forEach(({ href, crossOrigin }) => {
-    const existing = Array.from(document.querySelectorAll('link[rel="preconnect"]')).find(
-      (link) => (link as HTMLLinkElement).href === href,
-    );
-    if (existing) return;
-
-    const link = document.createElement('link');
-    link.rel = 'preconnect';
-    link.href = href;
-    if (crossOrigin) link.crossOrigin = crossOrigin;
-    document.head.appendChild(link);
-  });
-}
-
-export function ensureRemoteStylesheetLinks(hrefs: string[]): void {
-  if (typeof document === 'undefined') return;
-
-  ensureFontPreconnects();
-
-  hrefs.forEach((href) => {
-    const existing = Array.from(document.querySelectorAll('link[rel="stylesheet"]')).find(
-      (link) => (link as HTMLLinkElement).href === href,
-    ) as HTMLLinkElement | undefined;
-    if (existing) return;
-
-    const link = document.createElement('link');
-    link.rel = 'stylesheet';
-    link.href = href;
-    link.setAttribute(REMOTE_CSS_LINK_ATTR, href);
-    document.head.appendChild(link);
-  });
-}
-
-export function waitForTenantFonts(hrefs: string[]): Promise<void> {
-  if (typeof document === 'undefined') return Promise.resolve();
-
-  ensureRemoteStylesheetLinks(hrefs);
-  if (hrefs.length === 0 || !document.fonts?.ready) return Promise.resolve();
-
-  return document.fonts.ready.then(() => undefined);
-}
-
-export function useTenantFontsReady(hrefs: string[]): boolean {
-  const [ready, setReady] = useState(false);
-  const hrefKey = hrefs.join('\0');
-
-  useEffect(() => {
-    let cancelled = false;
-    setReady(false);
-
-    void waitForTenantFonts(hrefs).then(() => {
-      if (!cancelled) setReady(true);
-    });
-
-    return () => {
-      cancelled = true;
-    };
-  }, [hrefKey, hrefs]);
-
-  return ready;
-}
-
-export function useRemoteStylesheetLinks(hrefs: string[]): void {
-  const hrefKey = hrefs.join('\0');
-
-  useEffect(() => {
-    ensureRemoteStylesheetLinks(hrefs);
-
-    if (typeof document === 'undefined') return undefined;
-
-    const createdLinks = Array.from(
-      document.querySelectorAll(`link[${REMOTE_CSS_LINK_ATTR}]`),
-    ) as HTMLLinkElement[];
-
-    return () => {
-      createdLinks.forEach((link) => {
-        if (link.getAttribute(REMOTE_CSS_LINK_ATTR) !== link.href) return;
-        link.parentNode?.removeChild(link);
-      });
-    };
-  }, [hrefKey, hrefs]);
-}
-
-END_OF_FILE_CONTENT
-echo "Creating src/lib/tenantEnv.ts..."
-cat << 'END_OF_FILE_CONTENT' > "src/lib/tenantEnv.ts"
-import { normalizeBasePath } from '@olonjs/core';
-import { readCloudEnvFromVite, resolveCloudPolicy, type CloudPolicy } from '@olonjs/react';
-
-/** Single Vite → policy path. Prefer `cloudPolicy` over ad-hoc env reads. */
-export const cloudPolicy: CloudPolicy = resolveCloudPolicy(
-  readCloudEnvFromVite(import.meta.env as Record<string, unknown>),
-);
-
-/** Aliases of `cloudPolicy.apiUrl` / `apiKey` for DNA helpers. */
-export const CLOUD_API_URL = cloudPolicy.apiUrl;
-export const CLOUD_API_KEY = cloudPolicy.apiKey;
-export const APP_BASE_PATH = normalizeBasePath(import.meta.env.BASE_URL || '/');
-export const TENANT_ID = 'alpha';
-
-END_OF_FILE_CONTENT
-echo "Creating src/lib/useAssetsManifest.ts..."
-cat << 'END_OF_FILE_CONTENT' > "src/lib/useAssetsManifest.ts"
-import { useCallback, useEffect, useMemo, useState } from 'react';
-import type { LibraryImageEntry } from '@olonjs/core';
-import { buildApiCandidates } from '@olonjs/react';
-
-import { cloudPolicy } from '@/lib/tenantEnv';
-
-function normalizeApiBase(raw: string): string {
-  return raw.trim().replace(/\/+$/, '');
-}
-
-/** Asset library — cloud list when `cloudPolicy.isCloudMode`, else local `/api/list-assets`. */
-export function useAssetsManifest(isCloudMode: boolean = cloudPolicy.isCloudMode) {
-  const [assetsManifest, setAssetsManifest] = useState<LibraryImageEntry[]>([]);
-  const cloudApiCandidates = useMemo(
-    () => (isCloudMode && cloudPolicy.apiUrl ? buildApiCandidates(cloudPolicy.apiUrl) : []),
-    [isCloudMode],
-  );
-
-  const loadAssetsManifest = useCallback(async (): Promise<void> => {
-    if (isCloudMode && cloudPolicy.apiUrl && cloudPolicy.apiKey) {
-      const apiBases =
-        cloudApiCandidates.length > 0
-          ? cloudApiCandidates
-          : [normalizeApiBase(cloudPolicy.apiUrl)];
-      for (const apiBase of apiBases) {
-        try {
-          const res = await fetch(`${apiBase}/assets/list?limit=200`, {
-            method: 'GET',
-            headers: { Authorization: `Bearer ${cloudPolicy.apiKey}` },
-          });
-          const body = (await res.json().catch(() => ({}))) as { items?: LibraryImageEntry[] };
-          if (!res.ok) continue;
-          const items = Array.isArray(body.items) ? body.items : [];
-          setAssetsManifest(items);
-          return;
-        } catch {
-          // try next candidate
-        }
-      }
-      setAssetsManifest([]);
-      return;
-    }
-
-    fetch('/api/list-assets')
-      .then((r) => (r.ok ? r.json() : []))
-      .then((list: LibraryImageEntry[]) => setAssetsManifest(Array.isArray(list) ? list : []))
-      .catch(() => setAssetsManifest([]));
-  }, [isCloudMode, cloudApiCandidates]);
-
-  useEffect(() => {
-    void loadAssetsManifest();
-  }, [loadAssetsManifest]);
-
-  return { assetsManifest, loadAssetsManifest, cloudApiCandidates };
-}
-
-END_OF_FILE_CONTENT
-echo "Creating src/lib/useCloudSave.ts..."
-cat << 'END_OF_FILE_CONTENT' > "src/lib/useCloudSave.ts"
-import { useCallback, useEffect, useRef, useState } from 'react';
-import type { DeployPhase, ProjectState, StepId } from '@olonjs/core';
-import { DEPLOY_STEPS, startCloudSaveStream } from '@olonjs/core';
-import { APP_BASE_PATH, CLOUD_API_KEY, CLOUD_API_URL } from '@/lib/tenantEnv';
-
-interface CloudSaveUiState {
-  isOpen: boolean;
-  phase: DeployPhase;
-  currentStepId: StepId | null;
-  doneSteps: StepId[];
-  progress: number;
-  errorMessage?: string;
-  deployUrl?: string;
-}
-
-function getInitialCloudSaveUiState(): CloudSaveUiState {
-  return {
-    isOpen: false,
-    phase: 'idle',
-    currentStepId: null,
-    doneSteps: [],
-    progress: 0,
-  };
-}
-
-function stepProgress(doneSteps: StepId[]): number {
-  return Math.round((doneSteps.length / DEPLOY_STEPS.length) * 100);
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null && !Array.isArray(value);
-}
-
-function cloneJson<T>(value: T): T {
-  return JSON.parse(JSON.stringify(value)) as T;
-}
-
-function normalizePathSegments(value: string): string {
-  return value
-    .split('/')
-    .map((segment) => segment.trim())
-    .filter(Boolean)
-    .join('/');
-}
-
-function resolveAdminContentSlug(): string | null {
-  if (typeof window === 'undefined') return null;
-
-  const normalizedBase = APP_BASE_PATH.replace(/\/+$/, '');
-  let path = window.location.pathname;
-  if (normalizedBase && normalizedBase !== '/' && path.startsWith(normalizedBase)) {
-    path = path.slice(normalizedBase.length) || '/';
-  }
-
-  const slug = normalizePathSegments(path.replace(/^\/admin\/?/, ''));
-  return slug || null;
-}
-
-function resolveTemplateParamValue(templateSlug: string, concreteSlug: string, paramKey: string): string | null {
-  const templateSegments = normalizePathSegments(templateSlug).split('/').filter(Boolean);
-  const concreteSegments = normalizePathSegments(concreteSlug).split('/').filter(Boolean);
-  if (templateSegments.length !== concreteSegments.length) return null;
-
-  for (let index = 0; index < templateSegments.length; index += 1) {
-    const templateSegment = templateSegments[index];
-    const concreteSegment = concreteSegments[index];
-    const paramMatch = templateSegment.match(/^\[([A-Za-z0-9_-]+)\]$/);
-    if (paramMatch?.[1] === paramKey) return concreteSegment;
-    if (!paramMatch && templateSegment !== concreteSegment) return null;
-  }
-
-  return null;
-}
-
-function hasCollectionCurrentRef(value: unknown): boolean {
-  if (Array.isArray(value)) return value.some(hasCollectionCurrentRef);
-  if (!isRecord(value)) return false;
-  if (value.$ref === 'collection:current') return true;
-  return Object.values(value).some(hasCollectionCurrentRef);
-}
-
-function replaceCollectionCurrentRefs(value: unknown, currentItem: unknown): unknown {
-  if (Array.isArray(value)) return value.map((item) => replaceCollectionCurrentRefs(item, currentItem));
-  if (!isRecord(value)) return value;
-  if (value.$ref === 'collection:current') return cloneJson(currentItem);
-  return Object.fromEntries(
-    Object.entries(value).map(([key, entryValue]) => [key, replaceCollectionCurrentRefs(entryValue, currentItem)]),
-  );
-}
-
-function buildSaveStreamPagePayload(state: ProjectState, fallbackSlug: string): { slug: string; page: ProjectState['page'] } {
-  const page = state.page;
-  const collection = page.collection;
-  if (!collection || !hasCollectionCurrentRef(page)) {
-    return { slug: fallbackSlug, page };
-  }
-
-  const concreteSlug = resolveAdminContentSlug();
-  if (!concreteSlug) {
-    throw new Error('Cannot resolve concrete admin route for collection page save.');
-  }
-
-  const paramValue = resolveTemplateParamValue(page.slug, concreteSlug, collection.paramKey);
-  if (!paramValue) {
-    throw new Error(`Cannot resolve collection param "${collection.paramKey}" from route "${concreteSlug}".`);
-  }
-
-  const collectionDocument = state.collections?.[collection.source];
-  const currentItem = isRecord(collectionDocument) ? collectionDocument[paramValue] : undefined;
-  if (!currentItem) {
-    throw new Error(`Cannot resolve collection item "${collection.source}/${paramValue}" for save.`);
-  }
-
-  const resolvedPage = replaceCollectionCurrentRefs(page, currentItem) as ProjectState['page'];
-  return {
-    slug: concreteSlug,
-    page: {
-      ...resolvedPage,
-      slug: concreteSlug,
-    },
-  };
-}
-
-export function useCloudSave() {
-  const [cloudSaveUi, setCloudSaveUi] = useState<CloudSaveUiState>(getInitialCloudSaveUiState);
-  const activeCloudSaveController = useRef<AbortController | null>(null);
-  const pendingCloudSave = useRef<{ state: ProjectState; slug: string } | null>(null);
-
-  useEffect(() => {
-    return () => {
-      activeCloudSaveController.current?.abort();
-    };
-  }, []);
-
-  const runCloudSave = useCallback(
-    async (payload: { state: ProjectState; slug: string }, rejectOnError: boolean): Promise<void> => {
-      if (!CLOUD_API_URL || !CLOUD_API_KEY) {
-        const noCloudError = new Error('Cloud mode is not configured.');
-        if (rejectOnError) throw noCloudError;
-        return;
-      }
-
-      pendingCloudSave.current = payload;
-      activeCloudSaveController.current?.abort();
-      const controller = new AbortController();
-      activeCloudSaveController.current = controller;
-
-      setCloudSaveUi({
-        isOpen: true,
-        phase: 'running',
-        currentStepId: null,
-        doneSteps: [],
-        progress: 0,
-      });
-
-      try {
-        const savePage = buildSaveStreamPagePayload(payload.state, payload.slug);
-        await startCloudSaveStream({
-          apiBaseUrl: CLOUD_API_URL,
-          apiKey: CLOUD_API_KEY,
-          path: `src/data/pages/${savePage.slug}.json`,
-          content: savePage.page,
-          additionalFiles: [
-            { path: 'src/data/config/site.json', content: payload.state.site },
-            { path: 'src/data/config/menu.json', content: payload.state.menu },
-          ],
-          changedScopes: ['page', 'site', 'menu'],
-          message: `Content update for ${savePage.slug} via Visual Editor`,
-          signal: controller.signal,
-          onStep: (event) => {
-            setCloudSaveUi((prev) => {
-              if (event.status === 'running') {
-                return {
-                  ...prev,
-                  isOpen: true,
-                  phase: 'running',
-                  currentStepId: event.id,
-                  errorMessage: undefined,
-                };
-              }
-
-              if (prev.doneSteps.includes(event.id)) {
-                return prev;
-              }
-
-              const nextDone = [...prev.doneSteps, event.id];
-              return {
-                ...prev,
-                isOpen: true,
-                phase: 'running',
-                currentStepId: event.id,
-                doneSteps: nextDone,
-                progress: stepProgress(nextDone),
-              };
-            });
-          },
-          onDone: (event) => {
-            const completed = DEPLOY_STEPS.map((step) => step.id);
-            setCloudSaveUi({
-              isOpen: true,
-              phase: 'done',
-              currentStepId: 'live',
-              doneSteps: completed,
-              progress: 100,
-              deployUrl: event.deployUrl,
-            });
-          },
-        });
-      } catch (error: unknown) {
-        const message = error instanceof Error ? error.message : 'Cloud save failed.';
-        setCloudSaveUi((prev) => ({
-          ...prev,
-          isOpen: true,
-          phase: 'error',
-          errorMessage: message,
-        }));
-        if (rejectOnError) throw new Error(message);
-      } finally {
-        if (activeCloudSaveController.current === controller) {
-          activeCloudSaveController.current = null;
-        }
-      }
-    },
-    [],
-  );
-
-  const closeCloudDrawer = useCallback(() => {
-    setCloudSaveUi(getInitialCloudSaveUiState());
-  }, []);
-
-  const retryCloudSave = useCallback(() => {
-    if (!pendingCloudSave.current) return;
-    void runCloudSave(pendingCloudSave.current, false);
-  }, [runCloudSave]);
-
-  return { cloudSaveUi, runCloudSave, closeCloudDrawer, retryCloudSave };
-}
-
-END_OF_FILE_CONTENT
-echo "Creating src/lib/useFormSubmit.ts..."
-cat << 'END_OF_FILE_CONTENT' > "src/lib/useFormSubmit.ts"
-import { useState, useCallback } from 'react';
-
-import { cloudPolicy } from '@/lib/tenantEnv';
-
-export type SubmitStatus = 'idle' | 'submitting' | 'success' | 'error';
-
-interface UseFormSubmitOptions {
-  source: string;
-  tenantId: string;
-}
-
-export function useFormSubmit({ source, tenantId }: UseFormSubmitOptions) {
-  const [status, setStatus] = useState<SubmitStatus>('idle');
-  const [message, setMessage] = useState<string>('');
-
-  const submit = useCallback(async (
-    formData: FormData,
-    recipientEmail: string,
-    pageSlug: string,
-    sectionId: string
-  ) => {
-    const { apiUrl, apiKey } = cloudPolicy;
-
-    if (!apiUrl || !apiKey) {
-      setStatus('error');
-      setMessage('Configurazione API non disponibile. Riprova tra poco.');
-      return false;
-    }
-
-    const data: Record<string, string> = {};
-    formData.forEach((value, key) => {
-      data[key] = String(value).trim();
-    });
-
-    const payload = {
-      ...data,
-      recipientEmail,
-      page: pageSlug,
-      section: sectionId,
-      tenant: tenantId,
-      source: source,
-      submittedAt: new Date().toISOString(),
-    };
-
-    const idempotencyKey = `form-${sectionId}-${Date.now()}`;
-
-    setStatus('submitting');
-    setMessage('Invio in corso...');
-
-    try {
-      const apiBase = apiUrl.replace(/\/$/, '');
-      const response = await fetch(`${apiBase}/forms/submit`, {
-        method: 'POST',
-        headers: {
-          Authorization: `Bearer ${apiKey}`,
-          'Content-Type': 'application/json',
-          'Idempotency-Key': idempotencyKey,
-        },
-        body: JSON.stringify(payload),
-      });
-
-      const body = (await response.json().catch(() => ({}))) as { error?: string; code?: string };
-
-      if (!response.ok) {
-        throw new Error(body.error || body.code || `Submit failed (${response.status})`);
-      }
-
-      setStatus('success');
-      setMessage('Richiesta inviata con successo. Ti risponderemo al più presto.');
-      return true;
-    } catch (error: unknown) {
-      const errorMsg = error instanceof Error ? error.message : 'Invio non riuscito. Riprova tra poco.';
-      setStatus('error');
-      setMessage(errorMsg);
-      return false;
-    }
-  }, [source, tenantId]);
-
-  const reset = useCallback(() => {
-    setStatus('idle');
-    setMessage('');
-  }, []);
-
-  return { submit, status, message, reset };
-}
-
-END_OF_FILE_CONTENT
-echo "Creating src/lib/useOlonForms.ts..."
-cat << 'END_OF_FILE_CONTENT' > "src/lib/useOlonForms.ts"
-import { useCallback, useEffect, useState } from 'react';
-import type { FormState } from '@olonjs/react';
-
-import { cloudPolicy } from '@/lib/tenantEnv';
-
-interface UseOlonFormsOptions {
-  /** Override the submit endpoint. Defaults to cloudPolicy.apiUrl/forms/submit */
-  endpoint?: string;
-}
-
-/**
- * Mount once in App.tsx. Scans the DOM for all <form data-olon-recipient="...">
- * elements and attaches submit handlers. Returns per-form states to be provided
- * via OlonFormsContext.Provider.
- *
- * Views consume state via useFormState(formId) — no direct coupling to this hook.
- */
-export function useOlonForms(options?: UseOlonFormsOptions): { states: Record<string, FormState> } {
-  const [states, setStates] = useState<Record<string, FormState>>({});
-
-  const setFormState = useCallback((formId: string, state: FormState) => {
-    setStates((prev) => ({ ...prev, [formId]: state }));
-  }, []);
-
-  useEffect(() => {
-    const apiUrl = cloudPolicy.apiUrl;
-    const apiKey = cloudPolicy.apiKey;
-
-    const resolvedBase = options?.endpoint
-      ? options.endpoint.replace(/\/$/, '')
-      : apiUrl
-        ? apiUrl.replace(/\/$/, '')
-        : null;
-
-    if (!resolvedBase || !apiKey) {
-      console.warn('[useOlonForms] Missing API endpoint or key — forms will not submit.');
-      return;
-    }
-
-    const endpoint = resolvedBase.endsWith('/forms/submit')
-      ? resolvedBase
-      : `${resolvedBase}/forms/submit`;
-
-    const forms = Array.from(
-      document.querySelectorAll<HTMLFormElement>('form[data-olon-recipient]')
-    );
-
-    const controllers: AbortController[] = [];
-
-    async function handleSubmit(form: HTMLFormElement, event: SubmitEvent) {
-      event.preventDefault();
-
-      const formId = form.id || form.dataset.olonRecipient || 'olon-form';
-      const recipientEmail = form.dataset.olonRecipient ?? '';
-
-      setFormState(formId, { status: 'submitting', message: 'Invio in corso...' });
-
-      const raw: Record<string, string> = {};
-      new FormData(form).forEach((value, key) => {
-        raw[key] = String(value).trim();
-      });
-
-      const payload = {
-        ...raw,
-        recipientEmail,
-        page: window.location.pathname,
-        source: 'olon-form',
-        submittedAt: new Date().toISOString(),
-      };
-
-      const controller = new AbortController();
-      controllers.push(controller);
-
-      try {
-        const response = await fetch(endpoint, {
-          method: 'POST',
-          headers: {
-            Authorization: `Bearer ${apiKey}`,
-            'Content-Type': 'application/json',
-            'Idempotency-Key': `form-${formId}-${Date.now()}`,
-          },
-          body: JSON.stringify(payload),
-          signal: controller.signal,
-        });
-
-        const body = (await response.json().catch(() => ({}))) as {
-          error?: string;
-          code?: string;
-        };
-
-        if (!response.ok) {
-          throw new Error(body.error ?? body.code ?? `Submit failed (${response.status})`);
-        }
-
-        setFormState(formId, {
-          status: 'success',
-          message: 'Richiesta inviata con successo.',
-        });
-        form.reset();
-      } catch (error: unknown) {
-        if (error instanceof Error && error.name === 'AbortError') return;
-        const message =
-          error instanceof Error ? error.message : 'Invio non riuscito. Riprova.';
-        setFormState(formId, { status: 'error', message });
-      }
-    }
-
-    type Listener = { form: HTMLFormElement; handler: (e: Event) => void };
-    const listeners: Listener[] = [];
-
-    forms.forEach((form) => {
-      const handler = (e: Event) => void handleSubmit(form, e as SubmitEvent);
-      form.addEventListener('submit', handler);
-      listeners.push({ form, handler });
-    });
-
-    return () => {
-      controllers.forEach((c) => c.abort());
-      listeners.forEach(({ form, handler }) => form.removeEventListener('submit', handler));
-    };
-  }, [options?.endpoint, setFormState]);
-
-  return { states };
-}
-
-END_OF_FILE_CONTENT
-echo "Creating src/lib/useTenantBootstrap.ts..."
-cat << 'END_OF_FILE_CONTENT' > "src/lib/useTenantBootstrap.ts"
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-
-import { logBootstrapEvent, toCloudLoadFailure } from '@/lib/cloud/bootstrapTelemetry';
-
-import { cloudFingerprint, readCachedPages, writeCachedCloudContent } from '@/lib/cloud/cloudCache';
-
-import type { CloudLoadFailure, ContentMode } from '@/lib/cloud/types';
-
-import { getHydratedData } from '@/lib/draftStorage';
-
-import {
-
-  buildApiCandidates,
-
-  fetchRenderProjection,
-
-  isAdminPath,
-
-  normalizeRenderPath,
-
-  patchHistoryNavigation,
-
-  resolveRegistrySlugFromRender,
-
-  type RenderProjectionResponse,
-
-} from '@/lib/spp';
-
-import type { JsonPagesConfig } from '@olonjs/core';
-
-import { APP_BASE_PATH, CLOUD_API_KEY, CLOUD_API_URL, cloudPolicy } from '@/lib/tenantEnv';
-
-import type { MenuConfig, PageConfig, SiteConfig, ThemeConfig } from '@/types';
-
-import { loadPublishedStaticContent } from '@/lib/cloud/staticContent';
-
-
-
-const EMPTY_COLLECTIONS = {} as NonNullable<JsonPagesConfig['collections']>;
-
-const MAX_BOOTSTRAP_RETRIES = 2;
-
-
-
-type UseTenantBootstrapOptions = {
-
-  tenantId: string;
-
-  filePages: Record<string, PageConfig>;
-
-  fileSiteConfig: SiteConfig;
-
-  menuConfigSeed: MenuConfig;
-
-  themeConfigSeed: ThemeConfig;
-
-};
-
-
-
-function applyCachedBootstrap(params: {
-
-  cachedPages: Record<string, PageConfig> | null;
-
-  cachedSite: SiteConfig | null;
-
-  cachedCollections?: JsonPagesConfig['collections'];
-
-  setPages: (pages: Record<string, PageConfig>) => void;
-
-  setSiteConfig: (site: SiteConfig) => void;
-
-  setCollections: (collections: NonNullable<JsonPagesConfig['collections']>) => void;
-
-}): boolean {
-
-  const { cachedPages, cachedSite, cachedCollections, setPages, setSiteConfig, setCollections } = params;
-
-  const hasPages = Boolean(cachedPages && Object.keys(cachedPages).length > 0);
-
-  const hasSite = Boolean(cachedSite);
-
-  if (!hasPages && !hasSite) return false;
-
-
-
-  if (cachedPages && hasPages) setPages(cachedPages);
-
-  if (cachedSite) setSiteConfig(cachedSite);
-
-  if (cachedCollections) setCollections(cachedCollections);
-
-  return true;
-
-}
-
-
-
-export function useTenantBootstrap({
-
-  tenantId,
-
-  filePages,
-
-  fileSiteConfig,
-
-  menuConfigSeed,
-
-  themeConfigSeed,
-
-}: UseTenantBootstrapOptions) {
-
-  const { isCloudMode, bootSource } = cloudPolicy;
-
-  /** Live SPP render boot — only when bootSource is live (not static Save2Repo). */
-  const useRenderBootstrap = bootSource === 'live';
-
-
-
-  const localInitialData = useMemo(
-
-    () => (isCloudMode ? null : getHydratedData(tenantId, filePages, fileSiteConfig)),
-
-    [isCloudMode, tenantId, filePages, fileSiteConfig],
-
-  );
-
-  const localInitialPages = useMemo(() => {
-
-    if (!localInitialData) return {};
-
-    return localInitialData.pages;
-
-  }, [localInitialData]);
-
-
-
-  const [pages, setPages] = useState<Record<string, PageConfig>>(localInitialPages);
-
-  const [siteConfig, setSiteConfig] = useState<SiteConfig>(localInitialData?.siteConfig ?? fileSiteConfig);
-
-  const [menuConfig, setMenuConfig] = useState<MenuConfig>(menuConfigSeed);
-
-  const [themeConfig, setThemeConfig] = useState<ThemeConfig>(themeConfigSeed);
-
-  const [collections, setCollections] = useState<NonNullable<JsonPagesConfig['collections']>>(EMPTY_COLLECTIONS);
-
-  const [contentMode, setContentMode] = useState<ContentMode>('cloud');
-
-  const [contentFallback, setContentFallback] = useState<CloudLoadFailure | null>(null);
-
-  const [showTopProgress, setShowTopProgress] = useState(false);
-
-  const [hasInitialCloudResolved, setHasInitialCloudResolved] = useState(!isCloudMode);
-
-  const [bootstrapRunId, setBootstrapRunId] = useState(0);
-
-
-
-  const contentLoadInFlight = useRef<Promise<void> | null>(null);
-
-  const sppRenderInFlightRef = useRef<string | null>(null);
-
-  const sppBootstrappedRef = useRef(false);
-
-
-
-  const cloudApiCandidates = useMemo(
-
-    () => (isCloudMode && CLOUD_API_URL ? buildApiCandidates(CLOUD_API_URL) : []),
-
-    [isCloudMode],
-
-  );
-
-
-
-  const isTenantEmpty = Object.keys(pages).length === 0;
-
-  /** Call when live /admin content sync has finished (success, cache, or error). */
-  const markCloudContentReady = useCallback(() => {
-    setShowTopProgress(false);
-    setHasInitialCloudResolved(true);
-  }, []);
-
-  const retryBootstrap = () => {
-
-    contentLoadInFlight.current = null;
-
-    setContentMode('cloud');
-
-    setContentFallback(null);
-
-    setHasInitialCloudResolved(false);
-
-    setShowTopProgress(true);
-
-    setBootstrapRunId((prev) => prev + 1);
-
-  };
-
-
-
-  useEffect(() => {
-
-    if (!isCloudMode || !CLOUD_API_URL || !CLOUD_API_KEY) {
-
-      setContentMode('cloud');
-
-      setContentFallback(null);
-
-      setShowTopProgress(false);
-
-      setHasInitialCloudResolved(true);
-
-      logBootstrapEvent('boot.local.ready', { mode: 'local' });
-
-      return;
-
-    }
-
-
-
-    if (bootSource === 'static') {
-
-      if (contentLoadInFlight.current) return;
-
-
-
-      setContentMode('cloud');
-
-      setContentFallback(null);
-
-      setShowTopProgress(true);
-
-      setHasInitialCloudResolved(false);
-
-      logBootstrapEvent('boot.start', { mode: 'save2repo-static', pageCount: Object.keys(filePages).length });
-
-
-
-      let inFlight: Promise<void> | null = null;
-
-      inFlight = loadPublishedStaticContent(Object.keys(filePages), APP_BASE_PATH)
-
-        .then(({ pages: nextPages, siteConfig: nextSite }) => {
-
-          setPages(nextPages);
-
-          setSiteConfig(nextSite);
-
-          setContentMode('cloud');
-
-          setContentFallback(null);
-
-          setHasInitialCloudResolved(true);
-
-          logBootstrapEvent('boot.save2repo.success', {
-
-            mode: 'save2repo-static',
-
-            pageCount: Object.keys(nextPages).length,
-
-          });
-
-        })
-
-        .catch((error: unknown) => {
-
-          const failure = toCloudLoadFailure(error);
-
-          setContentMode('error');
-
-          setContentFallback(failure);
-
-          setHasInitialCloudResolved(true);
-
-          logBootstrapEvent('boot.save2repo.error', {
-
-            mode: 'save2repo-static',
-
-            reasonCode: failure.reasonCode,
-
-            correlationId: failure.correlationId ?? null,
-
-          });
-
-        })
-
-        .finally(() => {
-
-          setShowTopProgress(false);
-
-          if (contentLoadInFlight.current === inFlight) {
-
-            contentLoadInFlight.current = null;
-
-          }
-
-        });
-
-      contentLoadInFlight.current = inFlight;
-
-      return () => {
-
-        contentLoadInFlight.current = null;
-
-      };
-
-    }
-
-
-
-    if (!useRenderBootstrap) return;
-
-    if (contentLoadInFlight.current) return;
-
-
-
-    if (isAdminPath(window.location.pathname, APP_BASE_PATH)) {
-      // Live /admin: content comes from useAdminStudioContent — do not paint empty first.
-      setContentMode('cloud');
-      setContentFallback(null);
-      setShowTopProgress(true);
-      setHasInitialCloudResolved(false);
-      return;
-    }
-
-
-
-    const controller = new AbortController();
-
-    const startedAt = Date.now();
-
-    const primaryApiBase = cloudApiCandidates[0] ?? CLOUD_API_URL.trim().replace(/\/+$/, '');
-
-    const fingerprint = cloudFingerprint(primaryApiBase, CLOUD_API_KEY);
-
-    const { cached, cachedSite } = readCachedPages(fingerprint);
-
-    sppBootstrappedRef.current = false;
-
-    setContentMode('cloud');
-
-    setContentFallback(null);
-
-    setShowTopProgress(true);
-
-    setHasInitialCloudResolved(false);
-
-    logBootstrapEvent('boot.start', {
-
-      mode: 'spp-render',
-
-      apiCandidates: cloudApiCandidates.length,
-
-    });
-
-
-
-    const applyRenderPayload = (result: RenderProjectionResponse) => {
-
-      if (!result.page) return;
-
-      const registrySlug = resolveRegistrySlugFromRender(result.page);
-
-      setPages((prev) => ({ ...prev, [registrySlug]: result.page! }));
-
-      if (result.context?.siteConfig) setSiteConfig(result.context.siteConfig);
-
-      if (result.context?.menuConfig) setMenuConfig(result.context.menuConfig);
-
-      writeCachedCloudContent({
-
-        keyFingerprint: fingerprint,
-
-        savedAt: Date.now(),
-
-        siteConfig: result.context?.siteConfig ?? cachedSite ?? null,
-
-        pages: {
-
-          ...(cached?.pages ?? {}),
-
-          [registrySlug]: result.page,
-
-        },
-
-        collections: cached?.collections,
-
-      });
-
-    };
-
-
-
-    const loadRenderPath = async (pathname: string, options?: { initial?: boolean }) => {
-
-      if (controller.signal.aborted) return;
-
-      if (isAdminPath(pathname, APP_BASE_PATH)) return;
-
-
-
-      const renderPath = normalizeRenderPath(pathname, APP_BASE_PATH);
-
-      const inFlightKey = renderPath;
-
-      if (sppRenderInFlightRef.current === inFlightKey) return;
-
-      sppRenderInFlightRef.current = inFlightKey;
-
-
-
-      try {
-
-        const result = await fetchRenderProjection(
-
-          cloudApiCandidates,
-
-          CLOUD_API_KEY,
-
-          renderPath,
-
-          { signal: controller.signal, maxRetryAttempts: MAX_BOOTSTRAP_RETRIES },
-
-        );
-
-
-
-        if (!result.ok) {
-
-          if (options?.initial) {
-
-            throw {
-
-              reasonCode: result.code || 'RENDER_FAILED',
-
-              message: result.error || 'Render projection failed',
-
-              correlationId: result.correlationId,
-
-            } satisfies CloudLoadFailure;
-
-          }
-
-          logBootstrapEvent('boot.spp_render.route_error', {
-
-            path: renderPath,
-
-            code: result.code ?? null,
-
-          });
-
-          return;
-
-        }
-
-
-
-        applyRenderPayload(result);
-
-        if (options?.initial) {
-
-          sppBootstrappedRef.current = true;
-
-          setContentMode('cloud');
-
-          setContentFallback(null);
-
-          setHasInitialCloudResolved(true);
-
-          logBootstrapEvent('boot.spp_render.success', {
-
-            elapsedMs: Date.now() - startedAt,
-
-            projectionMode: result.diagnostics?.projectionMode ?? null,
-
-            correlationId: result.correlationId ?? null,
-
-          });
-
-        } else {
-
-          logBootstrapEvent('boot.spp_render.route_success', {
-
-            path: renderPath,
-
-            correlationId: result.correlationId ?? null,
-
-          });
-
-        }
-
-      } finally {
-
-        if (sppRenderInFlightRef.current === inFlightKey) {
-
-          sppRenderInFlightRef.current = null;
-
-        }
-
-      }
-
-    };
-
-
-
-    const bootstrap = async () => {
-
-      try {
-
-        await loadRenderPath(window.location.pathname, { initial: true });
-
-      } catch (error: unknown) {
-
-        if (controller.signal.aborted) return;
-
-        const failure = toCloudLoadFailure(error);
-
-        const { cachedPages, cachedSite } = readCachedPages(fingerprint);
-
-        const hasCachedFallback = applyCachedBootstrap({
-
-          cachedPages,
-
-          cachedSite,
-
-          cachedCollections: cached?.collections,
-
-          setPages,
-
-          setSiteConfig,
-
-          setCollections,
-
-        });
-
-        if (hasCachedFallback) {
-
-          setContentMode('cloud');
-
-          setContentFallback({
-
-            reasonCode: 'RENDER_FAILED',
-
-            message: failure.message,
-
-            correlationId: failure.correlationId,
-
-          });
-
-          setHasInitialCloudResolved(true);
-
-        } else {
-
-          setContentMode('error');
-
-          setContentFallback(failure);
-
-          setHasInitialCloudResolved(true);
-
-        }
-
-        logBootstrapEvent('boot.spp_render.error', {
-
-          reasonCode: failure.reasonCode,
-
-          correlationId: failure.correlationId ?? null,
-
-        });
-
-      } finally {
-
-        setShowTopProgress(false);
-
-      }
-
-    };
-
-
-
-    let inFlight: Promise<void> | null = null;
-
-    inFlight = bootstrap().finally(() => {
-
-      if (contentLoadInFlight.current === inFlight) {
-
-        contentLoadInFlight.current = null;
-
-      }
-
-    });
-
-    contentLoadInFlight.current = inFlight;
-
-
-
-    const unpatchHistory = patchHistoryNavigation(() => {
-
-      if (!sppBootstrappedRef.current) return;
-
-      void loadRenderPath(window.location.pathname);
-
-    });
-
-
-
-    return () => {
-
-      controller.abort();
-
-      unpatchHistory();
-
-      contentLoadInFlight.current = null;
-
-    };
-
-  }, [
-
-    isCloudMode,
-
-    bootSource,
-
-    useRenderBootstrap,
-
-    cloudApiCandidates,
-
-    filePages,
-
-    bootstrapRunId,
-
-  ]);
-
-
-
-  const shouldRenderEngine = !isCloudMode || hasInitialCloudResolved;
-
-
-
-  return {
-
-    pages,
-
-    siteConfig,
-
-    menuConfig,
-
-    themeConfig,
-
-    enginePages: pages,
-
-    collections,
-
-    setPages,
-
-    setSiteConfig,
-
-    setMenuConfig,
-
-    setThemeConfig,
-
-    setCollections,
-
-    cloudApiCandidates,
-
-    isCloudMode,
-
-    bootSource,
-
-    contentMode,
-
-    contentFallback,
-
-    showTopProgress,
-
-    hasInitialCloudResolved,
-
-    shouldRenderEngine,
-
-    isTenantEmpty,
-
-    markCloudContentReady,
-
-    retryBootstrap,
-
-  };
-
-}
-
-
-
-END_OF_FILE_CONTENT
 echo "Creating src/lib/utils.ts..."
 cat << 'END_OF_FILE_CONTENT' > "src/lib/utils.ts"
 import { clsx, type ClassValue } from 'clsx';
@@ -14353,8 +14095,8 @@ cat << 'END_OF_FILE_CONTENT' > "src/runtime.ts"
 import type { JsonPagesConfig, MenuConfig, PageConfig, SiteConfig, ThemeConfig } from '@/types';
 import { CollectionRegistry } from '@/lib/CollectionRegistry';
 import { SECTION_SCHEMAS } from '@/lib/schemas';
-import { getFileCollections } from '@/lib/getFileCollections';
-import { getFilePages } from '@/lib/getFilePages';
+import { getFileCollections } from '@/lib/loaders/getFileCollections';
+import { getFilePages } from '@/lib/loaders/getFilePages';
 import siteData from '@/data/config/site.json';
 import menuData from '@/data/config/menu.json';
 import themeData from '@/data/config/theme.json';

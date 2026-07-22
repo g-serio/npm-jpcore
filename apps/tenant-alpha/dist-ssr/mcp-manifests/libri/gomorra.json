@@ -1,7 +1,7 @@
 {
   "version": "1.0.0",
   "kind": "olonjs-page-mcp-manifest",
-  "generatedAt": "2026-07-18T09:17:47.979Z",
+  "generatedAt": "2026-07-18T12:32:52.108Z",
   "slug": "libri/gomorra",
   "title": "Dettaglio libro",
   "description": "Pagina dinamica dettaglio libro alimentata dalla collection libri.",
