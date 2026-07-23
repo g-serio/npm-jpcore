@@ -16,6 +16,11 @@ export {
 export { loadVisitorPage, type VisitorLoadInput, type VisitorLoadResult } from './visitorLoad';
 export { applyDevSliceFilters } from './applyDevSliceFilters';
 export {
+  loadPublishedStaticContent,
+  normalizePublishedSlug,
+  type LoadPublishedStaticContentInput,
+} from './loadPublishedStaticContent';
+export {
   createPublicPageJsonHttpResult,
   type PublicPageJsonHttpResult,
 } from './publicPageJsonHttp';
