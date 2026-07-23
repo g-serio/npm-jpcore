@@ -64,7 +64,7 @@ export default async function VisitorCatchAllPage({ params, searchParams }: Page
   const result = loadVisitorPage({ pages, slug: requestSlug });
 
   if (result.kind === 'empty') {
-    return <EmptyTenantView data={{}} />;
+    return <EmptyTenantView />;
   }
 
   const collections = getFileCollections();
