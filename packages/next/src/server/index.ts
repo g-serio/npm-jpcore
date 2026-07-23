@@ -16,6 +16,14 @@ export {
 export { loadVisitorPage, type VisitorLoadInput, type VisitorLoadResult } from './visitorLoad';
 export { applyDevSliceFilters } from './applyDevSliceFilters';
 export {
+  createPublicPageJsonHttpResult,
+  type PublicPageJsonHttpResult,
+} from './publicPageJsonHttp';
+export {
+  buildPublicPageJsonRewrites,
+  type PublicPageJsonRewrite,
+} from './publicPageJsonRewrites';
+export {
   normalizePublicPageSlug,
   resolvePublicPageJson,
   type PublicPageContentBundle,
