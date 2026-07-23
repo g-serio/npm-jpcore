@@ -21,6 +21,12 @@ export {
   type LoadPublishedStaticContentInput,
 } from './loadPublishedStaticContent';
 export {
+  loadLivePublicPageContent,
+  slugToRenderPath,
+  type LivePublicPageContent,
+  type LoadLivePublicPageContentInput,
+} from './loadLivePublicPageContent';
+export {
   createPublicPageJsonHttpResult,
   type PublicPageJsonHttpResult,
 } from './publicPageJsonHttp';
