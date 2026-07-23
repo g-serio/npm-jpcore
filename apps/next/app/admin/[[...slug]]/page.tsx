@@ -1,4 +1,4 @@
-import { AdminStudioClient } from '@/components/admin/AdminStudioClient';
+import { AdminStudioWithCloud } from '@/components/admin/AdminStudioWithCloud';
 import { getFileCollections } from '@/lib/loaders/getFileCollections';
 import { getFilePages } from '@/lib/loaders/getFilePages';
 import { getFileSiteBundle } from '@/lib/loaders/getFileSiteConfig';
@@ -7,7 +7,8 @@ export const dynamic = 'force-dynamic';
 
 /**
  * Admin Studio entry — client island only (ADR-0017).
- * Server loads JSP JSON seeds; persistence is local save-to-file for Task 9.
+ * Persistence: local save-to-file, or Save2Repo cold save when NEXT_PUBLIC_* cloud env is set.
+ * HotSave is out of scope for Next v1.
  */
 export default function AdminCatchAllPage() {
   const pages = getFilePages();
@@ -15,14 +16,12 @@ export default function AdminCatchAllPage() {
   const { siteConfig, menuConfig, themeConfig } = getFileSiteBundle();
 
   return (
-    <AdminStudioClient
+    <AdminStudioWithCloud
       initialPages={pages}
       initialSiteConfig={siteConfig}
       initialMenuConfig={menuConfig}
       initialThemeConfig={themeConfig}
       initialCollections={collections}
-      showLocalSave
-      showColdSave={false}
     />
   );
 }
