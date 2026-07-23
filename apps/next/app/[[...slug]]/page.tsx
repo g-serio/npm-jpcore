@@ -1,4 +1,5 @@
 import type { Metadata } from 'next';
+import { notFound } from 'next/navigation';
 import {
   resolveCollectionContext,
   resolveRuntimeConfig,
@@ -45,6 +46,9 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   if (result.kind === 'empty') {
     return { title: 'Empty tenant' };
   }
+  if (result.kind === 'not-found') {
+    return { title: 'Page not found' };
+  }
   return {
     title: result.page.meta?.title ?? 'OlonJS',
     description: result.page.meta?.description,
@@ -66,6 +70,10 @@ export default async function VisitorCatchAllPage({ params, searchParams }: Page
 
   if (result.kind === 'empty') {
     return <EmptyTenantView />;
+  }
+
+  if (result.kind === 'not-found') {
+    notFound();
   }
 
   const collections = getFileCollections();

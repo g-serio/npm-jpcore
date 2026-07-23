@@ -7,6 +7,7 @@ export type VisitorLoadInput = {
 
 export type VisitorLoadResult =
   | { kind: 'empty' }
+  | { kind: 'not-found' }
   | {
       kind: 'page';
       slug: string;
@@ -17,24 +18,14 @@ export type VisitorLoadResult =
 
 /**
  * Visitor page loader for RSC hosts (ADR-0017).
- * Empty registry → empty tenant; otherwise resolve via @olonjs/core route matching.
+ * Empty registry → empty tenant; unknown slug → not-found (no home fallback).
  */
 export function loadVisitorPage(input: VisitorLoadInput): VisitorLoadResult {
   const pages = input.pages ?? {};
   if (Object.keys(pages).length === 0) return { kind: 'empty' };
 
   const match = resolvePageMatchFromRegistry(pages, input.slug || 'home');
-  if (!match) {
-    const slugs = Object.keys(pages).sort((a, b) => a.localeCompare(b));
-    const home = pages.home ? 'home' : slugs[0];
-    return {
-      kind: 'page',
-      slug: home,
-      registrySlug: home,
-      page: pages[home],
-      params: {},
-    };
-  }
+  if (!match) return { kind: 'not-found' };
 
   return {
     kind: 'page',

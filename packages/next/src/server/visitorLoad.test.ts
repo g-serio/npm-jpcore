@@ -20,4 +20,13 @@ describe('loadVisitorPage', () => {
       expect(result.page).toEqual(page);
     }
   });
+
+  it('returns not-found for an unknown slug when pages exist', () => {
+    const home = { meta: { title: 'Home' }, sections: [] } as PageConfig;
+    const result = loadVisitorPage({
+      pages: { home },
+      slug: 'missing-page',
+    });
+    expect(result).toEqual({ kind: 'not-found' });
+  });
 });
