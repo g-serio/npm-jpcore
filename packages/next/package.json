@@ -32,6 +32,11 @@
       "import": "./dist/server.js",
       "default": "./dist/server.js"
     },
+    "./admin-gate": {
+      "types": "./dist/admin-gate.d.ts",
+      "import": "./dist/admin-gate.js",
+      "default": "./dist/admin-gate.js"
+    },
     "./client": {
       "types": "./dist/client.d.ts",
       "import": "./dist/client.js",

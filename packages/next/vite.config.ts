@@ -39,6 +39,7 @@ export default defineConfig({
         index: path.resolve(__dirname, 'src/index.ts'),
         server: path.resolve(__dirname, 'src/server/index.ts'),
         client: path.resolve(__dirname, 'src/client/index.ts'),
+        'admin-gate': path.resolve(__dirname, 'src/server/adminGate.ts'),
       },
       formats: ['es'],
       fileName: (_format, entryName) => `${entryName}.js`,

@@ -40,3 +40,13 @@ export {
   type PublicPageContentBundle,
   type ResolvePublicPageJsonResult,
 } from './resolvePublicPageJson';
+export {
+  ADMIN_SESSION_COOKIE,
+  ADMIN_SESSION_MAX_AGE,
+  authorizeAdminRequest,
+  buildAdminSessionCookie,
+  parseCookieHeader,
+  verifyAdminJwt,
+  type AdminGateEnv,
+  type AdminGateResult,
+} from './adminGate';
