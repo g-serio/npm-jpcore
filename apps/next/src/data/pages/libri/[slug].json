@@ -1,0 +1,26 @@
+{
+  "id": "libro-detail-page",
+  "slug": "libri/[slug]",
+  "meta": {
+    "title": "Dettaglio libro",
+    "description": "Pagina dinamica dettaglio libro alimentata dalla collection libri."
+  },
+  "sections": [
+    {
+      "id": "book-detail-1",
+      "type": "book-detail",
+      "data": {
+        "anchorId": "dettaglio-libro",
+        "item": {
+          "$ref": "collection:current"
+        },
+        "backLabel": "← Torna ai libri"
+      }
+    }
+  ],
+  "collection": {
+    "source": "libri",
+    "paramKey": "slug"
+  },
+  "global-header": false
+}

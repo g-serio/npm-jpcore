@@ -1,0 +1,25 @@
+{
+  "id": "author-books-page",
+  "slug": "authors/[authorId]/libri",
+  "meta": {
+    "title": "Libri per autore",
+    "description": "Catalogo libri filtrato per autore."
+  },
+  "sections": [
+    {
+      "id": "books-list-author-filter",
+      "type": "books-list",
+      "data": {
+        "anchorId": "libri-autore",
+        "eyebrow": "Author books",
+        "title": "Libri",
+        "description": "Libri filtrati per autore dalla collection autori.",
+        "items": {
+          "$ref": "../../collections/libri/libri.json"
+        },
+        "pageSize": 10
+      }
+    }
+  ],
+  "global-header": false
+}
