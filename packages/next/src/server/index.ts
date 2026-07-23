@@ -13,3 +13,4 @@ export {
   type LocalDataRoots,
   type ProjectStateLike,
 } from './localPersistence';
+export { loadVisitorPage, type VisitorLoadInput, type VisitorLoadResult } from './visitorLoad';
