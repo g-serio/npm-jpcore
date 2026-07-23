@@ -1,0 +1,72 @@
+{
+  "name": "@olonjs/next",
+  "version": "0.0.1",
+  "private": false,
+  "type": "module",
+  "description": "Next.js App Router host binding for OlonJS — RSC visitors + admin client island (ADR-0017).",
+  "author": "JsonPages Team",
+  "license": "MIT",
+  "homepage": "https://github.com/olonjs/npm-jpcore#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/olonjs/npm-jpcore.git",
+    "directory": "packages/next"
+  },
+  "bugs": {
+    "url": "https://github.com/olonjs/npm-jpcore/issues"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "main": "./dist/index.js",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./server": {
+      "types": "./dist/server.d.ts",
+      "import": "./dist/server.js"
+    },
+    "./client": {
+      "types": "./dist/client.d.ts",
+      "import": "./dist/client.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "dist"
+  ],
+  "sideEffects": false,
+  "scripts": {
+    "build": "vite build",
+    "test": "vitest run"
+  },
+  "peerDependencies": {
+    "@olonjs/core": "^1.1.0",
+    "@olonjs/react": "^0.1.0",
+    "next": "^15.0.0 || ^16.0.0",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0"
+  },
+  "peerDependenciesMeta": {
+    "@olonjs/react": {
+      "optional": true
+    },
+    "next": {
+      "optional": true
+    }
+  },
+  "devDependencies": {
+    "@types/node": "^22.13.1",
+    "@types/react": "^19.0.0",
+    "@types/react-dom": "^19.0.0",
+    "@vitejs/plugin-react": "^4.0.0",
+    "typescript": "^5.7.3",
+    "vite": "^6.0.0",
+    "vite-plugin-dts": "^4.0.0",
+    "vitest": "^3.0.0"
+  }
+}
