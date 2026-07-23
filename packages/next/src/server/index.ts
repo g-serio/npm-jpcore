@@ -14,6 +14,7 @@ export {
   type ProjectStateLike,
 } from './localPersistence';
 export { loadVisitorPage, type VisitorLoadInput, type VisitorLoadResult } from './visitorLoad';
+export { applyDevSliceFilters } from './applyDevSliceFilters';
 export {
   normalizePublicPageSlug,
   resolvePublicPageJson,

@@ -5,6 +5,7 @@ import {
   type SiteConfig,
   type JsonPagesConfig,
 } from '@olonjs/core';
+import { applyDevSliceFilters } from './applyDevSliceFilters';
 
 export type PublicPageContentBundle = {
   pages: Record<string, PageConfig>;
@@ -54,8 +55,14 @@ export function resolvePublicPageJson(input: {
     refDocuments: input.bundle.refDocuments,
   });
   if (!resolved) return null;
+  const authored = input.bundle.pages[resolved.pageMatch.registrySlug];
+  const page = applyDevSliceFilters(
+    resolved.page,
+    authored,
+    resolved.pageMatch.params ?? {},
+  ) as PageConfig;
   return {
-    page: resolved.page,
+    page,
     registrySlug: resolved.pageMatch.registrySlug,
     params: resolved.pageMatch.params,
   };
