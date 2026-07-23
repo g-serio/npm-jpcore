@@ -1,7 +1,7 @@
 # Todo: Next RSC starter (`@olonjs/next` + `apps/next`)
 
 Spec: `docs/specs/next-rsc-starter.md` · Plan: `docs/plans/next-rsc-starter.md`  
-Status: **Implement in progress** (Tasks 1–10 done; Task 11 pending)
+Status: **Implement done** (Tasks 1–11 complete; ADR-0017 Accepted)
 
 ## Phase 1: Foundation
 
@@ -12,7 +12,7 @@ Status: **Implement in progress** (Tasks 1–10 done; Task 11 pending)
 ## Phase 2: Visitor RSC
 
 - [x] **Task 4:** Visitor loaders — load config/pages/collections; resolve page; detect empty
-- [ ] **Task 5:** Port protocol + data (registry, schemas, ASC, collections, pages, theme bridge)
+- [x] **Task 5:** Port protocol + data (registry, schemas, ASC, collections, pages, theme bridge)
 - [x] **Task 6:** RSC `authors-list` + `books-list` (+ detail if required) with Next routing/params
 - [x] **Task 7:** Empty-tenant server UI when page registry empty
 - [x] **Task 8:** `form-demo` RSC shell + `FormDemoClient` leaf (scoped forms context)
@@ -21,4 +21,4 @@ Status: **Implement in progress** (Tasks 1–10 done; Task 11 pending)
 
 - [x] **Task 9:** `/admin` client island — `JsonPagesEngine` + protocol + local persistence
 - [x] **Task 10:** Save2Repo cold save (env + stream + drawer); **no HotSave**
-- [ ] **Task 11:** Final smoke vs spec success criteria; ADR-0017 → Accepted; spec/plan status update
+- [x] **Task 11:** Final smoke vs spec success criteria; ADR-0017 → Accepted; spec/plan status update
