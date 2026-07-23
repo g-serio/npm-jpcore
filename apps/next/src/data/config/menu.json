@@ -1,0 +1,42 @@
+{
+  "main": [
+    {
+      "label": "Why",
+      "href": "#Why"
+    },
+    {
+      "label": "Architecture",
+      "href": "#Architecture"
+    },
+    {
+      "label": "Example",
+      "href": "#Example"
+    },
+    {
+      "label": "Get started",
+      "href": "#Getstarted"
+    },
+    {
+      "label": "GitHub",
+      "href": "https://github.com/olonjs/core"
+    }
+  ],
+  "footer": [
+    {
+      "id": "footer-home",
+      "label": "Home",
+      "href": "/"
+    },
+    {
+      "id": "footer-libri",
+      "label": "Libri",
+      "href": "/libri"
+    },
+    {
+      "id": "footer-github",
+      "label": "GitHub",
+      "href": "https://github.com/olonjs/core",
+      "external": true
+    }
+  ]
+}

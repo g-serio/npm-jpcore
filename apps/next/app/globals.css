@@ -1,11 +1,27 @@
 @import "tailwindcss";
 
+/* Minimal theme bridge — literal fallbacks until engine injects --theme-* from theme.json */
 :root {
-  --background: #fafafa;
-  --foreground: #171717;
-  --muted-foreground: #737373;
-  --border: #e5e5e5;
-  --card: #ffffff;
+  --theme-colors-background: hsl(215 28% 7%);
+  --theme-colors-foreground: hsl(214 33% 84%);
+  --theme-colors-card: hsl(218 44% 9%);
+  --theme-colors-muted-foreground: hsl(215 23% 57%);
+  --theme-colors-border: hsl(216 27% 21%);
+  --theme-colors-primary: hsl(222 100% 54%);
+  --theme-colors-primary-foreground: hsl(0 0% 100%);
+  --theme-typography-font-family-primary: "Instrument Sans", Helvetica, Arial, sans-serif;
+  --theme-font-primary: var(--theme-typography-font-family-primary);
+  --theme-border-radius-sm: 0.25rem;
+  --theme-border-radius-md: 0.5rem;
+  --theme-border-radius-lg: 0.75rem;
+
+  --background: var(--theme-colors-background);
+  --foreground: var(--theme-colors-foreground);
+  --muted-foreground: var(--theme-colors-muted-foreground);
+  --border: var(--theme-colors-border);
+  --card: var(--theme-colors-card);
+  --primary: var(--theme-colors-primary);
+  --primary-foreground: var(--theme-colors-primary-foreground);
 }
 
 @theme inline {
@@ -14,9 +30,12 @@
   --color-muted-foreground: var(--muted-foreground);
   --color-border: var(--border);
   --color-card: var(--card);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
+  font-family: var(--theme-font-primary, system-ui, sans-serif);
 }

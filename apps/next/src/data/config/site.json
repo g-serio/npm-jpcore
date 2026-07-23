@@ -1,0 +1,55 @@
+{
+  "identity": {
+    "title": "OlonJS",
+    "logoUrl": "/brand/mark/olon-mark-dark.svg"
+  },
+  "header": {
+    "id": "global-header",
+    "type": "header",
+    "data": {
+      "logoText": "Olon",
+      "badge": "JS",
+      "links": [
+        {
+          "label": "Why",
+          "href": "#Why"
+        },
+        {
+          "label": "Architecture",
+          "href": "#Architecture"
+        },
+        {
+          "label": "Example",
+          "href": "#Example"
+        },
+        {
+          "label": "Get started",
+          "href": "#Getstarted"
+        },
+        {
+          "label": "GitHub",
+          "href": "https://github.com/olonjs/core"
+        }
+      ],
+      "ctaLabel": "",
+      "ctaHref": "",
+      "signinHref": ""
+    }
+  },
+  "footer": {
+    "id": "global-footer",
+    "type": "footer",
+    "data": {
+      "brandText": "OlonJS",
+      "description": "AI-native content infrastructure for deterministic, sovereign, git-backed sites.",
+      "copyright": "© 2026 OlonJS · v1.5 · Guido Serio",
+      "links": {
+        "$ref": "../config/menu.json#/footer"
+      },
+      "designSystemHref": ""
+    },
+    "settings": {
+      "showLogo": true
+    }
+  }
+}

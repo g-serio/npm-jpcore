@@ -1,0 +1,24 @@
+{
+  "id": "authors-page",
+  "slug": "authors",
+  "meta": {
+    "title": "Authors",
+    "description": "Author directory powered by the autori collection."
+  },
+  "sections": [
+    {
+      "id": "authors-list-1",
+      "type": "authors-list",
+      "data": {
+        "anchorId": "authors",
+        "eyebrow": "Collection demo",
+        "title": "Authors",
+        "description": "A collection-backed directory of authors referenced by books.",
+        "items": {
+          "$ref": "../collections/autori/autori.json"
+        }
+      }
+    }
+  ],
+  "global-header": false
+}

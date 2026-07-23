@@ -1,0 +1,25 @@
+{
+  "id": "libri-page",
+  "slug": "libri",
+  "meta": {
+    "title": "Libri",
+    "description": "Catalogo libri dimostrativo alimentato da COP collections."
+  },
+  "sections": [
+    {
+      "id": "books-list-1",
+      "type": "books-list",
+      "data": {
+        "anchorId": "catalogo-libri",
+        "eyebrow": "Collection demo",
+        "title": "Libri",
+        "description": "Una pagina collection con titoli, paginazione lato componente e filtro autore.",
+        "items": {
+          "$ref": "../collections/libri/libri.json"
+        },
+        "pageSize": 10
+      }
+    }
+  ],
+  "global-header": false
+}
