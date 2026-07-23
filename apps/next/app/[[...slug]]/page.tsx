@@ -10,6 +10,7 @@ import { CollectionRegistry } from '@/lib/CollectionRegistry';
 import { getFileCollections } from '@/lib/loaders/getFileCollections';
 import { getFilePages } from '@/lib/loaders/getFilePages';
 import { getFileSiteBundle } from '@/lib/loaders/getFileSiteConfig';
+import { resolveVisitorShell } from '@/lib/resolveVisitorShell';
 import { VisitorSection } from '@/lib/VisitorSection';
 
 export const dynamic = 'force-dynamic';
@@ -89,16 +90,26 @@ export default async function VisitorCatchAllPage({ params, searchParams }: Page
   const page = resolved.pages[result.registrySlug] ?? result.page;
   const authorId = resolveAuthorFilter(result.params, query);
   const pageNum = Number(firstSearchValue(query.page) ?? '1') || 1;
+  const shell = resolveVisitorShell(page, resolved.siteConfig ?? siteConfig);
+  const sectionExtras = { authorId, page: pageNum, pathname };
 
   return (
     <>
-      {page.sections.map((section) => (
-        <VisitorSection
-          key={section.id}
-          section={section}
-          extras={{ authorId, page: pageNum, pathname }}
-        />
-      ))}
+      {shell.header ? (
+        <VisitorSection section={shell.header} extras={sectionExtras} />
+      ) : null}
+      <main>
+        {page.sections.map((section) => (
+          <VisitorSection
+            key={section.id}
+            section={section}
+            extras={sectionExtras}
+          />
+        ))}
+      </main>
+      {shell.footer ? (
+        <VisitorSection section={shell.footer} extras={sectionExtras} />
+      ) : null}
     </>
   );
 }

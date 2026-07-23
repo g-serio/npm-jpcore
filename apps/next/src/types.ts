@@ -4,6 +4,7 @@ import type { BooksListData, BooksListSettings } from '@/components/books-list';
 import type { EmptyTenantData, EmptyTenantSettings } from '@/components/empty-tenant';
 import type { FooterData, FooterSettings } from '@/components/footer';
 import type { FormDemoData, FormDemoSettings } from '@/components/form-demo';
+import type { HeaderData, HeaderSettings } from '@/components/header';
 import type { Autore } from '@/collections/autori';
 import type { Libro } from '@/collections/libri';
 
@@ -13,6 +14,7 @@ export type SectionComponentPropsMap = {
   'books-list': { data: BooksListData; settings?: BooksListSettings };
   'empty-tenant': { data?: EmptyTenantData; settings?: EmptyTenantSettings };
   footer: { data: FooterData; settings?: FooterSettings };
+  header: { data: HeaderData; settings?: HeaderSettings };
   'form-demo': { data: FormDemoData; settings?: FormDemoSettings };
 };
 
@@ -23,6 +25,7 @@ declare module '@olonjs/core' {
     'books-list': BooksListData;
     'empty-tenant': EmptyTenantData;
     footer: FooterData;
+    header: HeaderData;
     'form-demo': FormDemoData;
   }
   export interface SectionSettingsRegistry {
@@ -31,6 +34,7 @@ declare module '@olonjs/core' {
     'books-list': BooksListSettings;
     'empty-tenant': EmptyTenantSettings;
     footer: FooterSettings;
+    header: HeaderSettings;
     'form-demo': FormDemoSettings;
   }
   export interface CollectionItemRegistry {
