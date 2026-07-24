@@ -9,7 +9,9 @@
     "start": "next start",
     "lint": "next lint",
     "test": "vitest run",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "dist": "bash ./src2Code.sh --template next app src middleware.ts next.config.ts postcss.config.mjs tsconfig.json package.json next-env.d.ts vitest.config.ts",
+    "dist:dna": "npm run dist"
   },
   "dependencies": {
     "@olonjs/core": "*",
