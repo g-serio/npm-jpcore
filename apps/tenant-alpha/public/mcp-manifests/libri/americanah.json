@@ -1,7 +1,7 @@
 {
   "version": "1.0.0",
   "kind": "olonjs-page-mcp-manifest",
-  "generatedAt": "2026-07-24T15:06:33.680Z",
+  "generatedAt": "2026-07-24T16:40:06.647Z",
   "slug": "libri/americanah",
   "title": "Dettaglio libro",
   "description": "Pagina dinamica dettaglio libro alimentata dalla collection libri.",
