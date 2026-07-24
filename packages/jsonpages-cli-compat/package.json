@@ -1,6 +1,6 @@
 {
   "name": "@jsonpages/cli",
-  "version": "3.0.153",
+  "version": "3.0.154",
   "description": "Compatibility bridge package. Use @olonjs/cli instead.",
   "type": "module",
   "bin": {
