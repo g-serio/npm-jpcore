@@ -1,10 +1,9 @@
 import { buildThemeVariableMap, type ThemeConfig } from '@olonjs/core';
 
-/** SSG/RSC parity with tenant-alpha `entry-ssg` — publish theme.json as `:root{--theme-*}`. */
+/** Publish theme.json as `:root{--theme-*}` (CIP / alpha entry-ssg parity). */
 export function serializeThemeRootCss(theme: ThemeConfig): string {
   const mappings = buildThemeVariableMap(theme);
   const entries = Object.entries(mappings);
   if (entries.length === 0) return '';
-  const serialized = entries.map(([name, value]) => `${name}:${value}`).join(';');
-  return `:root{${serialized}}`;
+  return `:root{${entries.map(([name, value]) => `${name}:${value}`).join(';')}}`;
 }

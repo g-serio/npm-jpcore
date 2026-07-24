@@ -2,7 +2,7 @@
 
 /*
   TOKEN BRIDGE only — values come from theme.json via layout <style> (buildThemeVariableMap).
-  Do not hardcode --theme-* color literals here (CIP theme chain).
+  Do not hardcode --theme-* color literals here.
 */
 :root {
   --background: var(--theme-colors-background);
