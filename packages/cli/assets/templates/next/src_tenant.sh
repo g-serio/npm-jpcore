@@ -455,6 +455,15 @@ const publicPageJsonRewrites = [
 const nextConfig: NextConfig = {
   reactStrictMode: true,
   transpilePackages: ['@olonjs/next', '@olonjs/core', '@olonjs/react', '@olonjs/studio'],
+  /**
+   * Visitor/admin loaders read `src/data/**` via runtime `fs` (`getFilePages`, etc.).
+   * Those JSON files are never statically imported, so NFT omits them from the
+   * Vercel serverless bundle unless we force-include them — otherwise
+   * `getFilePages()` returns {} and the site shows EmptyTenantView.
+   */
+  outputFileTracingIncludes: {
+    '/*': ['./src/data/**/*'],
+  },
   async rewrites() {
     return publicPageJsonRewrites;
   },
@@ -481,10 +490,10 @@ cat << 'END_OF_FILE_CONTENT' > "package.json"
     "dist:dna": "npm run dist"
   },
   "dependencies": {
-    "@olonjs/core": "^1.1.21",
+    "@olonjs/core": "^1.1.22",
     "@olonjs/next": "^0.0.2",
-    "@olonjs/react": "^0.1.4",
-    "@olonjs/studio": "^0.1.4",
+    "@olonjs/react": "^0.1.5",
+    "@olonjs/studio": "^0.1.5",
     "clsx": "^2.1.1",
     "lucide-react": "^0.474.0",
     "next": "^15.5.0",
