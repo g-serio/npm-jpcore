@@ -223,13 +223,9 @@ function getCommandPlan() {
     { step: "5/6", desc: "@olonjs/cli", cmd: "npm run build -w @olonjs/cli", cwd: "root", skip: false },
     { step: "5/6", desc: "@olonjs/cli", cmd: "npm version patch --no-git-tag-version -w @olonjs/cli", cwd: "root", skip: false },
     { step: "5/6", desc: "@olonjs/cli (publish)", cmd: "npm publish --access public -w @olonjs/cli", cwd: "root", skip: dryRun },
-    { step: "6/6", desc: "@jsonpages/stack compat", cmd: "npm version patch --no-git-tag-version -w @jsonpages/stack", cwd: "root", skip: false },
-    { step: "6/6", desc: "@jsonpages/stack compat (publish)", cmd: "npm publish --access public -w @jsonpages/stack", cwd: "root", skip: dryRun },
-    { step: "6/6", desc: "@jsonpages/core compat", cmd: "npm version patch --no-git-tag-version -w @jsonpages/core", cwd: "root", skip: false },
-    { step: "6/6", desc: "@jsonpages/core compat (publish)", cmd: "npm publish --access public -w @jsonpages/core", cwd: "root", skip: dryRun },
-    { step: "6/6", desc: "@jsonpages/cli compat", cmd: "npm version patch --no-git-tag-version -w @jsonpages/cli", cwd: "root", skip: false },
-    { step: "6/6", desc: "@jsonpages/cli compat (publish)", cmd: "npm publish --access public -w @jsonpages/cli", cwd: "root", skip: dryRun },
-    
+    { step: "6/6", desc: "@jsonpages/stack compat", cmd: "npm publish --access public -w @jsonpages/stack", cwd: "root", skip: dryRun },
+    { step: "6/6", desc: "@jsonpages/core compat", cmd: "npm publish --access public -w @jsonpages/core", cwd: "root", skip: dryRun },
+    { step: "6/6", desc: "@jsonpages/cli compat", cmd: "npm publish --access public -w @jsonpages/cli", cwd: "root", skip: dryRun },
   ];
 }
 
