@@ -1,7 +1,7 @@
 {
   "version": "1.0.0",
   "kind": "olonjs-page-mcp-manifest",
-  "generatedAt": "2026-07-24T14:25:23.992Z",
+  "generatedAt": "2026-07-24T15:06:33.669Z",
   "slug": "authors/[authorId]/libri",
   "title": "Libri per autore",
   "description": "Catalogo libri filtrato per autore.",
