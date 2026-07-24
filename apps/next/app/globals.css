@@ -1,20 +1,10 @@
 @import "tailwindcss";
 
-/* Minimal theme bridge — literal fallbacks until engine injects --theme-* from theme.json */
+/*
+  TOKEN BRIDGE only — values come from theme.json via layout <style> (buildThemeVariableMap).
+  Do not hardcode --theme-* color literals here (CIP theme chain).
+*/
 :root {
-  --theme-colors-background: hsl(215 28% 7%);
-  --theme-colors-foreground: hsl(214 33% 84%);
-  --theme-colors-card: hsl(218 44% 9%);
-  --theme-colors-muted-foreground: hsl(215 23% 57%);
-  --theme-colors-border: hsl(216 27% 21%);
-  --theme-colors-primary: hsl(222 100% 54%);
-  --theme-colors-primary-foreground: hsl(0 0% 100%);
-  --theme-typography-font-family-primary: "Instrument Sans", Helvetica, Arial, sans-serif;
-  --theme-font-primary: var(--theme-typography-font-family-primary);
-  --theme-border-radius-sm: 0.25rem;
-  --theme-border-radius-md: 0.5rem;
-  --theme-border-radius-lg: 0.75rem;
-
   --background: var(--theme-colors-background);
   --foreground: var(--theme-colors-foreground);
   --muted-foreground: var(--theme-colors-muted-foreground);
@@ -22,6 +12,7 @@
   --card: var(--theme-colors-card);
   --primary: var(--theme-colors-primary);
   --primary-foreground: var(--theme-colors-primary-foreground);
+  --theme-font-primary: var(--theme-typography-font-family-primary);
 }
 
 @theme inline {
