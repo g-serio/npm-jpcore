@@ -1,24 +1,26 @@
-# Todo: Next RSC starter (`@olonjs/next` + `apps/next`)
+# Todo: Next CLI DNA + release:enterprise
 
-Spec: `docs/specs/next-rsc-starter.md` · Plan: `docs/plans/next-rsc-starter.md`  
-Status: **Implement done** (Tasks 1–11 complete; ADR-0017 Accepted)
+Canonical checklist: [`tasks/todo-next-cli-dna.md`](todo-next-cli-dna.md)  
+Plan: [`docs/plans/next-cli-dna-release.md`](../docs/plans/next-cli-dna-release.md)
 
-## Phase 1: Foundation
+Status: **blocked on human plan approval**
 
-- [x] **Task 1:** Scaffold `packages/next` (`@olonjs/next`) with `server`/`client` exports + build
-- [x] **Task 2:** Scaffold `apps/next` App Router (layout, public placeholder, Tailwind/theme baseline, scripts)
-- [x] **Task 3:** Local host APIs — path-safe save/upload/list in `@olonjs/next/server` + `app/api/*/route.ts`
+## Phase 1: DNA
+- [ ] Task 1: `src2Code.sh` + `dist` on `apps/next`
+- [ ] Task 2: Generate `templates/next/`
+- [ ] Task 3: Extend `dist:dna:all` + `check:templates`
 
-## Phase 2: Visitor RSC
+## Phase 2: CLI UX + scaffold
+- [ ] Task 4: TUI picker next | vite (arrows + Enter)
+- [ ] Task 5: Keep `--template` for agents (skip TUI)
+- [ ] Task 6: Scaffold branches Next vs Vite
+- [ ] Task 7: Smoke interactive + `--template`
 
-- [x] **Task 4:** Visitor loaders — load config/pages/collections; resolve page; detect empty
-- [x] **Task 5:** Port protocol + data (registry, schemas, ASC, collections, pages, theme bridge)
-- [x] **Task 6:** RSC `authors-list` + `books-list` (+ detail if required) with Next routing/params
-- [x] **Task 7:** Empty-tenant server UI when page registry empty
-- [x] **Task 8:** `form-demo` RSC shell + `FormDemoClient` leaf (scoped forms context)
+## Phase 3: Enterprise release
+- [ ] Task 8: Publish `@olonjs/next` in `release.js`
+- [ ] Task 9: `stepTenant` Next + `apps/next` mapping
+- [ ] Task 10: Docs + dry-run
 
-## Phase 3: Admin + Save2Repo
-
-- [x] **Task 9:** `/admin` client island — `JsonPagesEngine` + protocol + local persistence
-- [x] **Task 10:** Save2Repo cold save (env + stream + drawer); **no HotSave**
-- [x] **Task 11:** Final smoke vs spec success criteria; ADR-0017 → Accepted; spec/plan status update
+### Complete
+- [ ] Dry-run OK
+- [ ] Human go before real `release:enterprise`

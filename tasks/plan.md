@@ -1,9 +1,9 @@
-# Plan: Next RSC starter
+# Plan: Next CLI DNA + release:enterprise
 
-Canonical plan: [`docs/plans/next-rsc-starter.md`](../docs/plans/next-rsc-starter.md)  
-Spec: [`docs/specs/next-rsc-starter.md`](../docs/specs/next-rsc-starter.md)  
-ADR: [`docs/decisions/ADR-0017-next-rsc-visitors-admin-island.md`](../docs/decisions/ADR-0017-next-rsc-visitors-admin-island.md)
+Canonical plan: [`docs/plans/next-cli-dna-release.md`](../docs/plans/next-cli-dna-release.md)
 
-Status: **Implement done** — Tasks 1–11 complete; ADR-0017 Accepted.
+Status: **Plan — awaiting human review**
 
-See checklist: [`tasks/todo.md`](todo.md)
+CLI UX (confirmed): interactive **next | vite** (arrows + Enter); `--template` kept for agents.
+
+Checklist: [`tasks/todo-next-cli-dna.md`](todo-next-cli-dna.md) · mirror: [`tasks/todo.md`](todo.md)

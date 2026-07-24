@@ -481,10 +481,10 @@ cat << 'END_OF_FILE_CONTENT' > "package.json"
     "dist:dna": "npm run dist"
   },
   "dependencies": {
-    "@olonjs/core": "*",
-    "@olonjs/next": "*",
-    "@olonjs/react": "*",
-    "@olonjs/studio": "*",
+    "@olonjs/core": "^1.1.21",
+    "@olonjs/next": "^0.0.2",
+    "@olonjs/react": "^0.1.4",
+    "@olonjs/studio": "^0.1.4",
     "clsx": "^2.1.1",
     "lucide-react": "^0.474.0",
     "next": "^15.5.0",

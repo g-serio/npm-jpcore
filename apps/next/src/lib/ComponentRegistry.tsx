@@ -7,6 +7,7 @@ import { BooksListView } from '@/components/books-list';
 import { EmptyTenantView } from '@/components/empty-tenant';
 import { FooterView } from '@/components/footer';
 import { FormDemoView } from '@/components/form-demo';
+import { HeaderView } from '@/components/header';
 
 export const ComponentRegistry: {
   [K in SectionType]: React.FC<SectionComponentPropsMap[K]>;
@@ -17,4 +18,5 @@ export const ComponentRegistry: {
   'empty-tenant': EmptyTenantView as React.FC<SectionComponentPropsMap['empty-tenant']>,
   footer: FooterView as React.FC<SectionComponentPropsMap['footer']>,
   'form-demo': FormDemoView as React.FC<SectionComponentPropsMap['form-demo']>,
+  header: HeaderView as React.FC<SectionComponentPropsMap['header']>,
 };
