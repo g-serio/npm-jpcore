@@ -7,6 +7,12 @@ import { execa } from 'execa';
 import ora from 'ora';
 import { fileURLToPath } from 'url';
 import os from 'os';
+import {
+  resolveTemplateId,
+  shouldPromptForTemplate,
+  UI_TEMPLATE_CHOICES,
+} from './templateChoice.js';
+import { selectWithArrows } from './selectWithArrows.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -86,11 +92,34 @@ function resolveTemplateScriptPath(templateName) {
   return templatePath;
 }
 
+async function resolveDnaTemplateId(templateOption) {
+  const isTTY = Boolean(process.stdin.isTTY && process.stdout.isTTY);
+  if (shouldPromptForTemplate({ templateOption, isTTY })) {
+    const dnaId = await selectWithArrows(
+      chalk.bold('Select stack:'),
+      UI_TEMPLATE_CHOICES.map((c) => ({ label: c.label, value: c.dnaId })),
+    );
+    return dnaId;
+  }
+
+  if (templateOption == null || String(templateOption).trim() === '') {
+    throw new Error(
+      'Non-interactive mode requires --template next|vite|alpha (for agents/CI).',
+    );
+  }
+
+  const dnaId = resolveTemplateId(templateOption);
+  if (!dnaId) {
+    throw new Error(`Unknown template "${templateOption}". Use next | vite | alpha.`);
+  }
+  return dnaId;
+}
+
 program
   .command('new')
   .argument('<type>', 'Type of artifact (tenant)')
   .argument('<name>', 'Name of the new tenant')
-  .option('--template <name>', 'Template profile (default: alpha)', 'alpha')
+  .option('--template <name>', 'Template for agents/CI: next | vite | alpha (skips interactive picker)')
   .option('--script <path>', 'Override default deterministic script path')
   .action(async (type, name, options) => {
     if (type !== 'tenant') {
@@ -100,46 +129,70 @@ program
 
     const targetDir = path.join(process.cwd(), name);
     const availableTemplates = getAvailableTemplates();
-    const template = options.template;
+
+    let dnaId;
+    try {
+      dnaId = await resolveDnaTemplateId(options.template);
+    } catch (error) {
+      console.log(chalk.red(`Error: ${error instanceof Error ? error.message : String(error)}`));
+      return;
+    }
+
     const scriptPath = options.script
       ? path.resolve(process.cwd(), options.script)
-      : resolveTemplateScriptPath(template);
+      : resolveTemplateScriptPath(dnaId);
 
-    if (!options.script && !availableTemplates.includes(template) && !(template === 'alpha' && fs.existsSync(LEGACY_ALPHA_DNA_PATH))) {
-      console.log(chalk.red(`Error: Unknown template "${template}".`));
-      console.log(chalk.yellow(`Available templates: ${availableTemplates.length ? availableTemplates.join(', ') : '(none found)'}`));
+    if (
+      !options.script &&
+      !availableTemplates.includes(dnaId) &&
+      !(dnaId === 'alpha' && fs.existsSync(LEGACY_ALPHA_DNA_PATH))
+    ) {
+      console.log(chalk.red(`Error: Unknown template "${dnaId}".`));
+      console.log(
+        chalk.yellow(
+          `Available templates: ${availableTemplates.length ? availableTemplates.join(', ') : '(none found)'}`,
+        ),
+      );
       return;
     }
 
     if (!fs.existsSync(scriptPath)) {
       console.log(chalk.red(`Error: DNA script not found at ${scriptPath}`));
-      console.log(chalk.yellow(`Debug info: template=${template}, assets=${CLI_ASSETS_DIR}`));
+      console.log(chalk.yellow(`Debug info: template=${dnaId}, assets=${CLI_ASSETS_DIR}`));
       return;
     }
 
-    console.log(chalk.blue.bold(`\nProjecting Sovereign Tenant: ${name} (template: ${template})\n`));
+    const stackLabel = dnaId === 'next' ? 'next' : 'vite';
+    console.log(chalk.blue.bold(`\nProjecting Sovereign Tenant: ${name} (stack: ${stackLabel}, dna: ${dnaId})\n`));
     const spinner = ora();
+    const npmCmd = process.platform === 'win32' ? 'npm.cmd' : 'npm';
 
     try {
-      spinner.start('Setting up environment (Vite + TS)...');
       await fs.ensureDir(targetDir);
 
-      const npmCmd = process.platform === 'win32' ? 'npm.cmd' : 'npm';
-      await execa(npmCmd, ['create', 'vite@latest', '.', '--', '--template', 'react-ts'], { cwd: targetDir });
-      spinner.succeed('Environment scaffolded.');
+      if (dnaId === 'next') {
+        spinner.start('Preparing Next App Router workspace...');
+        spinner.succeed('Workspace ready.');
+      } else {
+        spinner.start('Setting up environment (Vite + TS)...');
+        await execa(npmCmd, ['create', 'vite@latest', '.', '--', '--template', 'react-ts'], {
+          cwd: targetDir,
+        });
+        spinner.succeed('Environment scaffolded.');
 
-      spinner.start('Wiping default boilerplate...');
-      await fs.emptyDir(path.join(targetDir, 'src'));
-      const junk = ['App.css', 'App.tsx', 'main.tsx', 'vite-env.d.ts', 'favicon.ico', 'index.html'];
-      for (const file of junk) {
-        await fs.remove(path.join(targetDir, file)).catch(() => {});
-        await fs.remove(path.join(targetDir, 'src', file)).catch(() => {});
+        spinner.start('Wiping default boilerplate...');
+        await fs.emptyDir(path.join(targetDir, 'src'));
+        const junk = ['App.css', 'App.tsx', 'main.tsx', 'vite-env.d.ts', 'favicon.ico', 'index.html'];
+        for (const file of junk) {
+          await fs.remove(path.join(targetDir, file)).catch(() => {});
+          await fs.remove(path.join(targetDir, 'src', file)).catch(() => {});
+        }
+        spinner.succeed('Clean slate achieved.');
+
+        spinner.start('Injecting Sovereign Configurations...');
+        await injectInfraFiles(targetDir, name);
+        spinner.succeed('Infrastructure configured.');
       }
-      spinner.succeed('Clean slate achieved.');
-
-      spinner.start('Injecting Sovereign Configurations...');
-      await injectInfraFiles(targetDir, name);
-      spinner.succeed('Infrastructure configured.');
 
       spinner.start('Executing deterministic src projection...');
       await processScriptInNode(scriptPath, targetDir);
@@ -153,7 +206,7 @@ program
       console.log(`  ${chalk.cyan(`cd ${name}`)}`);
       console.log(`  ${chalk.cyan('npm run dev')}   <- Start development`);
       console.log(`  ${chalk.cyan('npm run build')} <- Validate Green Build`);
-      console.log(`\nTemplate used: ${template}\n`);
+      console.log(`\nStack: ${stackLabel} · DNA: ${dnaId}\n`);
     } catch (error) {
       spinner.fail(chalk.red('Projection failed.'));
       console.error(error);
