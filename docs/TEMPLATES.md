@@ -7,6 +7,7 @@ This document defines multi-template governance for CLI DNA assets.
 Required templates in current repository:
 
 - `alpha`
+- `next`
 
 ## Asset layout
 
@@ -23,7 +24,10 @@ Compatibility copy for `alpha`:
 
 Template DNA must be generated from source apps:
 
-- `apps/tenant-alpha` (template `alpha`)
+- `apps/tenant-alpha` → template `alpha`
+- `apps/next` (npm workspace `tenant-next`) → template `next`
+
+**Note:** The Next source app lives at `apps/next`, not `apps/tenant-next`. The workspace name (`tenant-next`) differs from the folder name — see `scripts/releaseTenantPaths.js` for the release mapping.
 
 SOT generation command:
 
@@ -31,9 +35,10 @@ SOT generation command:
 npm run dist:dna:all
 ```
 
-This delegates to each source app `dist` script:
+This delegates to each source app dist script:
 
 - `npm run dist -w tenant-alpha`
+- `npm run dist -w tenant-next`
 
 ## Conformance
 
@@ -45,7 +50,7 @@ npm run check:templates
 
 Current checks (`scripts/check-cli-templates.mjs`):
 
-- required template directories exist
+- required template directories exist (`alpha`, `next`)
 - `src_tenant.sh` exists
 - `manifest.json` exists
 - manifest fields match expected values
@@ -61,21 +66,22 @@ Each `manifest.json` must include:
 
 ## Template author workflow
 
-1. edit source app (`apps/tenant-<name>`)
+1. edit source app (`apps/tenant-alpha` for Vite/alpha, or `apps/next` for Next)
 2. run source app `dist` or root `dist:dna:all`
 3. run `npm run check:templates`
-4. verify CLI behavior with `--template <name>`
+4. verify CLI behavior with `--template <name>` (or interactive TUI for humans)
 
 ## Add a new template
 
 Minimum steps:
 
-1. create source app `apps/tenant-<name>`
+1. create source app `apps/tenant-<name>` (or another folder name — workspace name may differ from folder; see `next` / `tenant-next` → `apps/next`)
 2. ensure source app has `dist` script generating template DNA
 3. generate template assets under `packages/cli/assets/templates/<name>/`
 4. update `scripts/check-cli-templates.mjs` required template list
-5. validate with `npm run check:templates`
-6. update docs (`README.md`, `docs/CLI.md`, `docs/TEMPLATES.md`)
+5. add workspace to root `dist:dna:all` if applicable
+6. validate with `npm run check:templates`
+7. update docs (`README.md`, `docs/CLI.md`, `docs/TEMPLATES.md`)
 
 ## Do and do not
 

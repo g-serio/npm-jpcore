@@ -11,7 +11,7 @@ The two flows are independent. A new `@olonjs/core` version can be published to 
 
 - Standard flow: `npm run release`
 - Enterprise-gated flow: `npm run release:enterprise`
-- DNA governance (`alpha`)
+- DNA governance (`alpha` + `next`)
 - `olon.js.org` deploy (`gh-pages` via GitHub Actions)
 
 ## Prerequisites
@@ -29,17 +29,26 @@ NPM_TOKEN=npm_xxx
 
 ## Package publish order
 
-Always publish in this order:
+Always publish in this order (see `scripts/release.js`):
 
 1. `@olonjs/stack`
 2. `@olonjs/core`
-3. `@olonjs/cli`
-4. compatibility bridges (`@jsonpages/stack`, `@jsonpages/core`, `@jsonpages/cli`)
+3. `@olonjs/studio`
+4. `@olonjs/react`
+5. `@olonjs/mcp`
+6. `@olonjs/next`
+7. `tenant-alpha` — pin `@olonjs/core`, `@olonjs/react`, `@olonjs/studio`; build + `dist` (regenerates alpha DNA)
+8. `tenant-next` (`apps/next`) — pin `@olonjs/core`, `@olonjs/react`, `@olonjs/studio`, `@olonjs/next`; build + `dist` (regenerates next DNA)
+9. `@olonjs/cli`
+10. compatibility bridges (`@jsonpages/stack`, `@jsonpages/core`, `@jsonpages/cli`)
 
 Reason:
 
 - `core` aligns dependency contracts using stack manifest
-- `cli` must package DNA generated from tenant source apps using the new `core` version
+- `studio` / `react` / `mcp` follow the ADR-0016 dependency graph
+- `@olonjs/next` must publish before tenant-next pins it and before CLI packages both DNA templates
+- both tenant workspaces regenerate DNA (`dist`) with pinned versions before CLI publish
+- `cli` must package DNA generated from both source apps using the new versions
 - compatibility bridges must point to freshly published `@olonjs/*` versions
 
 ## `@olonjs/core` dual-bundle build
@@ -108,8 +117,12 @@ Current behavior includes:
 - build all workspaces
 - patch version + publish `stack`
 - build, patch version + publish `core`
-- update tenant app to new `@olonjs/core`
-- build and `dist` `tenant-alpha`
+- build, patch version + publish `studio`
+- build, patch version + publish `react`
+- build, patch version + publish `mcp`
+- build, patch version + publish `@olonjs/next`
+- update `tenant-alpha` pins; build + `dist` (alpha DNA)
+- update `tenant-next` (`apps/next`) pins; build + `dist` (next DNA)
 - build, patch version + publish `cli`
 - sync bridge dependencies and publish `@jsonpages/*` compatibility packages
 
@@ -117,9 +130,9 @@ Current behavior includes:
 
 Executes `scripts/release-enterprise.js`:
 
-1. `npm run check:templates`
-2. `npm run dist:dna:all`
-3. delegates to `node scripts/release.js`
+1. `npm run check:templates` (requires `alpha` + `next` template assets)
+2. `npm run dist:dna:all` (runs `tenant-alpha` and `tenant-next` / `apps/next` dist)
+3. delegates to `node scripts/release.js` (full order: stack → core → studio → react → mcp → next → tenant-alpha → tenant-next → cli → compat)
 
 Use this for gated releases when template governance must be enforced before publish.
 
@@ -128,6 +141,7 @@ Use this for gated releases when template governance must be enforced before pub
 ### Source of truth
 
 - `apps/tenant-alpha` is SoT for template `alpha`
+- `apps/next` (workspace `tenant-next`) is SoT for template `next`
 
 ### Dist command
 
@@ -137,9 +151,10 @@ Root DNA generation:
 npm run dist:dna:all
 ```
 
-This runs:
+This runs both workspaces:
 
 - `npm run dist -w tenant-alpha`
+- `npm run dist -w tenant-next` (`apps/next`)
 
 ### Template conformance
 
@@ -156,9 +171,58 @@ Validation checks:
 - `manifest.json` exists and is consistent
 - DNA script contains baseline safety/content markers
 
+## Dry-run checklist
+
+Run from repository root before any real publish. Real publish only after explicit human approval.
+
+1. **Template conformance**
+
+   ```bash
+   npm run check:templates
+   ```
+
+   Expect: `alpha` + `next` template assets valid.
+
+2. **Regenerate DNA**
+
+   ```bash
+   npm run dist:dna:all
+   ```
+
+   Runs `tenant-alpha` and `tenant-next` (`apps/next`) dist scripts.
+
+3. **Release dry-run**
+
+   ```bash
+   npm run release:enterprise -- --dry-run
+   ```
+
+   Or: `npm run release -- --dry-run`
+
+   Expect logs for `@olonjs/next`, `tenant-next` (`apps/next`), and both DNA dist steps. No `npm publish` calls.
+
+   Optional if git tree is dirty: add `--skip-git-check`.
+
+4. **Revert version bumps**
+
+   Dry-run patches `package.json` versions locally. Revert before committing unrelated work:
+
+   ```bash
+   git checkout -- .
+   ```
+
+   Or restore only bumped `package.json` files under root, `apps/*/`, and `packages/*/`.
+
+5. **Real publish (human go only)**
+
+   ```bash
+   npm run release:enterprise
+   ```
+
+   Do not run without explicit approval after dry-run review.
 ## Recommended release procedure
 
-Run from repository root.
+Complete the [Dry-run checklist](#dry-run-checklist) first. Run from repository root.
 
 1. Validate workspace state
 
