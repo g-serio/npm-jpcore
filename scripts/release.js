@@ -187,6 +187,16 @@ function ensureUnpublishedVersion(dir, preferredVersion) {
   return candidate;
 }
 
+/**
+ * Same bump as always (`npm version patch`), then reuse ensureUnpublishedVersion
+ * (already used by @jsonpages/* compat) so a local tree that lags npm never
+ * tries to publish a version that already exists.
+ */
+function patchToUnpublished(workspaceName, dir) {
+  run(`npm version patch --no-git-tag-version -w ${workspaceName}`);
+  return ensureUnpublishedVersion(dir, getVersion(dir));
+}
+
 // --- Dry-run: full command plan (enterprise: show exactly what would run) ---
 // All version/publish run from root with -w so .npmrc and NPM_TOKEN apply.
 function getCommandPlan() {
@@ -251,8 +261,8 @@ function stepBuildAll() {
 
 function stepStack() {
   log("Step 2/6: @olonjs/stack — version patch & publish (from root -w)");
-  run("npm version patch --no-git-tag-version -w @olonjs/stack");
-  const newVersion = getVersion(path.join(ROOT, "packages", "stack"));
+  const dir = path.join(ROOT, "packages", "stack");
+  const newVersion = patchToUnpublished("@olonjs/stack", dir);
   if (!dryRun) {
     run("npm publish --access public -w @olonjs/stack");
   } else {
@@ -265,8 +275,7 @@ function stepCore() {
   log("Step 3/6: @olonjs/core — build, version patch & publish (from root -w)");
   const dir = path.join(ROOT, "packages", "core");
   run("npm run build -w @olonjs/core");
-  run("npm version patch --no-git-tag-version -w @olonjs/core");
-  const newVersion = getVersion(dir);
+  const newVersion = patchToUnpublished("@olonjs/core", dir);
   if (!dryRun) {
     run("npm publish --access public -w @olonjs/core");
   } else {
@@ -282,8 +291,7 @@ function stepStudio(coreVersion) {
   pkg.dependencies["@olonjs/core"] = `^${coreVersion}`;
   writePackageJson(dir, pkg);
   run("npm run build -w @olonjs/studio");
-  run("npm version patch --no-git-tag-version -w @olonjs/studio");
-  const newVersion = getVersion(dir);
+  const newVersion = patchToUnpublished("@olonjs/studio", dir);
   if (!dryRun) {
     run("npm publish --access public -w @olonjs/studio");
   } else {
@@ -302,8 +310,7 @@ function stepReact(coreVersion, studioVersion) {
   }
   writePackageJson(dir, pkg);
   run("npm run build -w @olonjs/react");
-  run("npm version patch --no-git-tag-version -w @olonjs/react");
-  const newVersion = getVersion(dir);
+  const newVersion = patchToUnpublished("@olonjs/react", dir);
   if (!dryRun) {
     run("npm publish --access public -w @olonjs/react");
   } else {
@@ -316,8 +323,7 @@ function stepMcp() {
   log("Step 3d/6: @olonjs/mcp — build, version patch & publish (from root -w)");
   const dir = path.join(ROOT, "packages", "mcp");
   run("npm run build -w @olonjs/mcp");
-  run("npm version patch --no-git-tag-version -w @olonjs/mcp");
-  const newVersion = getVersion(dir);
+  const newVersion = patchToUnpublished("@olonjs/mcp", dir);
   if (!dryRun) {
     run("npm publish --access public -w @olonjs/mcp");
   } else {
@@ -333,8 +339,7 @@ function stepNext(coreVersion) {
   pkg.dependencies["@olonjs/core"] = `^${coreVersion}`;
   writePackageJson(dir, pkg);
   run("npm run build -w @olonjs/next");
-  run("npm version patch --no-git-tag-version -w @olonjs/next");
-  const newVersion = getVersion(dir);
+  const newVersion = patchToUnpublished("@olonjs/next", dir);
   if (!dryRun) {
     run("npm publish --access public -w @olonjs/next");
   } else {
@@ -384,9 +389,9 @@ function stepTenant(workspaceName, coreVersion, reactVersion, studioVersion, nex
 
 function stepCli() {
   log("Step 5/6: @olonjs/cli — build, version patch & publish (from root -w)");
+  const dir = path.join(ROOT, "packages", "cli");
   run("npm run build -w @olonjs/cli");
-  run("npm version patch --no-git-tag-version -w @olonjs/cli");
-  const newVersion = getVersion(path.join(ROOT, "packages", "cli"));
+  const newVersion = patchToUnpublished("@olonjs/cli", dir);
   if (!dryRun) {
     run("npm publish --access public -w @olonjs/cli");
   } else {
