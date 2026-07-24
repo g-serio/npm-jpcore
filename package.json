@@ -15,7 +15,7 @@
         "release": "node scripts/release.js",
         "check:templates": "node scripts/check-cli-templates.mjs",
         "test:boundary": "node scripts/check-package-boundaries.mjs",
-        "dist:dna:all": "npm run dist -w tenant-alpha",
+        "dist:dna:all": "npm run dist -w tenant-alpha && npm run dist -w tenant-next",
         "release:enterprise": "node scripts/release-enterprise.js",
         "bump:all": "tsx scripts/bump-schemas.ts"
     },

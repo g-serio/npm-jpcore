@@ -7,7 +7,7 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const ROOT = path.resolve(__dirname, '..');
 const templatesDir = path.join(ROOT, 'packages', 'cli', 'assets', 'templates');
-const requiredTemplates = ['alpha'];
+const requiredTemplates = ['alpha', 'next'];
 
 function fail(message) {
   console.error(`[template-check] ERROR: ${message}`);
