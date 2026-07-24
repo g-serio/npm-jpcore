@@ -1,0 +1,5 @@
+{
+  "name": "next",
+  "sourceApp": "next",
+  "dnaScript": "src_tenant.sh"
+}
