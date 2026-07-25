@@ -6,6 +6,14 @@ export interface WebMcpToolInfo {
   inputSchema: Record<string, unknown>;
 }
 
+type DocMcp = Document & {
+  modelContextProtocol?: {
+    listTools: () => WebMcpToolInfo[];
+    readResource: (uri: string) => Promise<string>;
+    executeTool: (name: string, args: string) => Promise<string>;
+  };
+};
+
 export class PlaywrightBridge {
   private browser: Browser | null = null;
   public page: Page | null = null;
@@ -47,11 +55,10 @@ export class PlaywrightBridge {
 
     console.error(`[PlaywrightBridge] Waiting for WebMCP to initialize...`);
     
-    // Wait for the navigator.modelContextProtocol to become available
     await this.page.waitForFunction(() => {
-      return (window.navigator as any).modelContextProtocol !== undefined;
+      return (document as DocMcp).modelContextProtocol !== undefined;
     }, undefined, { timeout: 15000 }).catch(() => {
-      throw new Error("Timeout waiting for navigator.modelContextProtocol. Ensure you are navigating to an OlonJS Studio route (e.g. /admin) and WebMCP is enabled.");
+      throw new Error("Timeout waiting for document.modelContextProtocol. Ensure you are navigating to an OlonJS Studio route (e.g. /admin) and WebMCP is enabled.");
     });
 
     console.error(`[PlaywrightBridge] Connected to WebMCP successfully.`);
@@ -60,21 +67,27 @@ export class PlaywrightBridge {
   async listTools(): Promise<WebMcpToolInfo[]> {
     if (!this.page) throw new Error("Not connected");
     return this.page.evaluate(() => {
-      return (window.navigator as any).modelContextProtocol.listTools();
+      const mcp = (document as DocMcp).modelContextProtocol;
+      if (!mcp?.listTools) throw new Error('document.modelContextProtocol.listTools unavailable');
+      return mcp.listTools();
     });
   }
 
   async readResource(uri: string): Promise<string> {
     if (!this.page) throw new Error("Not connected");
     return this.page.evaluate(async (targetUri) => {
-      return (window.navigator as any).modelContextProtocol.readResource(targetUri);
+      const mcp = (document as DocMcp).modelContextProtocol;
+      if (!mcp?.readResource) throw new Error('document.modelContextProtocol.readResource unavailable');
+      return mcp.readResource(targetUri);
     }, uri);
   }
 
   async executeTool(toolName: string, inputArgsJson: string): Promise<string> {
     if (!this.page) throw new Error("Not connected");
     return this.page.evaluate(async ({ name, args }) => {
-      return (window.navigator as any).modelContextProtocol.executeTool(name, args);
+      const mcp = (document as DocMcp).modelContextProtocol;
+      if (!mcp?.executeTool) throw new Error('document.modelContextProtocol.executeTool unavailable');
+      return mcp.executeTool(name, args);
     }, { name: toolName, args: inputArgsJson });
   }
 
@@ -85,7 +98,7 @@ export class PlaywrightBridge {
     console.error(`[PlaywrightBridge] Navigating to ${targetUrl}...`);
     await this.page.goto(targetUrl, { waitUntil: 'domcontentloaded' });
     await this.page.waitForFunction(() => {
-      return (window.navigator as any).modelContextProtocol !== undefined;
+      return (document as DocMcp).modelContextProtocol !== undefined;
     }, undefined, { timeout: 15000 }).catch(() => {
       throw new Error(`Timeout waiting for WebMCP on /admin/${slug}.`);
     });

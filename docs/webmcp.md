@@ -6,7 +6,7 @@ OlonJS implements **WebMCP** (Web Model Context Protocol) natively within its En
 
 Instead of running a separate backend Node.js server, OlonJS exposes the **React Engine itself** as an MCP server directly within the browser tab.
 
-1.  **Discovery (The Manifesto):** When an Agent visits the site, the Engine exposes a manifesto of capabilities via `window.navigator.modelContextProtocol`.
+1.  **Discovery (The Manifesto):** When an Agent visits the site, the Engine exposes a manifesto of capabilities via `document.modelContextProtocol`.
 2.  **Semantic Bridge:** The Agent doesn't "click buttons" (`.btn-primary`). It calls explicitly typed functions (Tools) using JSON.
 3.  **Governance & Security:** The Engine validates all Agent inputs against the tenant's Zod schemas *before* altering the React state or saving to disk.
 
@@ -14,10 +14,11 @@ Instead of running a separate backend Node.js server, OlonJS exposes the **React
 
 ## Accessing WebMCP
 
-The WebMCP interface is injected into the global `navigator` object when the OlonJS Studio/Engine is active.
+Tool registration uses the WebMCP Imperative API on **`document.modelContext`** (spec). `navigator.modelContext` is removed — do not use it.
 
 ```typescript
-const mcp = window.navigator.modelContextProtocol;
+const modelContext = document.modelContext;
+const mcp = document.modelContextProtocol;
 ```
 
 ---
@@ -30,7 +31,7 @@ OlonJS uses an **Enterprise Grade** architecture: instead of exposing dozens of 
 
 **Console Example:**
 ```javascript
-const tools = navigator.modelContextProtocol.listTools();
+const tools = document.modelContextProtocol.listTools();
 console.log(tools);
 // Output:
 // [{
@@ -51,7 +52,7 @@ Currently, the Engine supports reading page data. The Agent can discover availab
 **Console Example:**
 ```javascript
 // Fetch the structured JSON data for the current 'home' page
-const pageDataString = await navigator.modelContextProtocol.readResource('olon://pages/home');
+const pageDataString = await document.modelContextProtocol.readResource('olon://pages/home');
 const pageData = JSON.parse(pageDataString);
 
 console.log("Page data:", pageData);
@@ -81,14 +82,14 @@ This tool allows an Agent to modify any section on the page. The Engine will aut
 **Console Example: Updating a Hero Section**
 ```javascript
 // 1. First, read the page to find the sectionId you want to edit
-const pageStr = await navigator.modelContextProtocol.readResource('olon://pages/home');
+const pageStr = await document.modelContextProtocol.readResource('olon://pages/home');
 const page = JSON.parse(pageStr);
 
 // Let's assume we found a hero section with ID "hero-1" and type "olon-hero"
 const targetSectionId = "hero-1"; 
 
 // 2. Call the update-section tool
-const responseStr = await navigator.modelContextProtocol.executeTool(
+const responseStr = await document.modelContextProtocol.executeTool(
   'update-section', 
   JSON.stringify({
     sectionId: targetSectionId,

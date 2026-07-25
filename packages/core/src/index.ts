@@ -30,6 +30,7 @@ export {
   ensureWebMcpRuntime,
   parseWebMcpMutationArgs,
   registerWebMcpTool,
+  resolveModelContext,
   resolveWebMcpMutationData,
   type WebMcpMutationArgs,
 } from './webmcp';

@@ -162,16 +162,16 @@ describe('webmcp runtime bridge', () => {
     expect(result.collectionsDraft?.libri?.dune).toEqual(updatedBook);
   });
 
-  it('installs a testing shim that can execute registered tools', async () => {
+  it('installs a testing shim on document.modelContext', async () => {
     const originalWindow = globalThis.window;
-    const originalNavigator = globalThis.navigator;
+    const originalDocument = globalThis.document;
     Object.defineProperty(globalThis, 'window', {
       value: {} as Window,
       configurable: true,
       writable: true,
     });
-    Object.defineProperty(globalThis, 'navigator', {
-      value: {} as Navigator,
+    Object.defineProperty(globalThis, 'document', {
+      value: {} as Document,
       configurable: true,
       writable: true,
     });
@@ -189,10 +189,13 @@ describe('webmcp runtime bridge', () => {
         }),
       });
 
-      const tools = navigator.modelContextProtocol?.listTools?.() ?? [];
+      expect(document.modelContext?.registerTool).toEqual(expect.any(Function));
+      expect(document.modelContextProtocol?.listTools).toEqual(expect.any(Function));
+
+      const tools = document.modelContextProtocol?.listTools?.() ?? [];
       expect(tools.map((tool) => tool.name)).toContain('update-section');
 
-      const result = await navigator.modelContextProtocol?.executeTool?.('update-section', '{}');
+      const result = await document.modelContextProtocol?.executeTool?.('update-section', '{}');
       expect(JSON.parse(result ?? '{}')).toMatchObject({
         content: [{ type: 'text', text: 'ok' }],
         isError: false,
@@ -205,17 +208,17 @@ describe('webmcp runtime bridge', () => {
         configurable: true,
         writable: true,
       });
-      Object.defineProperty(globalThis, 'navigator', {
-        value: originalNavigator,
+      Object.defineProperty(globalThis, 'document', {
+        value: originalDocument,
         configurable: true,
         writable: true,
       });
     }
   });
 
-  it('delegates registration to a pre-existing navigator.modelContext.registerTool with an AbortSignal (Chrome native WebMCP)', () => {
+  it('delegates registration to a pre-existing document.modelContext.registerTool with an AbortSignal (Chrome native WebMCP)', () => {
     const originalWindow = globalThis.window;
-    const originalNavigator = globalThis.navigator;
+    const originalDocument = globalThis.document;
     if (globalThis.window) {
       delete (globalThis.window as unknown as { __olonWebMcpControllers__?: unknown }).__olonWebMcpControllers__;
     }
@@ -228,8 +231,8 @@ describe('webmcp runtime bridge', () => {
       configurable: true,
       writable: true,
     });
-    Object.defineProperty(globalThis, 'navigator', {
-      value: { modelContext: nativeModelContext } as Navigator,
+    Object.defineProperty(globalThis, 'document', {
+      value: { modelContext: nativeModelContext } as Document,
       configurable: true,
       writable: true,
     });
@@ -261,8 +264,8 @@ describe('webmcp runtime bridge', () => {
         configurable: true,
         writable: true,
       });
-      Object.defineProperty(globalThis, 'navigator', {
-        value: originalNavigator,
+      Object.defineProperty(globalThis, 'document', {
+        value: originalDocument,
         configurable: true,
         writable: true,
       });
@@ -271,7 +274,7 @@ describe('webmcp runtime bridge', () => {
 
   it('aborts a prior registration before re-registering the same tool name (React StrictMode safety on Chrome native WebMCP)', () => {
     const originalWindow = globalThis.window;
-    const originalNavigator = globalThis.navigator;
+    const originalDocument = globalThis.document;
     if (globalThis.window) {
       delete (globalThis.window as unknown as { __olonWebMcpControllers__?: unknown }).__olonWebMcpControllers__;
     }
@@ -294,8 +297,8 @@ describe('webmcp runtime bridge', () => {
       configurable: true,
       writable: true,
     });
-    Object.defineProperty(globalThis, 'navigator', {
-      value: { modelContext: { registerTool: nativeRegisterTool } } as Navigator,
+    Object.defineProperty(globalThis, 'document', {
+      value: { modelContext: { registerTool: nativeRegisterTool } } as Document,
       configurable: true,
       writable: true,
     });
@@ -325,8 +328,8 @@ describe('webmcp runtime bridge', () => {
         configurable: true,
         writable: true,
       });
-      Object.defineProperty(globalThis, 'navigator', {
-        value: originalNavigator,
+      Object.defineProperty(globalThis, 'document', {
+        value: originalDocument,
         configurable: true,
         writable: true,
       });

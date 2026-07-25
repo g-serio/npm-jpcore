@@ -165,7 +165,7 @@ async function main() {
     try {
       await page.evaluate(
         async ({ toolName, slug, sectionId, fieldKey, value }) => {
-          const runtime = navigator.modelContextTesting;
+          const runtime = document.modelContextTesting;
           if (!runtime?.executeTool) return;
           await runtime.executeTool(
             toolName,
@@ -231,7 +231,7 @@ async function main() {
     }
 
     const toolNames = await page.evaluate(() => {
-      const runtime = navigator.modelContextTesting;
+      const runtime = document.modelContextTesting;
       return runtime?.listTools?.().map((tool) => tool.name) ?? [];
     });
     if (!toolNames.includes(target.toolName)) {
@@ -240,9 +240,9 @@ async function main() {
 
     const rawResult = await page.evaluate(
       async ({ toolName, slug, sectionId, fieldKey, value }) => {
-        const runtime = navigator.modelContextTesting;
+        const runtime = document.modelContextTesting;
         if (!runtime?.executeTool) {
-          throw new Error('navigator.modelContextTesting.executeTool is unavailable.');
+          throw new Error('document.modelContextTesting.executeTool is unavailable.');
         }
         return runtime.executeTool(
           toolName,

@@ -250,7 +250,7 @@
                 "id": "tab-config",
                 "filename": "Read via OlonJS protocol",
                 "language": "typescript",
-                "code": "// Read any page via the contract\n// Works from browser, script, or AI agent\n\nconst page = await\n  navigator.modelContextProtocol\n    .readResource(\n      'olon://pages/home'\n    );\n\n// Returns the full typed contract\n// { slug, meta, sections: Section[] }\n// No DOM scraping. No layout knowledge.\n// Just the contract.\n\n// {\n//   \"slug\": \"home\",\n//   \"sections\": [\n//     { \"type\": \"hero\", \"data\": {...} },\n//     { \"type\": \"features\", \"data\": {...} }\n//   ]\n// }"
+                "code": "// Read any page via the contract\n// Works from browser, script, or AI agent\n\nconst page = await\n  document.modelContextProtocol\n    .readResource(\n      'olon://pages/home'\n    );\n\n// Returns the full typed contract\n// { slug, meta, sections: Section[] }\n// No DOM scraping. No layout knowledge.\n// Just the contract.\n\n// {\n//   \"slug\": \"home\",\n//   \"sections\": [\n//     { \"type\": \"hero\", \"data\": {...} },\n//     { \"type\": \"features\", \"data\": {...} }\n//   ]\n// }"
               }
             ]
           }

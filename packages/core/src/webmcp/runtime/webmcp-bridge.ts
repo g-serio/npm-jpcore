@@ -34,10 +34,34 @@ type ModelContextProtocolLike = {
   readResource?: (uri: string) => Promise<string>;
 };
 
+type ModelContextHost = {
+  modelContext?: ModelContextLike;
+  modelContextProtocol?: ModelContextProtocolLike;
+};
+
 type WebMcpWindow = Window & {
   __olonWebMcpTools__?: Map<string, WebMcpTool>;
   __olonWebMcpControllers__?: Map<string, AbortController>;
 };
+
+/**
+ * WebMCP ModelContext is Document-scoped (spec). navigator.modelContext is removed.
+ */
+export function resolveModelContext(): ModelContextLike | undefined {
+  if (typeof document === 'undefined') return undefined;
+  return (document as Document & ModelContextHost).modelContext;
+}
+
+function assignModelContextSurfaces(
+  modelContext: ModelContextLike,
+  protocol: ModelContextProtocolLike
+): void {
+  if (typeof document === 'undefined') return;
+  const doc = document as Document & ModelContextHost;
+  doc.modelContext = modelContext;
+  doc.modelContextProtocol = protocol;
+}
+
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
@@ -304,44 +328,33 @@ async function resolveResource(uri: string): Promise<unknown> {
 }
 
 export function ensureWebMcpRuntime(): void {
-  if (typeof window === 'undefined' || typeof navigator === 'undefined') return;
+  if (typeof window === 'undefined' || typeof document === 'undefined') return;
 
-  const currentNavigator = navigator as Navigator & {
-    modelContext?: ModelContextLike;
-    modelContextProtocol?: ModelContextProtocolLike;
-  };
-
-  // If a registerTool already exists — Chrome 146+ native WebMCP, or our polyfill from
-  // a previous call — leave it intact so tools flow into the registry the WebMCP Inspector
-  // reads via navigator.modelContextTesting.
-  if (typeof currentNavigator.modelContext?.registerTool === 'function') return;
+  // If registerTool already exists — Chrome native WebMCP on document, or our polyfill
+  // from a previous call — leave it intact so tools flow into the registry the WebMCP
+  // Inspector reads via document.modelContextTesting.
+  const existing = resolveModelContext();
+  if (typeof existing?.registerTool === 'function') return;
 
   const registry = getToolRegistry();
   if (!registry) return;
 
-  if (!currentNavigator.modelContext) {
-    currentNavigator.modelContext = {};
-  }
-
-  currentNavigator.modelContext.registerTool = (
-    tool: WebMcpTool,
-    options?: WebMcpRegisterToolOptions
-  ) => {
-    registry.set(tool.name, tool);
-    options?.signal?.addEventListener('abort', () => {
-      if (registry.get(tool.name) === tool) {
-        registry.delete(tool.name);
-      }
-    });
+  const modelContext: ModelContextLike = {
+    registerTool: (tool: WebMcpTool, options?: WebMcpRegisterToolOptions) => {
+      registry.set(tool.name, tool);
+      options?.signal?.addEventListener('abort', () => {
+        if (registry.get(tool.name) === tool) {
+          registry.delete(tool.name);
+        }
+      });
+    },
+    unregisterTool: (name: string) => {
+      registry.delete(name);
+    },
+    readResource: async (uri: string) => resolveResource(uri),
   };
 
-  currentNavigator.modelContext.unregisterTool = (name: string) => {
-    registry.delete(name);
-  };
-
-  currentNavigator.modelContext.readResource = async (uri: string) => resolveResource(uri);
-
-  currentNavigator.modelContextProtocol = {
+  const protocol: ModelContextProtocolLike = {
     listTools: () =>
       Array.from(registry.values()).map(({ execute: _execute, ...toolInfo }) => toolInfo),
     executeTool: async (toolName: string, inputArgsJson: string) => {
@@ -356,20 +369,18 @@ export function ensureWebMcpRuntime(): void {
     },
     readResource: async (uri: string) => JSON.stringify(await resolveResource(uri)),
   };
+
+  assignModelContextSurfaces(modelContext, protocol);
 }
 
 export function registerWebMcpTool(tool: WebMcpTool): () => void {
-  if (typeof window === 'undefined' || typeof navigator === 'undefined') {
+  if (typeof window === 'undefined' || typeof document === 'undefined') {
     return () => undefined;
   }
 
   ensureWebMcpRuntime();
 
-  const currentNavigator = navigator as Navigator & {
-    modelContext?: ModelContextLike;
-  };
-
-  const modelContext = currentNavigator.modelContext;
+  const modelContext = resolveModelContext();
   if (typeof modelContext?.registerTool !== 'function') {
     return () => undefined;
   }
