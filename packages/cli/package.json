@@ -1,47 +1,47 @@
 {
-    "name": "@olonjs/cli",
-    "version": "3.0.155",
-    "description": "The Sovereign CLI Engine for OlonJS.",
-    "type": "module",
-    "bin": {
-        "olonjs": "./src/index.js",
-        "jsonpages": "./src/index.js"
-    },
-    "files": [
-        "src",
-        "assets/src_tenant_alpha.sh",
-        "assets/templates"
-    ],
-    "author": "JsonPages Team",
-    "license": "MIT",
-    "homepage": "https://github.com/olonjs/npm-jpcore#readme",
-    "repository": {
-        "type": "git",
-        "url": "git+https://github.com/olonjs/npm-jpcore.git",
-        "directory": "packages/cli"
-    },
-    "bugs": {
-        "url": "https://github.com/olonjs/npm-jpcore/issues"
-    },
-    "publishConfig": {
-        "access": "public"
-    },
-    "scripts": {
-        "build": "tsc -p .",
-        "test": "node --test src/**/*.test.js",
-        "check:templates": "node ../../scripts/check-cli-templates.mjs"
-    },
-    "dependencies": {
-        "@olonjs/stack": "^1.0.0",
-        "chalk": "^5.3.0",
-        "commander": "^12.1.0",
-        "execa": "^9.0.2",
-        "fs-extra": "^11.2.0",
-        "ora": "^8.0.1"
-    },
-    "devDependencies": {
-        "@types/fs-extra": "^11.0.4",
-        "@types/node": "^22.13.1",
-        "typescript": "^5.7.3"
-    }
+  "name": "@olonjs/cli",
+  "version": "3.0.157",
+  "description": "The Sovereign CLI Engine for OlonJS.",
+  "type": "module",
+  "bin": {
+    "olonjs": "./src/index.js",
+    "jsonpages": "./src/index.js"
+  },
+  "files": [
+    "src",
+    "assets/src_tenant_alpha.sh",
+    "assets/templates"
+  ],
+  "author": "JsonPages Team",
+  "license": "MIT",
+  "homepage": "https://github.com/olonjs/npm-jpcore#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/olonjs/npm-jpcore.git",
+    "directory": "packages/cli"
+  },
+  "bugs": {
+    "url": "https://github.com/olonjs/npm-jpcore/issues"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "scripts": {
+    "build": "tsc -p .",
+    "test": "node --test src/**/*.test.js",
+    "check:templates": "node ../../scripts/check-cli-templates.mjs"
+  },
+  "dependencies": {
+    "@olonjs/stack": "^1.0.0",
+    "chalk": "^5.3.0",
+    "commander": "^12.1.0",
+    "execa": "^9.0.2",
+    "fs-extra": "^11.2.0",
+    "ora": "^8.0.1"
+  },
+  "devDependencies": {
+    "@types/fs-extra": "^11.0.4",
+    "@types/node": "^22.13.1",
+    "typescript": "^5.7.3"
+  }
 }
