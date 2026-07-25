@@ -22,8 +22,8 @@ echo "-- Step 0: shadcn/ui init..."
 # NOTE: do NOT manually install radix-ui or @radix-ui/react-* — shadcn handles all radix deps
 npm install class-variance-authority clsx tailwind-merge lucide-react
 
-# Init shadcn — MUST use new-york style (uses unified 'radix-ui' package)
-npx shadcn@latest init --yes --style new-york --base-color slate 2>/dev/null || true
+# Non-interactive + force Radix (2026 default is Base UI — Views use asChild / radix APIs).
+npx shadcn@latest init --yes --defaults --base radix --force
 
 # Install the full component set used by this tenant
 npx shadcn@latest add --yes --overwrite \

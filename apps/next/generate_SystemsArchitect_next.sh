@@ -26,7 +26,8 @@ echo ""
 echo "-- Step 0: shadcn/ui init..."
 npm install class-variance-authority clsx tailwind-merge lucide-react
 npm install react-markdown remark-gfm rehype-sanitize motion
-npx shadcn@latest init --yes --style new-york --base-color slate 2>/dev/null || true
+# Non-interactive + force Radix (2026 default is Base UI — Views use asChild / radix APIs).
+npx shadcn@latest init --yes --defaults --base radix --force
 npx shadcn@latest add --yes --overwrite \
   button card badge separator avatar table tabs accordion dialog sheet tooltip \
   navigation-menu dropdown-menu hover-card breadcrumb skeleton progress input \
