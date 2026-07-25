@@ -1,15 +1,15 @@
 #!/bin/bash
 set -e
 
-# Always operate in the directory that contains this script (same contract as Vite / Inkwell Next).
-cd "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# Always operate in the tenant root (parent of templates/).
+cd "$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 
 # =============================================================================
 # Andrew Linh — Portfolio & Blog (OlonJS v1.6 tenant-gen — Next harness)
 # Neo-brutalist · dark-first · terminal green
 # Typography: Instrument Sans + Instrument Serif + JetBrains Mono
 # Layout: Hero=F (MINIMAL HERO), Features=A (BENTO)
-# Place/copy this script into a scaffolded Next tenant root (or ship in DNA).
+# Lives in templates/; cds to tenant root (parent). Run from apps/next/templates/.
 # No ThemeProvider — light/dark via document.documentElement.dataset.theme
 # =============================================================================
 
@@ -17,7 +17,7 @@ echo ""
 echo "╔══════════════════════════════════════════════════════════════╗"
 echo "║           ANDREW LINH — portfolio & editorial site           ║"
 echo "║     systems architect · technical writer · Next harness      ║"
-echo "║     CWD = script dir ($(pwd))                                  ║"
+echo "║     CWD = tenant root ($(pwd))                                  ║"
 echo "╚══════════════════════════════════════════════════════════════╝"
 echo ""
 # -----------------------------------------------------------------------------
@@ -41,7 +41,7 @@ echo "-- Preflight: checking app/layout.tsx..."
 if [[ -f app/layout.tsx ]]; then
   echo "   app/layout.tsx found"
 else
-  echo "!! app/layout.tsx NOT found — this script cds to its own directory; place it in the Next tenant root"
+  echo "!! app/layout.tsx NOT found — expected tenant root (parent of templates/); run from apps/next/templates/"
   exit 1
 fi
 

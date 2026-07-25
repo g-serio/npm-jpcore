@@ -9,7 +9,7 @@ import { describe, it } from 'node:test';
 import { fileURLToPath } from 'node:url';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const SCRIPT = path.resolve(__dirname, '../generate_SystemsArchitect_next.sh');
+const SCRIPT = path.resolve(__dirname, '../templates/generate_SystemsArchitect_next.sh');
 
 function readScript() {
   assert.ok(fs.existsSync(SCRIPT), `missing ${SCRIPT}`);
@@ -43,9 +43,9 @@ describe('generate_SystemsArchitect_next.sh harness gates', () => {
     assert.doesNotMatch(src, /verifying App\.tsx/);
   });
 
-  it('must cd to the script directory before writing files', () => {
+  it('must cd to tenant root (parent of templates/) before writing files', () => {
     const src = readScript();
-    assert.match(src, /cd "\$\(cd "\$\(dirname "\$\{BASH_SOURCE\[0\]\}"\)" && pwd\)"/);
+    assert.match(src, /cd "\$\(cd "\$\(dirname "\$\{BASH_SOURCE\[0\]\}"\)\/\.\." && pwd\)"/);
   });
 
   it('must clean DNA demo capsules before writing SystemsArchitect', () => {

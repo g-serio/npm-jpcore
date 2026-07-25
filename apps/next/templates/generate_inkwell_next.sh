@@ -1,12 +1,12 @@
 #!/bin/bash
 set -e
 
-# Always operate in the directory that contains this script (same contract as Vite Inkwell).
-cd "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# Always operate in the tenant root (parent of templates/).
+cd "$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 
 echo "=============================================================="
 echo "  INKWELL JOURNAL — OlonJS Next harness generator"
-echo "  CWD = script dir ($(pwd))"
+echo "  CWD = tenant root ($(pwd))"
 echo "  No ThemeProvider — light/dark via document.documentElement.dataset.theme"
 echo "  Collections + cross-collection relations demo"
 echo "  posts -> tags  (post.tags = tag keys)"
@@ -64,7 +64,7 @@ echo "-- Preflight: checking app/layout.tsx..."
 if [[ -f app/layout.tsx ]]; then
   echo "   app/layout.tsx found"
 else
-  echo "!! app/layout.tsx NOT found — this script cds to its own directory; place it in the Next tenant root"
+  echo "!! app/layout.tsx NOT found — expected tenant root (parent of templates/); run from apps/next/templates/"
   exit 1
 fi
 
