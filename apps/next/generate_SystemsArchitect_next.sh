@@ -25,6 +25,7 @@ echo ""
 # -----------------------------------------------------------------------------
 echo "-- Step 0: shadcn/ui init..."
 npm install class-variance-authority clsx tailwind-merge lucide-react
+npm install react-markdown remark-gfm rehype-sanitize motion
 npx shadcn@latest init --yes --style new-york --base-color slate 2>/dev/null || true
 npx shadcn@latest add --yes --overwrite \
   button card badge separator avatar table tabs accordion dialog sheet tooltip \
@@ -110,6 +111,31 @@ export function VisitorSection({
   return <View data={section.data} settings={section.settings} />;
 }
 EOF
+
+# DNA catch-all imports EmptyTenantView — drop it after rm of that capsule.
+if [[ -f 'app/[[...slug]]/page.tsx' ]]; then
+  echo "-- Patching app/[[...slug]]/page.tsx empty fallback..."
+  python3 - <<'PY'
+from pathlib import Path
+p = Path("app/[[...slug]]/page.tsx")
+src = p.read_text()
+capsule = "empty" + "-tenant"
+src = src.replace(f"import {{ EmptyTenantView }} from '@/components/{capsule}';\n", "")
+old = "  if (result.kind === 'empty') {\n    return <EmptyTenantView />;\n  }"
+new = """  if (result.kind === 'empty') {
+    return (
+      <main className="mx-auto max-w-3xl px-8 py-24">
+        <h1 className="text-2xl font-bold">Your tenant is empty.</h1>
+        <p className="mt-2 text-muted-foreground">Create your first page.</p>
+      </main>
+    );
+  }"""
+if old not in src:
+    raise SystemExit("EmptyTenantView empty-branch not found in page.tsx")
+p.write_text(src.replace(old, new))
+print("   page.tsx empty fallback inlined")
+PY
+fi
 
 mkdir -p \
   src/components/{header,footer,home-hero,featured-projects,recent-posts,bio-band,cta-band,page-hero,about-story,skills-stack,philosophy,projects-list,project-detail,posts-list,post-detail,contact-form} \
@@ -1373,7 +1399,6 @@ import type { ProjectDetailData, ProjectDetailSettings } from '@/components/proj
 import type { PostsListData, PostsListSettings } from '@/components/posts-list';
 import type { PostDetailData, PostDetailSettings } from '@/components/post-detail';
 import type { ContactFormData, ContactFormSettings } from '@/components/contact-form';
-import type { EmptyTenantData, EmptyTenantSettings } from '@/components/empty-tenant';
 import type { Project } from '@/collections/projects';
 import type { Post } from '@/collections/posts';
 
@@ -1394,7 +1419,6 @@ export type SectionComponentPropsMap = {
   'posts-list': { data: PostsListData; settings: PostsListSettings };
   'post-detail': { data: PostDetailData; settings: PostDetailSettings };
   'contact-form': { data: ContactFormData; settings: ContactFormSettings };
-  'empty-tenant': { data: EmptyTenantData; settings?: EmptyTenantSettings };
 };
 
 declare module '@olonjs/core' {
@@ -1415,7 +1439,6 @@ declare module '@olonjs/core' {
     'posts-list': PostsListData;
     'post-detail': PostDetailData;
     'contact-form': ContactFormData;
-    'empty-tenant': EmptyTenantData;
   }
   export interface SectionSettingsRegistry {
     header: HeaderSettings;
@@ -1434,7 +1457,6 @@ declare module '@olonjs/core' {
     'posts-list': PostsListSettings;
     'post-detail': PostDetailSettings;
     'contact-form': ContactFormSettings;
-    'empty-tenant': EmptyTenantSettings;
   }
   export interface CollectionItemRegistry {
     projects: Project;
@@ -1465,7 +1487,6 @@ import { ProjectDetail } from '@/components/project-detail';
 import { PostsList } from '@/components/posts-list';
 import { PostDetail } from '@/components/post-detail';
 import { ContactForm } from '@/components/contact-form';
-import { EmptyTenantView } from '@/components/empty-tenant';
 
 export const ComponentRegistry: {
   [K in SectionType]: React.FC<SectionComponentPropsMap[K]>;
@@ -1486,7 +1507,6 @@ export const ComponentRegistry: {
   'posts-list': PostsList,
   'post-detail': PostDetail,
   'contact-form': ContactForm,
-  'empty-tenant': EmptyTenantView as React.FC<SectionComponentPropsMap['empty-tenant']>,
 };
 EOF
 
@@ -1507,7 +1527,6 @@ import { ProjectDetailSchema } from '@/components/project-detail';
 import { PostsListSchema } from '@/components/posts-list';
 import { PostDetailSchema } from '@/components/post-detail';
 import { ContactFormSchema, ContactFormSubmissionSchema } from '@/components/contact-form';
-import { EmptyTenantSchema } from '@/components/empty-tenant';
 
 export const SECTION_SCHEMAS = {
   header: HeaderSchema,
@@ -1526,7 +1545,6 @@ export const SECTION_SCHEMAS = {
   'posts-list': PostsListSchema,
   'post-detail': PostDetailSchema,
   'contact-form': ContactFormSchema,
-  'empty-tenant': EmptyTenantSchema,
 } as const;
 
 export const SECTION_SUBMISSION_SCHEMAS = {
@@ -1551,7 +1569,7 @@ import type { AddSectionConfig } from '@olonjs/core';
 const addableSectionTypes = [
   'home-hero', 'featured-projects', 'recent-posts', 'bio-band', 'cta-band',
   'page-hero', 'about-story', 'skills-stack', 'philosophy', 'projects-list',
-  'project-detail', 'posts-list', 'post-detail', 'contact-form', 'empty-tenant',
+  'project-detail', 'posts-list', 'post-detail', 'contact-form',
 ] as const;
 
 const sectionTypeLabels: Record<string, string> = {
@@ -1569,7 +1587,6 @@ const sectionTypeLabels: Record<string, string> = {
   'posts-list': 'Posts List',
   'post-detail': 'Post Detail',
   'contact-form': 'Contact Form',
-  'empty-tenant': 'Empty Tenant',
 };
 
 function getDefaultSectionData(type: string): Record<string, unknown> {
@@ -1588,7 +1605,6 @@ function getDefaultSectionData(type: string): Record<string, unknown> {
     case 'posts-list': return { title: 'Blog', items: { $ref: '../collections/posts/posts.json' } };
     case 'post-detail': return { item: { $ref: 'collection:current' }, backLabel: 'Back to blog' };
     case 'contact-form': return { title: 'Contact', submitLabel: 'Send message', successMessage: 'Message sent.', social: [] };
-    case 'empty-tenant': return { title: 'Your tenant is empty.', description: 'Create your first page.' };
     default: return {};
   }
 }

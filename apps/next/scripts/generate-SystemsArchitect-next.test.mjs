@@ -55,4 +55,19 @@ describe('generate_SystemsArchitect_next.sh harness gates', () => {
     assert.match(src, /cat > src\/lib\/VisitorSection\.tsx/);
     assert.doesNotMatch(src, /from '@\/components\/books-list'/);
   });
+
+  it('must install react-markdown deps used by post-detail', () => {
+    const src = readScript();
+    assert.match(src, /npm install[^\n]*react-markdown/);
+    assert.match(src, /from 'react-markdown'/);
+    assert.match(src, /from 'remark-gfm'/);
+    assert.match(src, /from 'rehype-sanitize'/);
+  });
+
+  it('must not generate empty-tenant registry wiring (cleanup rm path ok)', () => {
+    const src = readScript();
+    assert.doesNotMatch(src, /@\/components\/empty-tenant/);
+    assert.doesNotMatch(src, /['"]empty-tenant['"]/);
+    assert.match(src, /src\/components\/empty-tenant/);
+  });
 });
