@@ -37,6 +37,12 @@ describe('generate_inkwell_next.sh harness gates', () => {
     assert.match(src, /\[data-theme=["']light["']\]/);
   });
 
+  it('must verify Next admin wiring instead of App.tsx', () => {
+    const src = readScript();
+    assert.match(src, /AdminStudioClient/);
+    assert.doesNotMatch(src, /verifying App\.tsx/);
+  });
+
   it('must cd to the script directory before writing files', () => {
     const src = readScript();
     assert.match(src, /cd "\$\(cd "\$\(dirname "\$\{BASH_SOURCE\[0\]\}"\)" && pwd\)"/);
