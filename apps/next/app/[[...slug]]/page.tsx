@@ -1,6 +1,8 @@
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import {
+  buildPageContractHref,
+  buildPageManifestHref,
   resolveCollectionContext,
   resolveRuntimeConfig,
   type PageConfig,
@@ -8,6 +10,7 @@ import {
 import { loadVisitorPage } from '@olonjs/next/server';
 import { EmptyTenantView } from '@/components/empty-tenant';
 import { CollectionRegistry } from '@/lib/CollectionRegistry';
+import { buildVisitorWebPageJsonLd } from '@/lib/buildVisitorWebPageJsonLd';
 import { getFileCollections } from '@/lib/loaders/getFileCollections';
 import { getFilePages } from '@/lib/loaders/getFilePages';
 import { getFileSiteBundle } from '@/lib/loaders/getFileSiteConfig';
@@ -100,9 +103,23 @@ export default async function VisitorCatchAllPage({ params, searchParams }: Page
   const pageNum = Number(firstSearchValue(query.page) ?? '1') || 1;
   const shell = resolveVisitorShell(page, resolved.siteConfig ?? siteConfig);
   const sectionExtras = { authorId, page: pageNum, pathname };
+  const title = page.meta?.title ?? result.registrySlug;
+  const description = typeof page.meta?.description === 'string' ? page.meta.description : '';
+  const jsonLd = buildVisitorWebPageJsonLd({
+    title,
+    description,
+    slug: requestSlug,
+  });
 
   return (
     <>
+      <link rel="mcp-manifest" href={buildPageManifestHref(requestSlug)} />
+      <link rel="olon-contract" href={buildPageContractHref(requestSlug)} />
+      <script
+        type="application/ld+json"
+        // eslint-disable-next-line react/no-danger -- Schema.org JSON-LD payload (parity alpha bake)
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+      />
       {shell.header ? (
         <VisitorSection section={shell.header} extras={sectionExtras} />
       ) : null}
