@@ -48,12 +48,15 @@ describe('generate_SystemsArchitect_next.sh harness gates', () => {
     assert.match(src, /cd "\$\(cd "\$\(dirname "\$\{BASH_SOURCE\[0\]\}"\)\/\.\." && pwd\)"/);
   });
 
-  it('must clean DNA demo capsules before writing SystemsArchitect', () => {
+  it('must wipe tenant content surfaces without DNA denylist', () => {
     const src = readScript();
-    assert.match(src, /Cleaning demo capsules/);
-    assert.match(src, /rm -rf \\\s*\n\s*src\/components\/books-list/m);
+    assert.match(src, /Wiping tenant content surfaces/);
+    assert.match(src, /find src\/components -mindepth 1 -maxdepth 1 ! -name 'ui' ! -name 'admin'/);
+    assert.match(src, /rm -rf \\\s*\n\s*src\/collections/m);
+    assert.match(src, /rm -rf \\\s*\n[\s\S]*?src\/data\/pages/m);
     assert.match(src, /cat > src\/lib\/VisitorSection\.tsx/);
     assert.doesNotMatch(src, /from '@\/components\/books-list'/);
+    assert.doesNotMatch(src, /src\/components\/books-list/);
   });
 
   it('must install react-markdown deps used by post-detail', () => {
@@ -64,11 +67,10 @@ describe('generate_SystemsArchitect_next.sh harness gates', () => {
     assert.match(src, /from 'rehype-sanitize'/);
   });
 
-  it('must not generate empty-tenant registry wiring (cleanup rm path ok)', () => {
+  it('must not generate empty-tenant registry wiring', () => {
     const src = readScript();
     assert.doesNotMatch(src, /@\/components\/empty-tenant/);
     assert.doesNotMatch(src, /['"]empty-tenant['"]/);
-    assert.match(src, /src\/components\/empty-tenant/);
   });
 
   it('must force shadcn radix base non-interactively', () => {

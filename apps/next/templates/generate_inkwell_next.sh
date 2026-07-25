@@ -69,31 +69,26 @@ else
 fi
 
 # -----------------------------------------------------------------------------
-# CLEAN DNA DEMO — remove marketplace seed capsules before Inkwell write
-# (same contract as generate_SystemsArchitect.sh — leftover imports break build)
+# WIPE tenant content — no DNA name denylist (orphans break the compiler).
+# Preserve: src/components/ui (shadcn), src/components/admin (studio).
+# Wipe includes overlap dirs (e.g. header) — generators rewrite them fresh.
 # -----------------------------------------------------------------------------
-echo "-- Cleaning demo capsules / collections / pages..."
+echo "-- Wiping tenant content surfaces (components/collections/pages/config)..."
+if [[ -d src/components ]]; then
+  find src/components -mindepth 1 -maxdepth 1 ! -name 'ui' ! -name 'admin' -exec rm -rf {} +
+fi
 rm -rf \
-  src/components/authors-list \
-  src/components/books-list \
-  src/components/book-detail \
-  src/components/form-demo \
-  src/collections/autori \
-  src/collections/libri \
-  src/data/collections/autori \
-  src/data/collections/libri \
-  src/data/pages/authors \
-  src/data/pages/libri \
+  src/collections \
+  src/data/collections \
+  src/data/pages \
   public/pages \
   public/collections
-rm -f \
-  src/data/pages/home.json \
-  src/data/pages/authors.json \
-  src/data/pages/libri.json \
-  src/data/pages/form.json \
-  public/config/site.json
+rm -f public/config/site.json
+if [[ -d src/data/config ]]; then
+  find src/data/config -mindepth 1 -maxdepth 1 -exec rm -rf {} +
+fi
 
-# Drop books-list special-case so deleted capsules cannot break the visitor RSC path.
+# Drop DNA special-cases so wiped capsules cannot break the visitor RSC path.
 echo "-- Resetting VisitorSection to registry-only..."
 mkdir -p src/lib
 cat > src/lib/VisitorSection.tsx << 'EOF'
@@ -128,6 +123,31 @@ export function VisitorSection({
   return <View data={section.data} settings={section.settings} />;
 }
 EOF
+
+# DNA catch-all imports EmptyTenantView — drop it after wipe of that capsule.
+if [[ -f 'app/[[...slug]]/page.tsx' ]]; then
+  echo "-- Patching app/[[...slug]]/page.tsx empty fallback..."
+  python3 - <<'PY'
+from pathlib import Path
+p = Path("app/[[...slug]]/page.tsx")
+src = p.read_text()
+capsule = "empty" + "-tenant"
+src = src.replace(f"import {{ EmptyTenantView }} from '@/components/{capsule}';\n", "")
+old = "  if (result.kind === 'empty') {\n    return <EmptyTenantView />;\n  }"
+new = """  if (result.kind === 'empty') {
+    return (
+      <main className="mx-auto max-w-3xl px-8 py-24">
+        <h1 className="text-2xl font-bold">Your tenant is empty.</h1>
+        <p className="mt-2 text-muted-foreground">Create your first page.</p>
+      </main>
+    );
+  }"""
+if old not in src:
+    raise SystemExit("EmptyTenantView empty-branch not found in page.tsx")
+p.write_text(src.replace(old, new))
+print("   page.tsx empty fallback inlined")
+PY
+fi
 
 # -----------------------------------------------------------------------------
 # DIRECTORIES

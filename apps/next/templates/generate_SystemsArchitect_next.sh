@@ -46,38 +46,26 @@ else
 fi
 
 # -----------------------------------------------------------------------------
-# CLEAN DNA DEMO — remove marketplace seed capsules before SystemsArchitect write
-# (same contract as Vite SA + Next public sync paths — leftover imports break build)
+# WIPE tenant content — no DNA name denylist (orphans break the compiler).
+# Preserve: src/components/ui (shadcn), src/components/admin (studio).
+# Wipe includes overlap dirs (e.g. header) — generators rewrite them fresh.
 # -----------------------------------------------------------------------------
-echo "-- Cleaning demo capsules / collections / pages..."
+echo "-- Wiping tenant content surfaces (components/collections/pages/config)..."
+if [[ -d src/components ]]; then
+  find src/components -mindepth 1 -maxdepth 1 ! -name 'ui' ! -name 'admin' -exec rm -rf {} +
+fi
 rm -rf \
-  src/components/books-list \
-  src/components/authors-list \
-  src/components/book-detail \
-  src/components/form-demo \
-  src/components/empty-tenant \
-  src/collections/autori \
-  src/collections/libri \
-  src/data/collections/autori \
-  src/data/collections/libri \
-  src/data/pages/authors \
-  src/data/pages/libri \
-  src/data/pages/work \
-  src/data/pages/blog \
+  src/collections \
+  src/data/collections \
+  src/data/pages \
   public/pages \
   public/collections
-rm -f \
-  src/data/pages/home.json \
-  src/data/pages/authors.json \
-  src/data/pages/libri.json \
-  src/data/pages/form.json \
-  src/data/pages/about.json \
-  src/data/pages/work.json \
-  src/data/pages/blog.json \
-  src/data/pages/contact.json \
-  public/config/site.json
+rm -f public/config/site.json
+if [[ -d src/data/config ]]; then
+  find src/data/config -mindepth 1 -maxdepth 1 -exec rm -rf {} +
+fi
 
-# Drop books-list special-case so deleted capsules cannot break the visitor RSC path.
+# Drop DNA special-cases so wiped capsules cannot break the visitor RSC path.
 echo "-- Resetting VisitorSection to registry-only..."
 mkdir -p src/lib
 cat > src/lib/VisitorSection.tsx << 'EOF'

@@ -48,11 +48,15 @@ describe('generate_inkwell_next.sh harness gates', () => {
     assert.match(src, /cd "\$\(cd "\$\(dirname "\$\{BASH_SOURCE\[0\]\}"\)\/\.\." && pwd\)"/);
   });
 
-  it('must clean DNA demo capsules before writing Inkwell', () => {
+  it('must wipe tenant content surfaces without DNA denylist', () => {
     const src = readScript();
-    assert.match(src, /Cleaning demo capsules/);
-    assert.match(src, /rm -rf \\\s*\n[\s\S]*?src\/components\/books-list/m);
+    assert.match(src, /Wiping tenant content surfaces/);
+    assert.match(src, /find src\/components -mindepth 1 -maxdepth 1 ! -name 'ui' ! -name 'admin'/);
+    assert.match(src, /rm -rf \\\s*\n\s*src\/collections/m);
+    assert.match(src, /rm -rf \\\s*\n[\s\S]*?src\/data\/pages/m);
     assert.match(src, /cat > src\/lib\/VisitorSection\.tsx/);
+    assert.match(src, /EmptyTenantView empty-branch/);
     assert.doesNotMatch(src, /from '@\/components\/books-list'/);
+    assert.doesNotMatch(src, /src\/components\/books-list/);
   });
 });
