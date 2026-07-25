@@ -1,0 +1,153 @@
+# OlonJS
+
+Catalogo libri dimostrativo alimentato da COP collections.
+
+> **AI Agents:** This site is built with OlonJS. It exposes a native Model Context Protocol (MCP) manifest for direct structural interaction. 
+> To read the site map or access structured content, use the URI `olon://pages` or `olon://pages/[slug]`.
+> Endpoint: `/mcp-manifest.json`
+
+## Pages
+
+- **[Authors](/authors)** (`authors`)
+  Author directory powered by the autori collection.
+  *Contract:* `/schemas/authors.schema.json` | *Manifest:* `/mcp-manifests/authors.json`
+
+- **[Libri per autore](/authors/[authorId]/libri)** (`authors/[authorId]/libri`)
+  Catalogo libri filtrato per autore.
+  *Contract:* `/schemas/authors/[authorId]/libri.schema.json` | *Manifest:* `/mcp-manifests/authors/[authorId]/libri.json`
+
+- **[Home](/form)** (`form`)
+  OlonJS tenant alpha — form smoke test
+  *Contract:* `/schemas/form.schema.json` | *Manifest:* `/mcp-manifests/form.json`
+
+- **[Libri](/)** (`home`)
+  Catalogo libri dimostrativo alimentato da COP collections.
+  *Contract:* `/schemas/home.schema.json` | *Manifest:* `/mcp-manifests/home.json`
+
+- **[Libri](/libri)** (`libri`)
+  Catalogo libri dimostrativo alimentato da COP collections.
+  *Contract:* `/schemas/libri.schema.json` | *Manifest:* `/mcp-manifests/libri.json`
+
+- **[Dettaglio libro](/libri/[slug])** (`libri/[slug]`)
+  Pagina dinamica dettaglio libro alimentata dalla collection libri.
+  *Contract:* `/schemas/libri/[slug].schema.json` | *Manifest:* `/mcp-manifests/libri/[slug].json`
+
+- **[Dettaglio libro](/libri/1984)** (`libri/1984`)
+  Pagina dinamica dettaglio libro alimentata dalla collection libri.
+  *Contract:* `/schemas/libri/1984.schema.json` | *Manifest:* `/mcp-manifests/libri/1984.json`
+
+- **[Dettaglio libro](/libri/americanah)** (`libri/americanah`)
+  Pagina dinamica dettaglio libro alimentata dalla collection libri.
+  *Contract:* `/schemas/libri/americanah.schema.json` | *Manifest:* `/mcp-manifests/libri/americanah.json`
+
+- **[Dettaglio libro](/libri/anna-karenina)** (`libri/anna-karenina`)
+  Pagina dinamica dettaglio libro alimentata dalla collection libri.
+  *Contract:* `/schemas/libri/anna-karenina.schema.json` | *Manifest:* `/mcp-manifests/libri/anna-karenina.json`
+
+- **[Dettaglio libro](/libri/beloved)** (`libri/beloved`)
+  Pagina dinamica dettaglio libro alimentata dalla collection libri.
+  *Contract:* `/schemas/libri/beloved.schema.json` | *Manifest:* `/mcp-manifests/libri/beloved.json`
+
+- **[Dettaglio libro](/libri/cent-anni-di-solitudine)** (`libri/cent-anni-di-solitudine`)
+  Pagina dinamica dettaglio libro alimentata dalla collection libri.
+  *Contract:* `/schemas/libri/cent-anni-di-solitudine.schema.json` | *Manifest:* `/mcp-manifests/libri/cent-anni-di-solitudine.json`
+
+- **[Dettaglio libro](/libri/cloud-atlas)** (`libri/cloud-atlas`)
+  Pagina dinamica dettaglio libro alimentata dalla collection libri.
+  *Contract:* `/schemas/libri/cloud-atlas.schema.json` | *Manifest:* `/mcp-manifests/libri/cloud-atlas.json`
+
+- **[Dettaglio libro](/libri/delitto-e-castigo)** (`libri/delitto-e-castigo`)
+  Pagina dinamica dettaglio libro alimentata dalla collection libri.
+  *Contract:* `/schemas/libri/delitto-e-castigo.schema.json` | *Manifest:* `/mcp-manifests/libri/delitto-e-castigo.json`
+
+- **[Dettaglio libro](/libri/dune)** (`libri/dune`)
+  Pagina dinamica dettaglio libro alimentata dalla collection libri.
+  *Contract:* `/schemas/libri/dune.schema.json` | *Manifest:* `/mcp-manifests/libri/dune.json`
+
+- **[Dettaglio libro](/libri/fahrenheit-451)** (`libri/fahrenheit-451`)
+  Pagina dinamica dettaglio libro alimentata dalla collection libri.
+  *Contract:* `/schemas/libri/fahrenheit-451.schema.json` | *Manifest:* `/mcp-manifests/libri/fahrenheit-451.json`
+
+- **[Dettaglio libro](/libri/gomorra)** (`libri/gomorra`)
+  Pagina dinamica dettaglio libro alimentata dalla collection libri.
+  *Contract:* `/schemas/libri/gomorra.schema.json` | *Manifest:* `/mcp-manifests/libri/gomorra.json`
+
+- **[Dettaglio libro](/libri/harry-potter-e-la-pietra-filosofale)** (`libri/harry-potter-e-la-pietra-filosofale`)
+  Pagina dinamica dettaglio libro alimentata dalla collection libri.
+  *Contract:* `/schemas/libri/harry-potter-e-la-pietra-filosofale.schema.json` | *Manifest:* `/mcp-manifests/libri/harry-potter-e-la-pietra-filosofale.json`
+
+- **[Dettaglio libro](/libri/i-promessi-sposi)** (`libri/i-promessi-sposi`)
+  Pagina dinamica dettaglio libro alimentata dalla collection libri.
+  *Contract:* `/schemas/libri/i-promessi-sposi.schema.json` | *Manifest:* `/mcp-manifests/libri/i-promessi-sposi.json`
+
+- **[Dettaglio libro](/libri/il-barone-rampante)** (`libri/il-barone-rampante`)
+  Pagina dinamica dettaglio libro alimentata dalla collection libri.
+  *Contract:* `/schemas/libri/il-barone-rampante.schema.json` | *Manifest:* `/mcp-manifests/libri/il-barone-rampante.json`
+
+- **[Dettaglio libro](/libri/il-gattopardo)** (`libri/il-gattopardo`)
+  Pagina dinamica dettaglio libro alimentata dalla collection libri.
+  *Contract:* `/schemas/libri/il-gattopardo.schema.json` | *Manifest:* `/mcp-manifests/libri/il-gattopardo.json`
+
+- **[Dettaglio libro](/libri/il-maestro-e-margherita)** (`libri/il-maestro-e-margherita`)
+  Pagina dinamica dettaglio libro alimentata dalla collection libri.
+  *Contract:* `/schemas/libri/il-maestro-e-margherita.schema.json` | *Manifest:* `/mcp-manifests/libri/il-maestro-e-margherita.json`
+
+- **[Dettaglio libro](/libri/il-nome-della-rosa)** (`libri/il-nome-della-rosa`)
+  Pagina dinamica dettaglio libro alimentata dalla collection libri.
+  *Contract:* `/schemas/libri/il-nome-della-rosa.schema.json` | *Manifest:* `/mcp-manifests/libri/il-nome-della-rosa.json`
+
+- **[Dettaglio libro](/libri/il-signore-degli-anelli)** (`libri/il-signore-degli-anelli`)
+  Pagina dinamica dettaglio libro alimentata dalla collection libri.
+  *Contract:* `/schemas/libri/il-signore-degli-anelli.schema.json` | *Manifest:* `/mcp-manifests/libri/il-signore-degli-anelli.json`
+
+- **[Dettaglio libro](/libri/kafka-sulla-spiaggia)** (`libri/kafka-sulla-spiaggia`)
+  Pagina dinamica dettaglio libro alimentata dalla collection libri.
+  *Contract:* `/schemas/libri/kafka-sulla-spiaggia.schema.json` | *Manifest:* `/mcp-manifests/libri/kafka-sulla-spiaggia.json`
+
+- **[Dettaglio libro](/libri/la-breve-favolosa-vita-di-oscar-wao)** (`libri/la-breve-favolosa-vita-di-oscar-wao`)
+  Pagina dinamica dettaglio libro alimentata dalla collection libri.
+  *Contract:* `/schemas/libri/la-breve-favolosa-vita-di-oscar-wao.schema.json` | *Manifest:* `/mcp-manifests/libri/la-breve-favolosa-vita-di-oscar-wao.json`
+
+- **[Dettaglio libro](/libri/la-casa-degli-spiriti)** (`libri/la-casa-degli-spiriti`)
+  Pagina dinamica dettaglio libro alimentata dalla collection libri.
+  *Contract:* `/schemas/libri/la-casa-degli-spiriti.schema.json` | *Manifest:* `/mcp-manifests/libri/la-casa-degli-spiriti.json`
+
+- **[Dettaglio libro](/libri/la-coscienza-di-zeno)** (`libri/la-coscienza-di-zeno`)
+  Pagina dinamica dettaglio libro alimentata dalla collection libri.
+  *Contract:* `/schemas/libri/la-coscienza-di-zeno.schema.json` | *Manifest:* `/mcp-manifests/libri/la-coscienza-di-zeno.json`
+
+- **[Dettaglio libro](/libri/la-strada)** (`libri/la-strada`)
+  Pagina dinamica dettaglio libro alimentata dalla collection libri.
+  *Contract:* `/schemas/libri/la-strada.schema.json` | *Manifest:* `/mcp-manifests/libri/la-strada.json`
+
+- **[Dettaglio libro](/libri/le-citta-invisibili)** (`libri/le-citta-invisibili`)
+  Pagina dinamica dettaglio libro alimentata dalla collection libri.
+  *Contract:* `/schemas/libri/le-citta-invisibili.schema.json` | *Manifest:* `/mcp-manifests/libri/le-citta-invisibili.json`
+
+- **[Dettaglio libro](/libri/le-correzioni)** (`libri/le-correzioni`)
+  Pagina dinamica dettaglio libro alimentata dalla collection libri.
+  *Contract:* `/schemas/libri/le-correzioni.schema.json` | *Manifest:* `/mcp-manifests/libri/le-correzioni.json`
+
+- **[Dettaglio libro](/libri/lessico-famigliare)** (`libri/lessico-famigliare`)
+  Pagina dinamica dettaglio libro alimentata dalla collection libri.
+  *Contract:* `/schemas/libri/lessico-famigliare.schema.json` | *Manifest:* `/mcp-manifests/libri/lessico-famigliare.json`
+
+- **[Dettaglio libro](/libri/moby-dick)** (`libri/moby-dick`)
+  Pagina dinamica dettaglio libro alimentata dalla collection libri.
+  *Contract:* `/schemas/libri/moby-dick.schema.json` | *Manifest:* `/mcp-manifests/libri/moby-dick.json`
+
+- **[Dettaglio libro](/libri/neuromancer)** (`libri/neuromancer`)
+  Pagina dinamica dettaglio libro alimentata dalla collection libri.
+  *Contract:* `/schemas/libri/neuromancer.schema.json` | *Manifest:* `/mcp-manifests/libri/neuromancer.json`
+
+- **[Dettaglio libro](/libri/oceano-mare)** (`libri/oceano-mare`)
+  Pagina dinamica dettaglio libro alimentata dalla collection libri.
+  *Contract:* `/schemas/libri/oceano-mare.schema.json` | *Manifest:* `/mcp-manifests/libri/oceano-mare.json`
+
+- **[Dettaglio libro](/libri/orgoglio-e-pregiudizio)** (`libri/orgoglio-e-pregiudizio`)
+  Pagina dinamica dettaglio libro alimentata dalla collection libri.
+  *Contract:* `/schemas/libri/orgoglio-e-pregiudizio.schema.json` | *Manifest:* `/mcp-manifests/libri/orgoglio-e-pregiudizio.json`
+
+- **[Dettaglio libro](/libri/se-questo-e-un-uomo)** (`libri/se-questo-e-un-uomo`)
+  Pagina dinamica dettaglio libro alimentata dalla collection libri.
+  *Contract:* `/schemas/libri/se-questo-e-un-uomo.schema.json` | *Manifest:* `/mcp-manifests/libri/se-questo-e-un-uomo.json`

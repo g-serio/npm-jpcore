@@ -29,6 +29,9 @@
 		},
 		{
 			"path": "../temp/next-marketing"
+		},
+		{
+			"path": "../temp/next-templates"
 		}
 	],
 	"settings": {

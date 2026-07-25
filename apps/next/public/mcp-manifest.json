@@ -1,0 +1,403 @@
+{
+  "version": "1.0.0",
+  "kind": "olonjs-mcp-manifest-index",
+  "generatedAt": "2026-07-25T14:55:47.946Z",
+  "pages": [
+    {
+      "slug": "authors",
+      "title": "Authors",
+      "description": "Author directory powered by the autori collection.",
+      "manifestHref": "/mcp-manifests/authors.json",
+      "contractHref": "/schemas/authors.schema.json",
+      "sectionTypes": [
+        "footer",
+        "authors-list"
+      ]
+    },
+    {
+      "slug": "authors/[authorId]/libri",
+      "title": "Libri per autore",
+      "description": "Catalogo libri filtrato per autore.",
+      "manifestHref": "/mcp-manifests/authors/[authorId]/libri.json",
+      "contractHref": "/schemas/authors/[authorId]/libri.schema.json",
+      "sectionTypes": [
+        "footer",
+        "books-list"
+      ]
+    },
+    {
+      "slug": "form",
+      "title": "Home",
+      "description": "OlonJS tenant alpha — form smoke test",
+      "manifestHref": "/mcp-manifests/form.json",
+      "contractHref": "/schemas/form.schema.json",
+      "sectionTypes": [
+        "footer",
+        "form-demo"
+      ]
+    },
+    {
+      "slug": "home",
+      "title": "Libri",
+      "description": "Catalogo libri dimostrativo alimentato da COP collections.",
+      "manifestHref": "/mcp-manifests/home.json",
+      "contractHref": "/schemas/home.schema.json",
+      "sectionTypes": [
+        "footer",
+        "books-list"
+      ]
+    },
+    {
+      "slug": "libri",
+      "title": "Libri",
+      "description": "Catalogo libri dimostrativo alimentato da COP collections.",
+      "manifestHref": "/mcp-manifests/libri.json",
+      "contractHref": "/schemas/libri.schema.json",
+      "sectionTypes": [
+        "footer",
+        "books-list"
+      ]
+    },
+    {
+      "slug": "libri/[slug]",
+      "title": "Dettaglio libro",
+      "description": "Pagina dinamica dettaglio libro alimentata dalla collection libri.",
+      "manifestHref": "/mcp-manifests/libri/[slug].json",
+      "contractHref": "/schemas/libri/[slug].schema.json",
+      "sectionTypes": [
+        "footer",
+        "book-detail"
+      ]
+    },
+    {
+      "slug": "libri/1984",
+      "title": "Dettaglio libro",
+      "description": "Pagina dinamica dettaglio libro alimentata dalla collection libri.",
+      "manifestHref": "/mcp-manifests/libri/1984.json",
+      "contractHref": "/schemas/libri/1984.schema.json",
+      "sectionTypes": [
+        "footer",
+        "book-detail"
+      ]
+    },
+    {
+      "slug": "libri/americanah",
+      "title": "Dettaglio libro",
+      "description": "Pagina dinamica dettaglio libro alimentata dalla collection libri.",
+      "manifestHref": "/mcp-manifests/libri/americanah.json",
+      "contractHref": "/schemas/libri/americanah.schema.json",
+      "sectionTypes": [
+        "footer",
+        "book-detail"
+      ]
+    },
+    {
+      "slug": "libri/anna-karenina",
+      "title": "Dettaglio libro",
+      "description": "Pagina dinamica dettaglio libro alimentata dalla collection libri.",
+      "manifestHref": "/mcp-manifests/libri/anna-karenina.json",
+      "contractHref": "/schemas/libri/anna-karenina.schema.json",
+      "sectionTypes": [
+        "footer",
+        "book-detail"
+      ]
+    },
+    {
+      "slug": "libri/beloved",
+      "title": "Dettaglio libro",
+      "description": "Pagina dinamica dettaglio libro alimentata dalla collection libri.",
+      "manifestHref": "/mcp-manifests/libri/beloved.json",
+      "contractHref": "/schemas/libri/beloved.schema.json",
+      "sectionTypes": [
+        "footer",
+        "book-detail"
+      ]
+    },
+    {
+      "slug": "libri/cent-anni-di-solitudine",
+      "title": "Dettaglio libro",
+      "description": "Pagina dinamica dettaglio libro alimentata dalla collection libri.",
+      "manifestHref": "/mcp-manifests/libri/cent-anni-di-solitudine.json",
+      "contractHref": "/schemas/libri/cent-anni-di-solitudine.schema.json",
+      "sectionTypes": [
+        "footer",
+        "book-detail"
+      ]
+    },
+    {
+      "slug": "libri/cloud-atlas",
+      "title": "Dettaglio libro",
+      "description": "Pagina dinamica dettaglio libro alimentata dalla collection libri.",
+      "manifestHref": "/mcp-manifests/libri/cloud-atlas.json",
+      "contractHref": "/schemas/libri/cloud-atlas.schema.json",
+      "sectionTypes": [
+        "footer",
+        "book-detail"
+      ]
+    },
+    {
+      "slug": "libri/delitto-e-castigo",
+      "title": "Dettaglio libro",
+      "description": "Pagina dinamica dettaglio libro alimentata dalla collection libri.",
+      "manifestHref": "/mcp-manifests/libri/delitto-e-castigo.json",
+      "contractHref": "/schemas/libri/delitto-e-castigo.schema.json",
+      "sectionTypes": [
+        "footer",
+        "book-detail"
+      ]
+    },
+    {
+      "slug": "libri/dune",
+      "title": "Dettaglio libro",
+      "description": "Pagina dinamica dettaglio libro alimentata dalla collection libri.",
+      "manifestHref": "/mcp-manifests/libri/dune.json",
+      "contractHref": "/schemas/libri/dune.schema.json",
+      "sectionTypes": [
+        "footer",
+        "book-detail"
+      ]
+    },
+    {
+      "slug": "libri/fahrenheit-451",
+      "title": "Dettaglio libro",
+      "description": "Pagina dinamica dettaglio libro alimentata dalla collection libri.",
+      "manifestHref": "/mcp-manifests/libri/fahrenheit-451.json",
+      "contractHref": "/schemas/libri/fahrenheit-451.schema.json",
+      "sectionTypes": [
+        "footer",
+        "book-detail"
+      ]
+    },
+    {
+      "slug": "libri/gomorra",
+      "title": "Dettaglio libro",
+      "description": "Pagina dinamica dettaglio libro alimentata dalla collection libri.",
+      "manifestHref": "/mcp-manifests/libri/gomorra.json",
+      "contractHref": "/schemas/libri/gomorra.schema.json",
+      "sectionTypes": [
+        "footer",
+        "book-detail"
+      ]
+    },
+    {
+      "slug": "libri/harry-potter-e-la-pietra-filosofale",
+      "title": "Dettaglio libro",
+      "description": "Pagina dinamica dettaglio libro alimentata dalla collection libri.",
+      "manifestHref": "/mcp-manifests/libri/harry-potter-e-la-pietra-filosofale.json",
+      "contractHref": "/schemas/libri/harry-potter-e-la-pietra-filosofale.schema.json",
+      "sectionTypes": [
+        "footer",
+        "book-detail"
+      ]
+    },
+    {
+      "slug": "libri/i-promessi-sposi",
+      "title": "Dettaglio libro",
+      "description": "Pagina dinamica dettaglio libro alimentata dalla collection libri.",
+      "manifestHref": "/mcp-manifests/libri/i-promessi-sposi.json",
+      "contractHref": "/schemas/libri/i-promessi-sposi.schema.json",
+      "sectionTypes": [
+        "footer",
+        "book-detail"
+      ]
+    },
+    {
+      "slug": "libri/il-barone-rampante",
+      "title": "Dettaglio libro",
+      "description": "Pagina dinamica dettaglio libro alimentata dalla collection libri.",
+      "manifestHref": "/mcp-manifests/libri/il-barone-rampante.json",
+      "contractHref": "/schemas/libri/il-barone-rampante.schema.json",
+      "sectionTypes": [
+        "footer",
+        "book-detail"
+      ]
+    },
+    {
+      "slug": "libri/il-gattopardo",
+      "title": "Dettaglio libro",
+      "description": "Pagina dinamica dettaglio libro alimentata dalla collection libri.",
+      "manifestHref": "/mcp-manifests/libri/il-gattopardo.json",
+      "contractHref": "/schemas/libri/il-gattopardo.schema.json",
+      "sectionTypes": [
+        "footer",
+        "book-detail"
+      ]
+    },
+    {
+      "slug": "libri/il-maestro-e-margherita",
+      "title": "Dettaglio libro",
+      "description": "Pagina dinamica dettaglio libro alimentata dalla collection libri.",
+      "manifestHref": "/mcp-manifests/libri/il-maestro-e-margherita.json",
+      "contractHref": "/schemas/libri/il-maestro-e-margherita.schema.json",
+      "sectionTypes": [
+        "footer",
+        "book-detail"
+      ]
+    },
+    {
+      "slug": "libri/il-nome-della-rosa",
+      "title": "Dettaglio libro",
+      "description": "Pagina dinamica dettaglio libro alimentata dalla collection libri.",
+      "manifestHref": "/mcp-manifests/libri/il-nome-della-rosa.json",
+      "contractHref": "/schemas/libri/il-nome-della-rosa.schema.json",
+      "sectionTypes": [
+        "footer",
+        "book-detail"
+      ]
+    },
+    {
+      "slug": "libri/il-signore-degli-anelli",
+      "title": "Dettaglio libro",
+      "description": "Pagina dinamica dettaglio libro alimentata dalla collection libri.",
+      "manifestHref": "/mcp-manifests/libri/il-signore-degli-anelli.json",
+      "contractHref": "/schemas/libri/il-signore-degli-anelli.schema.json",
+      "sectionTypes": [
+        "footer",
+        "book-detail"
+      ]
+    },
+    {
+      "slug": "libri/kafka-sulla-spiaggia",
+      "title": "Dettaglio libro",
+      "description": "Pagina dinamica dettaglio libro alimentata dalla collection libri.",
+      "manifestHref": "/mcp-manifests/libri/kafka-sulla-spiaggia.json",
+      "contractHref": "/schemas/libri/kafka-sulla-spiaggia.schema.json",
+      "sectionTypes": [
+        "footer",
+        "book-detail"
+      ]
+    },
+    {
+      "slug": "libri/la-breve-favolosa-vita-di-oscar-wao",
+      "title": "Dettaglio libro",
+      "description": "Pagina dinamica dettaglio libro alimentata dalla collection libri.",
+      "manifestHref": "/mcp-manifests/libri/la-breve-favolosa-vita-di-oscar-wao.json",
+      "contractHref": "/schemas/libri/la-breve-favolosa-vita-di-oscar-wao.schema.json",
+      "sectionTypes": [
+        "footer",
+        "book-detail"
+      ]
+    },
+    {
+      "slug": "libri/la-casa-degli-spiriti",
+      "title": "Dettaglio libro",
+      "description": "Pagina dinamica dettaglio libro alimentata dalla collection libri.",
+      "manifestHref": "/mcp-manifests/libri/la-casa-degli-spiriti.json",
+      "contractHref": "/schemas/libri/la-casa-degli-spiriti.schema.json",
+      "sectionTypes": [
+        "footer",
+        "book-detail"
+      ]
+    },
+    {
+      "slug": "libri/la-coscienza-di-zeno",
+      "title": "Dettaglio libro",
+      "description": "Pagina dinamica dettaglio libro alimentata dalla collection libri.",
+      "manifestHref": "/mcp-manifests/libri/la-coscienza-di-zeno.json",
+      "contractHref": "/schemas/libri/la-coscienza-di-zeno.schema.json",
+      "sectionTypes": [
+        "footer",
+        "book-detail"
+      ]
+    },
+    {
+      "slug": "libri/la-strada",
+      "title": "Dettaglio libro",
+      "description": "Pagina dinamica dettaglio libro alimentata dalla collection libri.",
+      "manifestHref": "/mcp-manifests/libri/la-strada.json",
+      "contractHref": "/schemas/libri/la-strada.schema.json",
+      "sectionTypes": [
+        "footer",
+        "book-detail"
+      ]
+    },
+    {
+      "slug": "libri/le-citta-invisibili",
+      "title": "Dettaglio libro",
+      "description": "Pagina dinamica dettaglio libro alimentata dalla collection libri.",
+      "manifestHref": "/mcp-manifests/libri/le-citta-invisibili.json",
+      "contractHref": "/schemas/libri/le-citta-invisibili.schema.json",
+      "sectionTypes": [
+        "footer",
+        "book-detail"
+      ]
+    },
+    {
+      "slug": "libri/le-correzioni",
+      "title": "Dettaglio libro",
+      "description": "Pagina dinamica dettaglio libro alimentata dalla collection libri.",
+      "manifestHref": "/mcp-manifests/libri/le-correzioni.json",
+      "contractHref": "/schemas/libri/le-correzioni.schema.json",
+      "sectionTypes": [
+        "footer",
+        "book-detail"
+      ]
+    },
+    {
+      "slug": "libri/lessico-famigliare",
+      "title": "Dettaglio libro",
+      "description": "Pagina dinamica dettaglio libro alimentata dalla collection libri.",
+      "manifestHref": "/mcp-manifests/libri/lessico-famigliare.json",
+      "contractHref": "/schemas/libri/lessico-famigliare.schema.json",
+      "sectionTypes": [
+        "footer",
+        "book-detail"
+      ]
+    },
+    {
+      "slug": "libri/moby-dick",
+      "title": "Dettaglio libro",
+      "description": "Pagina dinamica dettaglio libro alimentata dalla collection libri.",
+      "manifestHref": "/mcp-manifests/libri/moby-dick.json",
+      "contractHref": "/schemas/libri/moby-dick.schema.json",
+      "sectionTypes": [
+        "footer",
+        "book-detail"
+      ]
+    },
+    {
+      "slug": "libri/neuromancer",
+      "title": "Dettaglio libro",
+      "description": "Pagina dinamica dettaglio libro alimentata dalla collection libri.",
+      "manifestHref": "/mcp-manifests/libri/neuromancer.json",
+      "contractHref": "/schemas/libri/neuromancer.schema.json",
+      "sectionTypes": [
+        "footer",
+        "book-detail"
+      ]
+    },
+    {
+      "slug": "libri/oceano-mare",
+      "title": "Dettaglio libro",
+      "description": "Pagina dinamica dettaglio libro alimentata dalla collection libri.",
+      "manifestHref": "/mcp-manifests/libri/oceano-mare.json",
+      "contractHref": "/schemas/libri/oceano-mare.schema.json",
+      "sectionTypes": [
+        "footer",
+        "book-detail"
+      ]
+    },
+    {
+      "slug": "libri/orgoglio-e-pregiudizio",
+      "title": "Dettaglio libro",
+      "description": "Pagina dinamica dettaglio libro alimentata dalla collection libri.",
+      "manifestHref": "/mcp-manifests/libri/orgoglio-e-pregiudizio.json",
+      "contractHref": "/schemas/libri/orgoglio-e-pregiudizio.schema.json",
+      "sectionTypes": [
+        "footer",
+        "book-detail"
+      ]
+    },
+    {
+      "slug": "libri/se-questo-e-un-uomo",
+      "title": "Dettaglio libro",
+      "description": "Pagina dinamica dettaglio libro alimentata dalla collection libri.",
+      "manifestHref": "/mcp-manifests/libri/se-questo-e-un-uomo.json",
+      "contractHref": "/schemas/libri/se-questo-e-un-uomo.schema.json",
+      "sectionTypes": [
+        "footer",
+        "book-detail"
+      ]
+    }
+  ]
+}
