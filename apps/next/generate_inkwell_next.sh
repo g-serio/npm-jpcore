@@ -1,9 +1,12 @@
 #!/bin/bash
 set -e
 
+# Always operate in the directory that contains this script (same contract as Vite Inkwell).
+cd "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
 echo "=============================================================="
 echo "  INKWELL JOURNAL — OlonJS Next harness generator"
-echo "  Run from the Next tenant root (apps/next or scaffold --template next)"
+echo "  CWD = script dir ($(pwd))"
 echo "  No ThemeProvider — light/dark via document.documentElement.dataset.theme"
 echo "  Collections + cross-collection relations demo"
 echo "  posts -> tags  (post.tags = tag keys)"
