@@ -70,4 +70,10 @@ describe('generate_SystemsArchitect_next.sh harness gates', () => {
     assert.doesNotMatch(src, /['"]empty-tenant['"]/);
     assert.match(src, /src\/components\/empty-tenant/);
   });
+
+  it('must force shadcn radix base non-interactively', () => {
+    const src = readScript();
+    assert.match(src, /shadcn@latest init[^\n]*--base radix/);
+    assert.match(src, /shadcn@latest init[^\n]*--defaults/);
+  });
 });
