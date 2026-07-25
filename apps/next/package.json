@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "next dev",
-    "prebuild": "node scripts/sync-pages-to-public.mjs",
+    "prebuild": "node scripts/sync-pages-to-public.mjs && node scripts/generate-llms-txt.mjs && node scripts/bake.mjs && node scripts/sitemap.mjs && node scripts/robots.mjs",
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
