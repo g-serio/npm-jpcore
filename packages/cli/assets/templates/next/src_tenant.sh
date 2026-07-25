@@ -491,10 +491,10 @@ cat << 'END_OF_FILE_CONTENT' > "package.json"
     "dist:dna": "npm run dist"
   },
   "dependencies": {
-    "@olonjs/core": "^1.1.23",
-    "@olonjs/next": "^0.0.3",
-    "@olonjs/react": "^0.1.6",
-    "@olonjs/studio": "^0.1.6",
+    "@olonjs/core": "^1.1.25",
+    "@olonjs/next": "^0.0.5",
+    "@olonjs/react": "^0.1.8",
+    "@olonjs/studio": "^0.1.8",
     "clsx": "^2.1.1",
     "lucide-react": "^0.474.0",
     "next": "^15.5.0",
@@ -827,7 +827,7 @@ import type {
 } from '@olonjs/core';
 import { AdminStudioClient } from '@/components/admin/AdminStudioClient';
 import { useCloudSave } from '@/lib/admin/useCloudSave';
-import { cloudPolicy, TENANT_ID } from '@/lib/env/tenantEnv';
+import { getCloudPolicy, TENANT_ID } from '@/lib/env/tenantEnv';
 
 const ColdSaveDrawer = lazy(() =>
   import('@/components/admin/ColdSaveDrawer').then((m) => ({ default: m.ColdSaveDrawer })),
@@ -846,6 +846,7 @@ export type AdminStudioWithCloudProps = {
  * Local save when cloud credentials are absent; cold save when Save2Repo is enabled.
  */
 export function AdminStudioWithCloud(props: AdminStudioWithCloudProps) {
+  const cloudPolicy = getCloudPolicy();
   const { cloudSaveUi, runCloudSave, closeCloudDrawer, retryCloudSave } = useCloudSave({
     apiUrl: cloudPolicy.apiUrl,
     apiKey: cloudPolicy.apiKey,
@@ -3459,6 +3460,58 @@ export function buildServerApiCandidates(raw: string): string[] {
 }
 
 END_OF_FILE_CONTENT
+echo "Creating src/lib/env/tenantEnv.test.ts..."
+cat << 'END_OF_FILE_CONTENT' > "src/lib/env/tenantEnv.test.ts"
+import assert from 'node:assert/strict';
+import { describe, it } from 'vitest';
+import { getCloudPolicy, readCloudEnvFromNext } from './tenantEnv';
+
+describe('readCloudEnvFromNext', () => {
+  it('maps OLONJS public env to cloud + Save2Repo policy inputs', () => {
+    const input = readCloudEnvFromNext({
+      NEXT_PUBLIC_OLONJS_CLOUD_URL: ' https://api.example.com ',
+      NEXT_PUBLIC_OLONJS_API_KEY: ' key ',
+      NEXT_PUBLIC_OLONJS_SAVE2REPO: 'true',
+    });
+    assert.equal(input.apiUrl, 'https://api.example.com');
+    assert.equal(input.apiKey, 'key');
+    assert.equal(input.save2RepoFlag, true);
+  });
+
+  it('treats SAVE2REPO other than exact "true" as off', () => {
+    const input = readCloudEnvFromNext({
+      NEXT_PUBLIC_OLONJS_CLOUD_URL: 'https://api.example.com',
+      NEXT_PUBLIC_OLONJS_API_KEY: 'key',
+      NEXT_PUBLIC_OLONJS_SAVE2REPO: '1',
+    });
+    assert.equal(input.save2RepoFlag, false);
+  });
+});
+
+describe('getCloudPolicy', () => {
+  it('enables cold save and disables local save when credentials + Save2Repo', () => {
+    const policy = getCloudPolicy({
+      NEXT_PUBLIC_OLONJS_CLOUD_URL: 'https://api.example.com',
+      NEXT_PUBLIC_OLONJS_API_KEY: 'key',
+      NEXT_PUBLIC_OLONJS_SAVE2REPO: 'true',
+    });
+    assert.equal(policy.isCloudMode, true);
+    assert.equal(policy.bootSource, 'static');
+    assert.equal(policy.showLocalSave, false);
+    assert.equal(policy.showColdSave, true);
+  });
+
+  it('stays local when credentials are missing', () => {
+    const policy = getCloudPolicy({
+      NEXT_PUBLIC_OLONJS_SAVE2REPO: 'true',
+    });
+    assert.equal(policy.isCloudMode, false);
+    assert.equal(policy.showLocalSave, true);
+    assert.equal(policy.showColdSave, false);
+  });
+});
+
+END_OF_FILE_CONTENT
 echo "Creating src/lib/env/tenantEnv.ts..."
 cat << 'END_OF_FILE_CONTENT' > "src/lib/env/tenantEnv.ts"
 import { resolveCloudPolicy, type CloudEnvInput, type CloudPolicy } from '@olonjs/react';
@@ -3468,18 +3521,43 @@ import { resolveCloudPolicy, type CloudEnvInput, type CloudPolicy } from '@olonj
  * Prefer NEXT_PUBLIC_OLONJS_* ; also accept NEXT_PUBLIC_JSONPAGES_* and
  * NEXT_PUBLIC_SAVE2REPO (alpha-style flag name under the Next public prefix).
  *
- * Note: `import.meta.env` / VITE_* are not available in the Next client bundle
- * unless mirrored via next.config — do not call readCloudEnvFromVite here.
+ * CRITICAL: default path MUST use direct `process.env.NEXT_PUBLIC_*` property
+ * access so the Next client bundler can inline values at build time.
+ * Indexing via `const env = process.env; env.NEXT_PUBLIC_…` stays empty in the
+ * browser → Studio always thinks it is Local → save-to-file → EROFS on Vercel.
+ *
+ * Pass `env` only in unit tests.
  */
 export function readCloudEnvFromNext(
-  env: Record<string, string | undefined> = typeof process !== 'undefined' ? process.env : {},
+  env?: Record<string, string | undefined>,
 ): CloudEnvInput {
-  const apiUrl =
-    (env.NEXT_PUBLIC_OLONJS_CLOUD_URL ?? env.NEXT_PUBLIC_JSONPAGES_CLOUD_URL ?? '').trim();
-  const apiKey =
-    (env.NEXT_PUBLIC_OLONJS_API_KEY ?? env.NEXT_PUBLIC_JSONPAGES_API_KEY ?? '').trim();
+  if (env) {
+    const apiUrl =
+      (env.NEXT_PUBLIC_OLONJS_CLOUD_URL ?? env.NEXT_PUBLIC_JSONPAGES_CLOUD_URL ?? '').trim();
+    const apiKey =
+      (env.NEXT_PUBLIC_OLONJS_API_KEY ?? env.NEXT_PUBLIC_JSONPAGES_API_KEY ?? '').trim();
+    const save2RepoRaw =
+      env.NEXT_PUBLIC_OLONJS_SAVE2REPO ?? env.NEXT_PUBLIC_SAVE2REPO ?? '';
+    return {
+      apiUrl,
+      apiKey,
+      save2RepoFlag: save2RepoRaw === 'true',
+    };
+  }
+
+  const apiUrl = (
+    process.env.NEXT_PUBLIC_OLONJS_CLOUD_URL ??
+    process.env.NEXT_PUBLIC_JSONPAGES_CLOUD_URL ??
+    ''
+  ).trim();
+  const apiKey = (
+    process.env.NEXT_PUBLIC_OLONJS_API_KEY ??
+    process.env.NEXT_PUBLIC_JSONPAGES_API_KEY ??
+    ''
+  ).trim();
   const save2RepoRaw =
-    env.NEXT_PUBLIC_OLONJS_SAVE2REPO ?? env.NEXT_PUBLIC_SAVE2REPO ?? '';
+    process.env.NEXT_PUBLIC_OLONJS_SAVE2REPO ?? process.env.NEXT_PUBLIC_SAVE2REPO ?? '';
+
   return {
     apiUrl,
     apiKey,
@@ -3487,8 +3565,13 @@ export function readCloudEnvFromNext(
   };
 }
 
-/** Single policy path for the Next admin island. */
-export const cloudPolicy: CloudPolicy = resolveCloudPolicy(readCloudEnvFromNext());
+/** Resolve policy (call from client components; do not cache across env shapes in tests). */
+export function getCloudPolicy(env?: Record<string, string | undefined>): CloudPolicy {
+  return resolveCloudPolicy(readCloudEnvFromNext(env));
+}
+
+/** Module policy for the Next admin island (build-time inlined NEXT_PUBLIC_*). */
+export const cloudPolicy: CloudPolicy = getCloudPolicy();
 
 export const CLOUD_API_URL = cloudPolicy.apiUrl;
 export const CLOUD_API_KEY = cloudPolicy.apiKey;

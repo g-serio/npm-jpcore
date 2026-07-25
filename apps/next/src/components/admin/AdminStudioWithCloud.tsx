@@ -11,7 +11,7 @@ import type {
 } from '@olonjs/core';
 import { AdminStudioClient } from '@/components/admin/AdminStudioClient';
 import { useCloudSave } from '@/lib/admin/useCloudSave';
-import { cloudPolicy, TENANT_ID } from '@/lib/env/tenantEnv';
+import { getCloudPolicy, TENANT_ID } from '@/lib/env/tenantEnv';
 
 const ColdSaveDrawer = lazy(() =>
   import('@/components/admin/ColdSaveDrawer').then((m) => ({ default: m.ColdSaveDrawer })),
@@ -30,6 +30,7 @@ export type AdminStudioWithCloudProps = {
  * Local save when cloud credentials are absent; cold save when Save2Repo is enabled.
  */
 export function AdminStudioWithCloud(props: AdminStudioWithCloudProps) {
+  const cloudPolicy = getCloudPolicy();
   const { cloudSaveUi, runCloudSave, closeCloudDrawer, retryCloudSave } = useCloudSave({
     apiUrl: cloudPolicy.apiUrl,
     apiKey: cloudPolicy.apiKey,
