@@ -64,9 +64,70 @@ echo "-- Preflight: checking app/layout.tsx..."
 if [[ -f app/layout.tsx ]]; then
   echo "   app/layout.tsx found"
 else
-  echo "!! app/layout.tsx NOT found — run this script from the Next tenant root"
+  echo "!! app/layout.tsx NOT found — this script cds to its own directory; place it in the Next tenant root"
   exit 1
 fi
+
+# -----------------------------------------------------------------------------
+# CLEAN DNA DEMO — remove marketplace seed capsules before Inkwell write
+# (same contract as generate_SystemsArchitect.sh — leftover imports break build)
+# -----------------------------------------------------------------------------
+echo "-- Cleaning demo capsules / collections / pages..."
+rm -rf \
+  src/components/authors-list \
+  src/components/books-list \
+  src/components/book-detail \
+  src/components/form-demo \
+  src/collections/autori \
+  src/collections/libri \
+  src/data/collections/autori \
+  src/data/collections/libri \
+  src/data/pages/authors \
+  src/data/pages/libri \
+  public/pages \
+  public/collections
+rm -f \
+  src/data/pages/home.json \
+  src/data/pages/authors.json \
+  src/data/pages/libri.json \
+  src/data/pages/form.json \
+  public/config/site.json
+
+# Drop books-list special-case so deleted capsules cannot break the visitor RSC path.
+echo "-- Resetting VisitorSection to registry-only..."
+mkdir -p src/lib
+cat > src/lib/VisitorSection.tsx << 'EOF'
+import type { FC } from 'react';
+import type { Section, SectionType } from '@/types';
+import { ComponentRegistry } from '@/lib/ComponentRegistry';
+
+export type VisitorSectionExtras = {
+  authorId?: string | null;
+  page?: number;
+  pathname?: string;
+};
+
+/** Render a resolved page section via the tenant ComponentRegistry (RSC path). */
+export function VisitorSection({
+  section,
+}: {
+  section: Section;
+  extras?: VisitorSectionExtras;
+}) {
+  const type = section.type as SectionType;
+  const Comp = ComponentRegistry[type];
+  if (!Comp) {
+    return (
+      <section className="px-6 py-8 text-muted-foreground">
+        Unknown section type: {String(section.type)}
+      </section>
+    );
+  }
+
+  const View = Comp as FC<{ data: unknown; settings?: unknown }>;
+  return <View data={section.data} settings={section.settings} />;
+}
+EOF
 
 # -----------------------------------------------------------------------------
 # DIRECTORIES

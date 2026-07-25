@@ -32,8 +32,6 @@ npx shadcn@latest add --yes --overwrite \
   label textarea select checkbox switch toggle toggle-group scroll-area aspect-ratio
 echo "   shadcn/ui components installed"
 
-echo "   shadcn/ui components installed"
-
 # -----------------------------------------------------------------------------
 # PREFLIGHT — Next App Router layout must exist
 # -----------------------------------------------------------------------------

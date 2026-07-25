@@ -47,4 +47,12 @@ describe('generate_inkwell_next.sh harness gates', () => {
     const src = readScript();
     assert.match(src, /cd "\$\(cd "\$\(dirname "\$\{BASH_SOURCE\[0\]\}"\)" && pwd\)"/);
   });
+
+  it('must clean DNA demo capsules before writing Inkwell', () => {
+    const src = readScript();
+    assert.match(src, /Cleaning demo capsules/);
+    assert.match(src, /rm -rf \\\s*\n\s*src\/components\/books-list/m);
+    assert.match(src, /cat > src\/lib\/VisitorSection\.tsx/);
+    assert.doesNotMatch(src, /from '@\/components\/books-list'/);
+  });
 });
