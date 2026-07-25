@@ -532,6 +532,8 @@ export type HeaderSettings = z.infer<typeof BaseSectionSettingsSchema>;
 EOF
 
 cat > src/components/header/View.tsx << 'EOF'
+'use client';
+
 import React from 'react';
 import { Button } from '@/components/ui/button';
 import {
