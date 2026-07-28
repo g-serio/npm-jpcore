@@ -1817,9 +1817,9 @@ cat << 'END_OF_FILE_CONTENT' > "package.json"
     "@tiptap/extension-link": "^2.11.5",
     "@tiptap/react": "^2.11.5",
     "@tiptap/starter-kit": "^2.11.5",
-    "@olonjs/core": "^1.1.27",
-    "@olonjs/react": "^0.1.10",
-    "@olonjs/studio": "^0.1.10",
+    "@olonjs/core": "^1.1.28",
+    "@olonjs/react": "^0.1.11",
+    "@olonjs/studio": "^0.1.11",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "lucide-react": "^0.474.0",
@@ -3176,7 +3176,7 @@ async function main() {
     try {
       await page.evaluate(
         async ({ toolName, slug, sectionId, fieldKey, value }) => {
-          const runtime = navigator.modelContextTesting;
+          const runtime = document.modelContextTesting;
           if (!runtime?.executeTool) return;
           await runtime.executeTool(
             toolName,
@@ -3242,7 +3242,7 @@ async function main() {
     }
 
     const toolNames = await page.evaluate(() => {
-      const runtime = navigator.modelContextTesting;
+      const runtime = document.modelContextTesting;
       return runtime?.listTools?.().map((tool) => tool.name) ?? [];
     });
     if (!toolNames.includes(target.toolName)) {
@@ -3251,9 +3251,9 @@ async function main() {
 
     const rawResult = await page.evaluate(
       async ({ toolName, slug, sectionId, fieldKey, value }) => {
-        const runtime = navigator.modelContextTesting;
+        const runtime = document.modelContextTesting;
         if (!runtime?.executeTool) {
-          throw new Error('navigator.modelContextTesting.executeTool is unavailable.');
+          throw new Error('document.modelContextTesting.executeTool is unavailable.');
         }
         return runtime.executeTool(
           toolName,

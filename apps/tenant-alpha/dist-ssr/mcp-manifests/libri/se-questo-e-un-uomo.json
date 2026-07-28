@@ -1,7 +1,7 @@
 {
   "version": "1.0.0",
   "kind": "olonjs-page-mcp-manifest",
-  "generatedAt": "2026-07-25T13:02:00.828Z",
+  "generatedAt": "2026-07-25T15:13:57.554Z",
   "slug": "libri/se-questo-e-un-uomo",
   "title": "Dettaglio libro",
   "description": "Pagina dinamica dettaglio libro alimentata dalla collection libri.",

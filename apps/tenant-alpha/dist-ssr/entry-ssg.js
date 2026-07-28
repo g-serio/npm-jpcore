@@ -31696,7 +31696,7 @@ const enumType = ZodEnum.create;
 ZodPromise.create;
 ZodOptional.create;
 ZodNullable.create;
-function tt$1(e, t) {
+function ot(e, t) {
   return t.header != null && e["global-header"] !== false;
 }
 function x(e) {
@@ -31713,7 +31713,7 @@ function H(e) {
 function Te$1(e) {
   return e.replace(/~1/g, "/").replace(/~0/g, "~");
 }
-function Ze(e, t) {
+function Ge(e, t) {
   if (!t || t === "#") return e;
   const o = t.startsWith("#") ? t.slice(1) : t;
   if (!o || o === "/") return e;
@@ -31743,14 +31743,14 @@ function B(e) {
     }
   return n.join("/");
 }
-function It(e) {
+function Ot(e) {
   const t = B(e), o = t.lastIndexOf("/");
   return o === -1 ? "" : t.slice(0, o);
 }
-function Ot(e, t) {
+function Et$1(e, t) {
   const o = /* @__PURE__ */ new Set(), r2 = B(e);
   r2 && o.add(r2);
-  const n = It(t), s = B(n ? `${n}/${e}` : e);
+  const n = Ot(t), s = B(n ? `${n}/${e}` : e);
   return s && o.add(s), Array.from(o);
 }
 function R(e) {
@@ -31779,7 +31779,7 @@ function Ce(e, t) {
   }
   return o;
 }
-function Et$1(e, t) {
+function zt(e, t) {
   if (!e) return null;
   const o = t[e.source];
   if (!x(o)) return null;
@@ -31789,7 +31789,7 @@ function Et$1(e, t) {
     currentItem: r2
   };
 }
-function zt({
+function $t$1({
   pages: e,
   siteConfig: t,
   themeConfig: o,
@@ -31814,7 +31814,7 @@ function zt({
   }
   return i;
 }
-function $t$1(e, t, o) {
+function _t$1(e, t, o) {
   var i, l, a;
   if (e.trim() === "collection:current") {
     const c = (i = o.collectionContext) == null ? void 0 : i.currentItem;
@@ -31829,13 +31829,13 @@ function $t$1(e, t, o) {
   if (!r2) {
     const c = B(t), p = o.documents.get(c);
     if (p === void 0) return null;
-    const g = Ze(p, s);
+    const g = Ge(p, s);
     return g === void 0 ? null : { value: g, documentPath: c };
   }
-  for (const c of Ot(r2, t)) {
+  for (const c of Et$1(r2, t)) {
     const p = o.documents.get(c);
     if (p === void 0) continue;
-    const g = Ze(p, s);
+    const g = Ge(p, s);
     if (g !== void 0)
       return { value: g, documentPath: c };
   }
@@ -31858,7 +31858,7 @@ function F(e, t, o) {
       );
       return ee$1(a) ? { ...a, ...p } : a;
     }
-    const n = $t$1(e.$ref, t, o);
+    const n = _t$1(e.$ref, t, o);
     if (!n)
       return console.warn("[JsonPages] Unresolved $ref", e.$ref), Object.fromEntries(
         Object.entries(e).map(([a, c]) => [a, F(c, t, o)])
@@ -31885,7 +31885,7 @@ function le(e, t, o, r2) {
     collectionContext: r2
   });
 }
-function ot(e, t, o) {
+function rt$1(e, t, o) {
   const r2 = e.collection;
   if (!r2) return null;
   const n = String(r2.source), s = r2.paramKey, i = t[s];
@@ -31900,10 +31900,10 @@ function ot(e, t, o) {
     currentItem: a
   };
 }
-function _t$1(e) {
+function Mt$1(e) {
   return x(e) && typeof e.label == "string" && typeof e.href == "string";
 }
-function Mt$1(e) {
+function Rt$1(e) {
   if (!H(e)) return null;
   const t = e.$ref.trim(), [o, r2 = ""] = t.split("#");
   if (!/menu\.json$/i.test(o)) return null;
@@ -31914,16 +31914,16 @@ function Mt$1(e) {
 }
 function Pe$1(e) {
   return x(e) ? Object.entries(e).map(([t, o]) => {
-    const r2 = Mt$1(o);
+    const r2 = Rt$1(o);
     return r2 ? { fieldKey: t, path: r2 } : null;
   }).filter((t) => t != null) : [];
 }
-function rt$1(e, t, o) {
+function nt(e, t, o) {
   if (t.length === 0) return o;
   const [r2, ...n] = t, s = x(e) ? e : {};
   return {
     ...s,
-    [r2]: rt$1(s[r2], n, o)
+    [r2]: nt(s[r2], n, o)
   };
 }
 function fe(e, t) {
@@ -31953,11 +31953,11 @@ function Ae$1(e, t, o) {
   for (const l of r2) {
     n[l.fieldKey] !== void 0 && (s[l.fieldKey] = n[l.fieldKey]);
     const a = t[l.fieldKey];
-    Array.isArray(a) && (i = rt$1(i, l.path, a));
+    Array.isArray(a) && (i = nt(i, l.path, a));
   }
   return { normalizedData: s, menuDraft: i };
 }
-function Rt$1(e, t) {
+function Nt(e, t) {
   if (!H(e)) return null;
   const o = e.$ref.trim();
   if (o === "collection:current")
@@ -31973,14 +31973,14 @@ function Rt$1(e, t) {
     ...a ? { itemId: a } : {}
   };
 }
-function nt(e, t) {
+function st$1(e, t) {
   return x(e) ? Object.entries(e).map(([o, r2]) => {
-    const n = Rt$1(r2, t);
+    const n = Nt(r2, t);
     return n ? { fieldKey: o, ...n } : null;
   }).filter((o) => o != null) : [];
 }
-function Nt(e, t, o, r2, n) {
-  const s = nt(e, r2);
+function Wt(e, t, o, r2, n) {
+  const s = st$1(e, r2);
   if (s.length === 0)
     return { normalizedData: t, collectionsDraft: o };
   const i = x(e) ? e : {}, l = { ...t }, a = R(o ?? {});
@@ -32007,7 +32007,7 @@ function Nt(e, t, o, r2, n) {
     collectionsDraft: Ce(a, n)
   };
 }
-function Ge(e, t, o) {
+function Ve(e, t, o) {
   if (!e || !t || !x(t.data))
     return { section: t, menuDraft: o };
   const { normalizedData: r2, menuDraft: n } = Ae$1(
@@ -32020,15 +32020,15 @@ function Ge(e, t, o) {
     menuDraft: n
   };
 }
-function st$1(e, t, o) {
+function it$1(e, t, o) {
   let r2 = o;
-  const n = Ge(
+  const n = Ve(
     e.header,
     t.header,
     r2
   );
   r2 = n.menuDraft;
-  const s = Ge(
+  const s = Ve(
     e.footer,
     t.footer,
     r2
@@ -32042,21 +32042,21 @@ function st$1(e, t, o) {
     menuDraft: r2
   };
 }
-function it$1(e) {
+function at$1(e) {
   if (!x(e)) return null;
   const t = e.menu;
-  return Array.isArray(t) && t.every(_t$1) ? t : null;
+  return Array.isArray(t) && t.every(Mt$1) ? t : null;
 }
 function Ie(e, t) {
-  return it$1(e) ?? (Array.isArray(t) ? t : []);
+  return at$1(e) ?? (Array.isArray(t) ? t : []);
 }
-function at$1(e, t) {
-  const o = it$1(e.data);
+function lt$1(e, t) {
+  const o = at$1(e.data);
   if (o) return o;
   if (e.type === "header") return Array.isArray(t) ? t : [];
 }
 function Oe(e) {
-  const t = Ce(e.collections, e.collectionSchemas), o = Et$1(e.collectionContext, t), r2 = zt({
+  const t = Ce(e.collections, e.collectionSchemas), o = zt(e.collectionContext, t), r2 = $t$1({
     ...e,
     collections: t
   });
@@ -32079,8 +32079,8 @@ function Oe(e) {
     collectionContext: o
   };
 }
-const Wt = "olonjs:webmcp:tool-call", Lt = "olonjs:webmcp:tool-result";
-function Kt(e) {
+const Lt = "olonjs:webmcp:tool-call", Kt = "olonjs:webmcp:tool-result";
+function Ft$1(e) {
   return e == null ? e : JSON.parse(JSON.stringify(e));
 }
 function Ee$1(e) {
@@ -32114,10 +32114,10 @@ function xe(e) {
   return { schema: t, isOptional: o, isNullable: r2, defaultValue: n };
 }
 function O(e, t, o) {
-  const r2 = Kt(t) ?? {};
+  const r2 = Ft$1(t) ?? {};
   return e.description && r2.description == null && (r2.description = e.description), o.defaultValue !== void 0 && r2.default == null && (r2.default = o.defaultValue), o.isNullable ? { anyOf: [r2, { type: "null" }] } : r2;
 }
-function Ft$1(e) {
+function Bt(e) {
   const t = [];
   let o = null;
   for (const r2 of e) {
@@ -32192,7 +32192,7 @@ function q$1(e) {
         t
       );
     case ZodFirstPartyTypeKind.ZodUnion: {
-      const n = o._def.options, s = Ft$1(n);
+      const n = o._def.options, s = Bt(n);
       return s ? O(e, s, t) : O(
         e,
         { anyOf: n.map((i) => q$1(i)) },
@@ -32203,7 +32203,7 @@ function q$1(e) {
       return O(e, {}, t);
   }
 }
-function Bt() {
+function Dt() {
   return {
     type: "object",
     additionalProperties: false,
@@ -32258,11 +32258,11 @@ function Bt() {
     ]
   };
 }
-function Dt(e) {
+function Ut(e) {
   const t = e.data && typeof e.data == "object" ? e.data : {};
   return typeof t.title == "string" && t.title.trim() ? t.title.trim() : typeof t.sectionTitle == "string" && t.sectionTitle.trim() ? t.sectionTitle.trim() : typeof t.label == "string" && t.label.trim() ? t.label.trim() : e.type ?? "section";
 }
-function Ut() {
+function Zt() {
   return "update-section";
 }
 function pe$1(e) {
@@ -32271,7 +32271,7 @@ function pe$1(e) {
 function ge(e) {
   return `/mcp-manifests/${e}.json`;
 }
-function Zt(e, t) {
+function Gt(e, t) {
   const o = Array.isArray(e == null ? void 0 : e.sections) ? e.sections : [], r2 = [];
   return t.header && e["global-header"] !== false && r2.push({ ...t.header, scope: "global" }), t.footer && r2.push({ ...t.footer, scope: "global" }), [
     ...r2,
@@ -32286,7 +32286,7 @@ function ze({
   siteConfig: n
 }) {
   var z, C;
-  const s = typeof ((z = t.meta) == null ? void 0 : z.title) == "string" ? t.meta.title : e, i = typeof ((C = t.meta) == null ? void 0 : C.description) == "string" ? t.meta.description : "", l = Zt(t, n), a = Array.from(new Set(l.map((y) => String(y.type)).filter(Boolean))), c = Object.fromEntries(
+  const s = typeof ((z = t.meta) == null ? void 0 : z.title) == "string" ? t.meta.title : e, i = typeof ((C = t.meta) == null ? void 0 : C.description) == "string" ? t.meta.description : "", l = Gt(t, n), a = Array.from(new Set(l.map((y) => String(y.type)).filter(Boolean))), c = Object.fromEntries(
     a.filter((y) => (o == null ? void 0 : o[y]) != null).map((y) => {
       const A = o[y];
       return [y, q$1(A)];
@@ -32300,12 +32300,12 @@ function ze({
     id: y.id,
     type: String(y.type),
     scope: y.scope === "global" ? "global" : "local",
-    label: Dt(y)
+    label: Ut(y)
   })), w = a.filter((y) => c[y] != null).length > 0 ? [
     {
-      name: Ut(),
+      name: Zt(),
       description: "Update a section field in the Studio draft. Does not persist — call save when all updates are complete. Use sectionType to select the matching schema from sectionSchemas.",
-      inputSchema: Bt()
+      inputSchema: Dt()
     },
     {
       name: "save",
@@ -32339,8 +32339,8 @@ function $e(e) {
     contractHref: pe$1(e.slug),
     transport: {
       kind: "window-message",
-      requestType: Wt,
-      resultType: Lt,
+      requestType: Lt,
+      resultType: Kt,
       target: "window"
     },
     capabilities: {
@@ -32391,7 +32391,7 @@ function _e({
     })
   };
 }
-function lt$1(e) {
+function ct$1(e) {
   var n;
   const t = ((n = e.siteConfig.identity) == null ? void 0 : n.title) || "OlonJS Site", o = _e(e);
   let r2 = `# ${t}
@@ -32417,24 +32417,24 @@ function lt$1(e) {
   }
   return r2.trim();
 }
-function Gt(e) {
+function Vt(e) {
   return e.replace(/([a-z0-9])([A-Z])/g, "$1-$2").replace(/[_\s]+/g, "-").toLowerCase();
 }
-function ct$1(e, t = [], o = {}) {
+function dt$1(e, t = [], o = {}) {
   return Object.entries(e).forEach(([r2, n]) => {
-    const s = [...t, Gt(r2)];
+    const s = [...t, Vt(r2)];
     if (typeof n == "string" || typeof n == "number") {
       o[`--theme-${s.join("-")}`] = String(n);
       return;
     }
-    n && typeof n == "object" && !Array.isArray(n) && ct$1(n, s, o);
+    n && typeof n == "object" && !Array.isArray(n) && dt$1(n, s, o);
   }), o;
 }
 function T(e, t, o, r2) {
   r2 && (e[t] = `var(${o})`);
 }
-function Vt(e) {
-  const t = ct$1(e.tokens), o = { ...t };
+function qt(e) {
+  const t = dt$1(e.tokens), o = { ...t };
   return T(o, "--theme-primary", "--theme-colors-primary", t["--theme-colors-primary"]), T(o, "--theme-secondary", "--theme-colors-secondary", t["--theme-colors-secondary"]), T(o, "--theme-accent", "--theme-colors-accent", t["--theme-colors-accent"]), T(o, "--theme-background", "--theme-colors-background", t["--theme-colors-background"]), T(o, "--theme-surface", "--theme-colors-surface", t["--theme-colors-surface"]), T(o, "--theme-surface-alt", "--theme-colors-surface-alt", t["--theme-colors-surface-alt"]), T(o, "--theme-text", "--theme-colors-text", t["--theme-colors-text"]), T(o, "--theme-text-muted", "--theme-colors-text-muted", t["--theme-colors-text-muted"]), T(o, "--theme-border", "--theme-colors-border", t["--theme-colors-border"]), T(
     o,
     "--theme-font-primary",
@@ -32452,14 +32452,14 @@ function Vt(e) {
     t["--theme-typography-font-family-display"]
   ), T(o, "--theme-radius-sm", "--theme-border-radius-sm", t["--theme-border-radius-sm"]), T(o, "--theme-radius-md", "--theme-border-radius-md", t["--theme-border-radius-md"]), T(o, "--theme-radius-lg", "--theme-border-radius-lg", t["--theme-border-radius-lg"]), o;
 }
-function qt(e, t, o) {
+function Jt(e, t, o) {
   const r2 = [...e.sections], n = r2.findIndex((l) => l.id === t);
   if (n === -1 || o < 0 || o >= r2.length)
     return e;
   const [s] = r2.splice(n, 1), i = o > n ? o - 1 : o;
   return r2.splice(Math.min(i, r2.length), 0, s), { ...e, sections: r2 };
 }
-function Jt(e, t, o) {
+function Ht(e, t, o) {
   const r2 = {
     id: crypto.randomUUID(),
     type: t,
@@ -32474,12 +32474,12 @@ function Jt(e, t, o) {
     section: r2
   };
 }
-function Ht(e, t) {
+function Yt(e, t) {
   if (!t) return e;
   const o = e[e.length - 1];
   return o && o.itemId == null && o.fieldKey === t ? e : [...e, { fieldKey: t }];
 }
-function Yt(e, t) {
+function Qt(e, t) {
   var s, i, l;
   const o = [];
   let r2 = null, n = e;
@@ -32491,9 +32491,9 @@ function Yt(e, t) {
     }
     n = n.parentElement;
   }
-  return o.reverse(), Ht(o, r2);
+  return o.reverse(), Yt(o, r2);
 }
-const Qt = {
+const Xt = {
   UPDATE_DRAFTS: "jsonpages:update-drafts",
   SYNC_SELECTION: "jsonpages:sync-selection",
   SECTION_SELECT: "jsonpages:section-select",
@@ -32505,84 +32505,84 @@ const Qt = {
   STAGE_READY: "jsonpages:stage-ready",
   WEBMCP_TOOL_CALL: "olonjs:webmcp:tool-call",
   WEBMCP_TOOL_RESULT: "olonjs:webmcp:tool-result"
-}, lr = /* @__PURE__ */ Object.freeze(/* @__PURE__ */ Object.defineProperty({
+}, dr = /* @__PURE__ */ Object.freeze(/* @__PURE__ */ Object.defineProperty({
   __proto__: null,
-  STUDIO_EVENTS: Qt,
-  appendDraftSection: Jt,
-  applyCollectionRefBindingsToDraft: Nt,
+  STUDIO_EVENTS: Xt,
+  appendDraftSection: Ht,
+  applyCollectionRefBindingsToDraft: Wt,
   applyMenuRefBindingsToDraft: Ae$1,
-  applySiteMenuRefBindingsToDraft: st$1,
-  buildLlmsTxt: lt$1,
+  applySiteMenuRefBindingsToDraft: it$1,
+  buildLlmsTxt: ct$1,
   buildPageContract: ze,
   buildPageContractHref: pe$1,
   buildPageManifest: $e,
   buildPageManifestHref: ge,
-  buildSelectionPath: Yt,
+  buildSelectionPath: Qt,
   buildSiteManifest: _e,
-  buildThemeVariableMap: Vt,
-  getCollectionRefBindings: nt,
+  buildThemeVariableMap: qt,
+  getCollectionRefBindings: st$1,
   getMenuRefBindings: Pe$1,
-  reorderPageSections: qt,
-  resolveCollectionContext: ot,
+  reorderPageSections: Jt,
+  resolveCollectionContext: rt$1,
   resolveHeaderMenuItems: Ie,
   resolveRuntimeConfig: Oe,
-  resolveSectionMenuItems: at$1,
-  shouldRenderSiteGlobalHeader: tt$1,
+  resolveSectionMenuItems: lt$1,
+  shouldRenderSiteGlobalHeader: ot,
   validateCollectionDocuments: Ce
 }, Symbol.toStringTag, { value: "Module" }));
-function ft$1(e) {
+function mt$1(e) {
   var t, o, r2 = "";
   if (typeof e == "string" || typeof e == "number") r2 += e;
   else if (typeof e == "object") if (Array.isArray(e)) {
     var n = e.length;
-    for (t = 0; t < n; t++) e[t] && (o = ft$1(e[t])) && (r2 && (r2 += " "), r2 += o);
+    for (t = 0; t < n; t++) e[t] && (o = mt$1(e[t])) && (r2 && (r2 += " "), r2 += o);
   } else for (o in e) e[o] && (r2 && (r2 += " "), r2 += o);
   return r2;
 }
-function lo() {
-  for (var e, t, o = 0, r2 = "", n = arguments.length; o < n; o++) (e = arguments[o]) && (t = ft$1(e)) && (r2 && (r2 += " "), r2 += t);
+function uo() {
+  for (var e, t, o = 0, r2 = "", n = arguments.length; o < n; o++) (e = arguments[o]) && (t = mt$1(e)) && (r2 && (r2 += " "), r2 += t);
   return r2;
 }
-const co = (e, t) => {
+const fo = (e, t) => {
   const o = new Array(e.length + t.length);
   for (let r2 = 0; r2 < e.length; r2++)
     o[r2] = e[r2];
   for (let r2 = 0; r2 < t.length; r2++)
     o[e.length + r2] = t[r2];
   return o;
-}, uo = (e, t) => ({
+}, mo = (e, t) => ({
   classGroupId: e,
   validator: t
-}), mt$1 = (e = /* @__PURE__ */ new Map(), t = null, o) => ({
+}), pt$1 = (e = /* @__PURE__ */ new Map(), t = null, o) => ({
   nextPart: e,
   validators: t,
   classGroupId: o
-}), me$1 = "-", qe = [], fo = "arbitrary..", mo = (e) => {
-  const t = go(e), {
+}), me$1 = "-", Je = [], po = "arbitrary..", go = (e) => {
+  const t = ho(e), {
     conflictingClassGroups: o,
     conflictingClassGroupModifiers: r2
   } = e;
   return {
     getClassGroupId: (i) => {
       if (i.startsWith("[") && i.endsWith("]"))
-        return po(i);
+        return bo(i);
       const l = i.split(me$1), a = l[0] === "" && l.length > 1 ? 1 : 0;
-      return pt$1(l, a, t);
+      return gt$1(l, a, t);
     },
     getConflictingClassGroupIds: (i, l) => {
       if (l) {
         const a = r2[i], c = o[i];
-        return a ? c ? co(c, a) : a : c || qe;
+        return a ? c ? fo(c, a) : a : c || Je;
       }
-      return o[i] || qe;
+      return o[i] || Je;
     }
   };
-}, pt$1 = (e, t, o) => {
+}, gt$1 = (e, t, o) => {
   if (e.length - t === 0)
     return o.classGroupId;
   const n = e[t], s = o.nextPart.get(n);
   if (s) {
-    const c = pt$1(e, t + 1, s);
+    const c = gt$1(e, t + 1, s);
     if (c) return c;
   }
   const i = o.validators;
@@ -32594,63 +32594,63 @@ const co = (e, t) => {
     if (p.validator(l))
       return p.classGroupId;
   }
-}, po = (e) => e.slice(1, -1).indexOf(":") === -1 ? void 0 : (() => {
+}, bo = (e) => e.slice(1, -1).indexOf(":") === -1 ? void 0 : (() => {
   const t = e.slice(1, -1), o = t.indexOf(":"), r2 = t.slice(0, o);
-  return r2 ? fo + r2 : void 0;
-})(), go = (e) => {
+  return r2 ? po + r2 : void 0;
+})(), ho = (e) => {
   const {
     theme: t,
     classGroups: o
   } = e;
-  return bo(o, t);
-}, bo = (e, t) => {
-  const o = mt$1();
+  return yo(o, t);
+}, yo = (e, t) => {
+  const o = pt$1();
   for (const r2 in e) {
     const n = e[r2];
-    Me(n, o, r2, t);
+    Re(n, o, r2, t);
   }
   return o;
-}, Me = (e, t, o, r2) => {
+}, Re = (e, t, o, r2) => {
   const n = e.length;
   for (let s = 0; s < n; s++) {
     const i = e[s];
-    ho(i, t, o, r2);
+    wo(i, t, o, r2);
   }
-}, ho = (e, t, o, r2) => {
+}, wo = (e, t, o, r2) => {
   if (typeof e == "string") {
-    yo(e, t, o);
+    vo(e, t, o);
     return;
   }
   if (typeof e == "function") {
-    wo(e, t, o, r2);
+    ko(e, t, o, r2);
     return;
   }
-  vo(e, t, o, r2);
-}, yo = (e, t, o) => {
-  const r2 = e === "" ? t : gt$1(t, e);
+  xo(e, t, o, r2);
+}, vo = (e, t, o) => {
+  const r2 = e === "" ? t : bt$1(t, e);
   r2.classGroupId = o;
-}, wo = (e, t, o, r2) => {
-  if (ko(e)) {
-    Me(e(r2), t, o, r2);
+}, ko = (e, t, o, r2) => {
+  if (So(e)) {
+    Re(e(r2), t, o, r2);
     return;
   }
-  t.validators === null && (t.validators = []), t.validators.push(uo(o, e));
-}, vo = (e, t, o, r2) => {
+  t.validators === null && (t.validators = []), t.validators.push(mo(o, e));
+}, xo = (e, t, o, r2) => {
   const n = Object.entries(e), s = n.length;
   for (let i = 0; i < s; i++) {
     const [l, a] = n[i];
-    Me(a, gt$1(t, l), o, r2);
+    Re(a, bt$1(t, l), o, r2);
   }
-}, gt$1 = (e, t) => {
+}, bt$1 = (e, t) => {
   let o = e;
   const r2 = t.split(me$1), n = r2.length;
   for (let s = 0; s < n; s++) {
     const i = r2[s];
     let l = o.nextPart.get(i);
-    l || (l = mt$1(), o.nextPart.set(i, l)), o = l;
+    l || (l = pt$1(), o.nextPart.set(i, l)), o = l;
   }
   return o;
-}, ko = (e) => "isThemeGetter" in e && e.isThemeGetter === true, xo = (e) => {
+}, So = (e) => "isThemeGetter" in e && e.isThemeGetter === true, jo = (e) => {
   if (e < 1)
     return {
       get: () => {
@@ -32674,13 +32674,13 @@ const co = (e, t) => {
       s in o ? o[s] = i : n(s, i);
     }
   };
-}, je = "!", Je = ":", So = [], He = (e, t, o, r2, n) => ({
+}, je = "!", He = ":", To = [], Ye = (e, t, o, r2, n) => ({
   modifiers: e,
   hasImportantModifier: t,
   baseClassName: o,
   maybePostfixModifierPosition: r2,
   isExternal: n
-}), jo = (e) => {
+}), Co = (e) => {
   const {
     prefix: t,
     experimentalParseClassName: o
@@ -32692,7 +32692,7 @@ const co = (e, t) => {
     for (let C = 0; C < p; C++) {
       const y = n[C];
       if (i === 0 && l === 0) {
-        if (y === Je) {
+        if (y === He) {
           s.push(n.slice(a, C)), a = C + 1;
           continue;
         }
@@ -32713,11 +32713,11 @@ const co = (e, t) => {
       g.startsWith(je) && (w = g.slice(1), E = true)
     );
     const z = c && c > a ? c - a : void 0;
-    return He(s, E, w, z);
+    return Ye(s, E, w, z);
   };
   if (t) {
-    const n = t + Je, s = r2;
-    r2 = (i) => i.startsWith(n) ? s(i.slice(n.length)) : He(So, false, i, void 0, true);
+    const n = t + He, s = r2;
+    r2 = (i) => i.startsWith(n) ? s(i.slice(n.length)) : Ye(To, false, i, void 0, true);
   }
   if (o) {
     const n = r2;
@@ -32727,7 +32727,7 @@ const co = (e, t) => {
     });
   }
   return r2;
-}, To = (e) => {
+}, Po = (e) => {
   const t = /* @__PURE__ */ new Map();
   return e.orderSensitiveModifiers.forEach((o, r2) => {
     t.set(o, 1e6 + r2);
@@ -32740,18 +32740,18 @@ const co = (e, t) => {
     }
     return n.length > 0 && (n.sort(), r2.push(...n)), r2;
   };
-}, Co = (e) => ({
-  cache: xo(e.cacheSize),
-  parseClassName: jo(e),
-  sortModifiers: To(e),
-  ...mo(e)
-}), Po = /\s+/, Ao = (e, t) => {
+}, Ao = (e) => ({
+  cache: jo(e.cacheSize),
+  parseClassName: Co(e),
+  sortModifiers: Po(e),
+  ...go(e)
+}), Io = /\s+/, Oo = (e, t) => {
   const {
     parseClassName: o,
     getClassGroupId: r2,
     getConflictingClassGroupIds: n,
     sortModifiers: s
-  } = t, i = [], l = e.trim().split(Po);
+  } = t, i = [], l = e.trim().split(Io);
   let a = "";
   for (let c = l.length - 1; c >= 0; c -= 1) {
     const p = l[c], {
@@ -32789,46 +32789,46 @@ const co = (e, t) => {
     a = p + (a.length > 0 ? " " + a : a);
   }
   return a;
-}, Io = (...e) => {
+}, Eo = (...e) => {
   let t = 0, o, r2, n = "";
   for (; t < e.length; )
-    (o = e[t++]) && (r2 = bt$1(o)) && (n && (n += " "), n += r2);
+    (o = e[t++]) && (r2 = ht$1(o)) && (n && (n += " "), n += r2);
   return n;
-}, bt$1 = (e) => {
+}, ht$1 = (e) => {
   if (typeof e == "string")
     return e;
   let t, o = "";
   for (let r2 = 0; r2 < e.length; r2++)
-    e[r2] && (t = bt$1(e[r2])) && (o && (o += " "), o += t);
+    e[r2] && (t = ht$1(e[r2])) && (o && (o += " "), o += t);
   return o;
-}, Oo = (e, ...t) => {
+}, zo = (e, ...t) => {
   let o, r2, n, s;
   const i = (a) => {
     const c = t.reduce((p, g) => g(p), e());
-    return o = Co(c), r2 = o.cache.get, n = o.cache.set, s = l, l(a);
+    return o = Ao(c), r2 = o.cache.get, n = o.cache.set, s = l, l(a);
   }, l = (a) => {
     const c = r2(a);
     if (c)
       return c;
-    const p = Ao(a, o);
+    const p = Oo(a, o);
     return n(a, p), p;
   };
-  return s = i, (...a) => s(Io(...a));
-}, Eo = [], v = (e) => {
-  const t = (o) => o[e] || Eo;
+  return s = i, (...a) => s(Eo(...a));
+}, $o = [], v = (e) => {
+  const t = (o) => o[e] || $o;
   return t.isThemeGetter = true, t;
-}, ht$1 = /^\[(?:(\w[\w-]*):)?(.+)\]$/i, yt$1 = /^\((?:(\w[\w-]*):)?(.+)\)$/i, zo = /^\d+(?:\.\d+)?\/\d+(?:\.\d+)?$/, $o = /^(\d+(\.\d+)?)?(xs|sm|md|lg|xl)$/, _o = /\d+(%|px|r?em|[sdl]?v([hwib]|min|max)|pt|pc|in|cm|mm|cap|ch|ex|r?lh|cq(w|h|i|b|min|max))|\b(calc|min|max|clamp)\(.+\)|^0$/, Mo = /^(rgba?|hsla?|hwb|(ok)?(lab|lch)|color-mix)\(.+\)$/, Ro = /^(inset_)?-?((\d+)?\.?(\d+)[a-z]+|0)_-?((\d+)?\.?(\d+)[a-z]+|0)/, No = /^(url|image|image-set|cross-fade|element|(repeating-)?(linear|radial|conic)-gradient)\(.+\)$/, _ = (e) => zo.test(e), b = (e) => !!e && !Number.isNaN(Number(e)), M = (e) => !!e && Number.isInteger(Number(e)), ke = (e) => e.endsWith("%") && b(e.slice(0, -1)), $ = (e) => $o.test(e), wt = () => true, Wo = (e) => (
+}, yt$1 = /^\[(?:(\w[\w-]*):)?(.+)\]$/i, wt = /^\((?:(\w[\w-]*):)?(.+)\)$/i, _o = /^\d+(?:\.\d+)?\/\d+(?:\.\d+)?$/, Mo = /^(\d+(\.\d+)?)?(xs|sm|md|lg|xl)$/, Ro = /\d+(%|px|r?em|[sdl]?v([hwib]|min|max)|pt|pc|in|cm|mm|cap|ch|ex|r?lh|cq(w|h|i|b|min|max))|\b(calc|min|max|clamp)\(.+\)|^0$/, No = /^(rgba?|hsla?|hwb|(ok)?(lab|lch)|color-mix)\(.+\)$/, Wo = /^(inset_)?-?((\d+)?\.?(\d+)[a-z]+|0)_-?((\d+)?\.?(\d+)[a-z]+|0)/, Lo = /^(url|image|image-set|cross-fade|element|(repeating-)?(linear|radial|conic)-gradient)\(.+\)$/, _ = (e) => _o.test(e), b = (e) => !!e && !Number.isNaN(Number(e)), M = (e) => !!e && Number.isInteger(Number(e)), ke = (e) => e.endsWith("%") && b(e.slice(0, -1)), $ = (e) => Mo.test(e), vt$1 = () => true, Ko = (e) => (
   // `colorFunctionRegex` check is necessary because color functions can have percentages in them which which would be incorrectly classified as lengths.
   // For example, `hsl(0 0% 0%)` would be classified as a length without this check.
   // I could also use lookbehind assertion in `lengthUnitRegex` but that isn't supported widely enough.
-  _o.test(e) && !Mo.test(e)
-), Re = () => false, Lo = (e) => Ro.test(e), Ko = (e) => No.test(e), Fo = (e) => !d(e) && !u(e), Bo = (e) => N(e, xt, Re), d = (e) => ht$1.test(e), K = (e) => N(e, St, Wo), Ye = (e) => N(e, Ho, b), Do = (e) => N(e, Tt, wt), Uo = (e) => N(e, jt, Re), Qe = (e) => N(e, vt$1, Re), Zo = (e) => N(e, kt$1, Ko), ce = (e) => N(e, Ct, Lo), u = (e) => yt$1.test(e), X$1 = (e) => D(e, St), Go = (e) => D(e, jt), Xe = (e) => D(e, vt$1), Vo = (e) => D(e, xt), qo = (e) => D(e, kt$1), de = (e) => D(e, Ct, true), Jo = (e) => D(e, Tt, true), N = (e, t, o) => {
-  const r2 = ht$1.exec(e);
+  Ro.test(e) && !No.test(e)
+), Ne$1 = () => false, Fo = (e) => Wo.test(e), Bo = (e) => Lo.test(e), Do = (e) => !d(e) && !u(e), Uo = (e) => N(e, St, Ne$1), d = (e) => yt$1.test(e), K = (e) => N(e, jt, Ko), Qe = (e) => N(e, Qo, b), Zo = (e) => N(e, Ct, vt$1), Go = (e) => N(e, Tt, Ne$1), Xe = (e) => N(e, kt$1, Ne$1), Vo = (e) => N(e, xt, Bo), ce = (e) => N(e, Pt, Fo), u = (e) => wt.test(e), X$1 = (e) => D(e, jt), qo = (e) => D(e, Tt), et$1 = (e) => D(e, kt$1), Jo = (e) => D(e, St), Ho = (e) => D(e, xt), de = (e) => D(e, Pt, true), Yo = (e) => D(e, Ct, true), N = (e, t, o) => {
+  const r2 = yt$1.exec(e);
   return r2 ? r2[1] ? t(r2[1]) : o(r2[2]) : false;
 }, D = (e, t, o = false) => {
-  const r2 = yt$1.exec(e);
+  const r2 = wt.exec(e);
   return r2 ? r2[1] ? t(r2[1]) : o : false;
-}, vt$1 = (e) => e === "position" || e === "percentage", kt$1 = (e) => e === "image" || e === "url", xt = (e) => e === "length" || e === "size" || e === "bg-size", St = (e) => e === "length", Ho = (e) => e === "number", jt = (e) => e === "family-name", Tt = (e) => e === "number" || e === "weight", Ct = (e) => e === "shadow", Yo = () => {
+}, kt$1 = (e) => e === "position" || e === "percentage", xt = (e) => e === "image" || e === "url", St = (e) => e === "length" || e === "size" || e === "bg-size", jt = (e) => e === "length", Qo = (e) => e === "number", Tt = (e) => e === "family-name", Ct = (e) => e === "number" || e === "weight", Pt = (e) => e === "shadow", Xo = () => {
   const e = v("color"), t = v("font"), o = v("text"), r2 = v("font-weight"), n = v("tracking"), s = v("leading"), i = v("breakpoint"), l = v("container"), a = v("spacing"), c = v("radius"), p = v("shadow"), g = v("inset-shadow"), w = v("text-shadow"), E = v("drop-shadow"), z = v("blur"), C = v("perspective"), y = v("aspect"), A = v("ease"), oe = v("animate"), Y = () => ["auto", "avoid", "all", "avoid-page", "page", "left", "right", "column"], U = () => [
     "center",
     "top",
@@ -32847,13 +32847,13 @@ const co = (e, t) => {
     "bottom-left",
     // Deprecated since Tailwind CSS v4.1.0, see https://github.com/tailwindlabs/tailwindcss/pull/17378
     "left-bottom"
-  ], Z2 = () => [...U(), u, d], W = () => ["auto", "hidden", "clip", "visible", "scroll"], Q = () => ["auto", "contain", "none"], f = () => [u, d, a], P = () => [_, "full", "auto", ...f()], Ne2 = () => [M, "none", "subgrid", u, d], We = () => ["auto", {
+  ], Z2 = () => [...U(), u, d], W = () => ["auto", "hidden", "clip", "visible", "scroll"], Q = () => ["auto", "contain", "none"], f = () => [u, d, a], P = () => [_, "full", "auto", ...f()], We = () => [M, "none", "subgrid", u, d], Le = () => ["auto", {
     span: ["full", M, u, d]
-  }, M, u, d], re = () => [M, "auto", u, d], Le = () => ["auto", "min", "max", "fr", u, d], be2 = () => ["start", "end", "center", "between", "around", "evenly", "stretch", "baseline", "center-safe", "end-safe"], G2 = () => ["start", "end", "center", "stretch", "center-safe", "end-safe"], I = () => ["auto", ...f()], L = () => [_, "auto", "full", "dvw", "dvh", "lvw", "lvh", "svw", "svh", "min", "max", "fit", ...f()], he = () => [_, "screen", "full", "dvw", "lvw", "svw", "min", "max", "fit", ...f()], ye2 = () => [_, "screen", "full", "lh", "dvh", "lvh", "svh", "min", "max", "fit", ...f()], m = () => [e, u, d], Ke = () => [...U(), Xe, Qe, {
+  }, M, u, d], re = () => [M, "auto", u, d], Ke = () => ["auto", "min", "max", "fr", u, d], be2 = () => ["start", "end", "center", "between", "around", "evenly", "stretch", "baseline", "center-safe", "end-safe"], G2 = () => ["start", "end", "center", "stretch", "center-safe", "end-safe"], I = () => ["auto", ...f()], L = () => [_, "auto", "full", "dvw", "dvh", "lvw", "lvh", "svw", "svh", "min", "max", "fit", ...f()], he = () => [_, "screen", "full", "dvw", "lvw", "svw", "min", "max", "fit", ...f()], ye2 = () => [_, "screen", "full", "lh", "dvh", "lvh", "svh", "min", "max", "fit", ...f()], m = () => [e, u, d], Fe = () => [...U(), et$1, Xe, {
     position: [u, d]
-  }], Fe = () => ["no-repeat", {
+  }], Be = () => ["no-repeat", {
     repeat: ["", "x", "y", "space", "round"]
-  }], Be = () => ["auto", "cover", "contain", Vo, Bo, {
+  }], De = () => ["auto", "cover", "contain", Jo, Uo, {
     size: [u, d]
   }], we = () => [ke, X$1, K], S = () => [
     // Deprecated since Tailwind CSS v4.0.0
@@ -32863,7 +32863,7 @@ const co = (e, t) => {
     c,
     u,
     d
-  ], j = () => ["", b, X$1, K], ne = () => ["solid", "dashed", "dotted", "double"], De = () => ["normal", "multiply", "screen", "overlay", "darken", "lighten", "color-dodge", "color-burn", "hard-light", "soft-light", "difference", "exclusion", "hue", "saturation", "color", "luminosity"], k = () => [b, ke, Xe, Qe], Ue = () => [
+  ], j = () => ["", b, X$1, K], ne = () => ["solid", "dashed", "dotted", "double"], Ue = () => ["normal", "multiply", "screen", "overlay", "darken", "lighten", "color-dodge", "color-burn", "hard-light", "soft-light", "difference", "exclusion", "hue", "saturation", "color", "luminosity"], k = () => [b, ke, et$1, Xe], Ze = () => [
     // Deprecated since Tailwind CSS v4.0.0
     "",
     "none",
@@ -32878,11 +32878,11 @@ const co = (e, t) => {
       aspect: ["video"],
       blur: [$],
       breakpoint: [$],
-      color: [wt],
+      color: [vt$1],
       container: [$],
       "drop-shadow": [$],
       ease: ["in", "out", "in-out"],
-      font: [Fo],
+      font: [Do],
       "font-weight": ["thin", "extralight", "light", "normal", "medium", "semibold", "bold", "extrabold", "black"],
       "inset-shadow": [$],
       leading: ["none", "tight", "snug", "normal", "relaxed", "loose"],
@@ -33201,14 +33201,14 @@ const co = (e, t) => {
        * @see https://tailwindcss.com/docs/grid-template-columns
        */
       "grid-cols": [{
-        "grid-cols": Ne2()
+        "grid-cols": We()
       }],
       /**
        * Grid Column Start / End
        * @see https://tailwindcss.com/docs/grid-column
        */
       "col-start-end": [{
-        col: We()
+        col: Le()
       }],
       /**
        * Grid Column Start
@@ -33229,14 +33229,14 @@ const co = (e, t) => {
        * @see https://tailwindcss.com/docs/grid-template-rows
        */
       "grid-rows": [{
-        "grid-rows": Ne2()
+        "grid-rows": We()
       }],
       /**
        * Grid Row Start / End
        * @see https://tailwindcss.com/docs/grid-row
        */
       "row-start-end": [{
-        row: We()
+        row: Le()
       }],
       /**
        * Grid Row Start
@@ -33264,14 +33264,14 @@ const co = (e, t) => {
        * @see https://tailwindcss.com/docs/grid-auto-columns
        */
       "auto-cols": [{
-        "auto-cols": Le()
+        "auto-cols": Ke()
       }],
       /**
        * Grid Auto Rows
        * @see https://tailwindcss.com/docs/grid-auto-rows
        */
       "auto-rows": [{
-        "auto-rows": Le()
+        "auto-rows": Ke()
       }],
       /**
        * Gap
@@ -33676,7 +33676,7 @@ const co = (e, t) => {
        * @see https://tailwindcss.com/docs/font-weight
        */
       "font-weight": [{
-        font: [r2, Jo, Do]
+        font: [r2, Yo, Zo]
       }],
       /**
        * Font Stretch
@@ -33690,7 +33690,7 @@ const co = (e, t) => {
        * @see https://tailwindcss.com/docs/font-family
        */
       "font-family": [{
-        font: [Go, Uo, t]
+        font: [qo, Go, t]
       }],
       /**
        * Font Feature Settings
@@ -33741,7 +33741,7 @@ const co = (e, t) => {
        * @see https://tailwindcss.com/docs/line-clamp
        */
       "line-clamp": [{
-        "line-clamp": [b, "none", u, Ye]
+        "line-clamp": [b, "none", u, Qe]
       }],
       /**
        * Line Height
@@ -33925,21 +33925,21 @@ const co = (e, t) => {
        * @see https://tailwindcss.com/docs/background-position
        */
       "bg-position": [{
-        bg: Ke()
+        bg: Fe()
       }],
       /**
        * Background Repeat
        * @see https://tailwindcss.com/docs/background-repeat
        */
       "bg-repeat": [{
-        bg: Fe()
+        bg: Be()
       }],
       /**
        * Background Size
        * @see https://tailwindcss.com/docs/background-size
        */
       "bg-size": [{
-        bg: Be()
+        bg: De()
       }],
       /**
        * Background Image
@@ -33952,7 +33952,7 @@ const co = (e, t) => {
           }, M, u, d],
           radial: ["", u, d],
           conic: [M, u, d]
-        }, qo, Zo]
+        }, Ho, Vo]
       }],
       /**
        * Background Color
@@ -34455,14 +34455,14 @@ const co = (e, t) => {
        * @see https://tailwindcss.com/docs/mix-blend-mode
        */
       "mix-blend": [{
-        "mix-blend": [...De(), "plus-darker", "plus-lighter"]
+        "mix-blend": [...Ue(), "plus-darker", "plus-lighter"]
       }],
       /**
        * Background Blend Mode
        * @see https://tailwindcss.com/docs/background-blend-mode
        */
       "bg-blend": [{
-        "bg-blend": De()
+        "bg-blend": Ue()
       }],
       /**
        * Mask Clip
@@ -34630,21 +34630,21 @@ const co = (e, t) => {
        * @see https://tailwindcss.com/docs/mask-position
        */
       "mask-position": [{
-        mask: Ke()
+        mask: Fe()
       }],
       /**
        * Mask Repeat
        * @see https://tailwindcss.com/docs/mask-repeat
        */
       "mask-repeat": [{
-        mask: Fe()
+        mask: Be()
       }],
       /**
        * Mask Size
        * @see https://tailwindcss.com/docs/mask-size
        */
       "mask-size": [{
-        mask: Be()
+        mask: De()
       }],
       /**
        * Mask Type
@@ -34681,7 +34681,7 @@ const co = (e, t) => {
        * @see https://tailwindcss.com/docs/blur
        */
       blur: [{
-        blur: Ue()
+        blur: Ze()
       }],
       /**
        * Brightness
@@ -34771,7 +34771,7 @@ const co = (e, t) => {
        * @see https://tailwindcss.com/docs/backdrop-blur
        */
       "backdrop-blur": [{
-        "backdrop-blur": Ue()
+        "backdrop-blur": Ze()
       }],
       /**
        * Backdrop Brightness
@@ -35382,7 +35382,7 @@ const co = (e, t) => {
        * @see https://tailwindcss.com/docs/stroke-width
        */
       "stroke-w": [{
-        stroke: [b, X$1, K, Ye]
+        stroke: [b, X$1, K, Qe]
       }],
       /**
        * Stroke
@@ -35457,20 +35457,20 @@ const co = (e, t) => {
     },
     orderSensitiveModifiers: ["*", "**", "after", "backdrop", "before", "details-content", "file", "first-letter", "first-line", "marker", "placeholder", "selection"]
   };
-}, Qo = /* @__PURE__ */ Oo(Yo);
-function ur(...e) {
-  return Qo(lo(e));
+}, er = /* @__PURE__ */ zo(Xo);
+function mr(...e) {
+  return er(uo(e));
 }
 objectType({
   url: stringType(),
   alt: stringType().optional()
 }).describe("ui:image-picker");
-const mr = objectType({
+const gr = objectType({
   id: stringType().optional(),
   anchorId: stringType().optional().describe("ui:text")
-}), pr = objectType({
+}), br = objectType({
   id: stringType().optional()
-}), gr = objectType({
+}), hr = objectType({
   id: stringType()
 });
 objectType({
@@ -35485,10 +35485,10 @@ objectType({
   href: stringType().describe("ui:text"),
   variant: enumType(["primary", "secondary", "accent"]).default("primary").describe("ui:select")
 });
-const yr = objectType({
+const vr = objectType({
   recipientEmail: stringType().optional().describe("ui:text")
 });
-function et$1(e) {
+function tt$1(e) {
   const t = e.trim();
   if (!t || t === "/") return "/";
   const r2 = (t.startsWith("/") ? t : `/${t}`).replace(/\/+$/, "");
@@ -35497,7 +35497,7 @@ function et$1(e) {
 function te$1(e) {
   return e.split("/").map((t) => t.trim()).filter(Boolean).join("/");
 }
-function ir(e, t) {
+function lr(e, t) {
   const o = te$1(e).split("/").filter(Boolean), r2 = te$1(t).split("/").filter(Boolean);
   if (o.length !== r2.length) return null;
   const n = {};
@@ -35511,7 +35511,7 @@ function ir(e, t) {
   }
   return n;
 }
-function At(e, t) {
+function It(e, t) {
   const o = te$1(t) || "home", r2 = e[o];
   if (r2)
     return {
@@ -35521,7 +35521,7 @@ function At(e, t) {
       params: {}
     };
   for (const [n, s] of Object.entries(e)) {
-    const i = ir(s.slug || n, o);
+    const i = lr(s.slug || n, o);
     if (i)
       return {
         page: s,
@@ -35983,7 +35983,7 @@ const bt = ({ type: e, scope: n, isSelected: o, sectionId: a, sectionIndex: s = 
     {
       "data-jp-section-overlay": true,
       "aria-hidden": true,
-      className: ur(
+      className: mr(
         "absolute inset-0 pointer-events-none transition-all duration-200 z-[50]",
         "border-2 border-transparent group-hover:border-blue-400/50 group-hover:border-dashed",
         o && "border-2 border-blue-600 border-solid bg-blue-500/5"
@@ -35991,7 +35991,7 @@ const bt = ({ type: e, scope: n, isSelected: o, sectionId: a, sectionIndex: s = 
       children: /* @__PURE__ */ r.jsxs(
         "div",
         {
-          className: ur(
+          className: mr(
             "absolute top-0 right-0 flex flex-nowrap items-center gap-1 pl-1 pr-2 py-1 text-[9px] font-black uppercase tracking-widest transition-opacity pointer-events-auto",
             "bg-blue-600 text-white",
             o || "group-hover:opacity-100 opacity-0"
@@ -36063,7 +36063,7 @@ const bt = ({ type: e, scope: n, isSelected: o, sectionId: a, sectionIndex: s = 
       "data-section-type": p ? e.type : void 0,
       "data-section-scope": p ? c : void 0,
       ...p && E ? { "data-jp-selected": true } : {},
-      className: ur(
+      className: mr(
         "relative w-full",
         p && !d2 && "group cursor-pointer",
         p && S ? "sticky top-0 z-[60]" : e.type === "header" ? "relative" : "relative z-0",
@@ -36104,7 +36104,7 @@ const bt = ({ type: e, scope: n, isSelected: o, sectionId: a, sectionIndex: s = 
   yt(e.meta);
   const [v2, x2] = reactExports.useState(null), y = reactExports.useRef({}), p = reactExports.useRef(l);
   p.current = l;
-  const E = tt$1(e, n), f = E ? n.header ?? null : null, c = n.footer ?? null, d2 = (b2) => {
+  const E = ot(e, n), f = E ? n.header ?? null : null, c = n.footer ?? null, d2 = (b2) => {
     var g;
     (g = p.current) == null || g.call(p, b2);
   };
@@ -36189,7 +36189,7 @@ const bt = ({ type: e, scope: n, isSelected: o, sectionId: a, sectionIndex: s = 
               ee,
               {
                 section: m,
-                menu: at$1(m, o.main ?? []),
+                menu: lt$1(m, o.main ?? []),
                 selectedId: a,
                 reorderable: true,
                 sectionIndex: w,
@@ -36212,7 +36212,7 @@ const bt = ({ type: e, scope: n, isSelected: o, sectionId: a, sectionIndex: s = 
             ee,
             {
               section: m,
-              menu: at$1(m, o.main ?? []),
+              menu: lt$1(m, o.main ?? []),
               selectedId: a
             }
           )
@@ -36261,7 +36261,7 @@ const bt = ({ type: e, scope: n, isSelected: o, sectionId: a, sectionIndex: s = 
           ee,
           {
             section: f,
-            menu: at$1(f, o.main ?? []),
+            menu: lt$1(f, o.main ?? []),
             selectedId: a
           }
         )
@@ -36280,7 +36280,7 @@ const bt = ({ type: e, scope: n, isSelected: o, sectionId: a, sectionIndex: s = 
           ee,
           {
             section: c,
-            menu: at$1(c, o.main ?? []),
+            menu: lt$1(c, o.main ?? []),
             selectedId: a
           }
         )
@@ -36405,11 +36405,11 @@ function AuthorsListView({ data }) {
     )) })
   ] }) });
 }
-const AutoreSchema = gr.extend({
+const AutoreSchema = hr.extend({
   name: stringType().describe("ui:text")
 });
 const AutoriCollectionSchema = recordType(stringType(), AutoreSchema);
-const AuthorsListSchema = mr.extend({
+const AuthorsListSchema = gr.extend({
   eyebrow: stringType().optional().describe("ui:text"),
   title: stringType().describe("ui:text"),
   description: stringType().optional().describe("ui:textarea"),
@@ -36455,7 +36455,7 @@ function BookDetailView({ data }) {
 const CollectionRefSchema = objectType({
   $ref: stringType()
 });
-const LibroSchema = gr.extend({
+const LibroSchema = hr.extend({
   title: stringType().describe("ui:text"),
   author: unionType([AutoreSchema, CollectionRefSchema]).describe("ui:collection-ref:autori"),
   year: numberType().describe("ui:number"),
@@ -36463,7 +36463,7 @@ const LibroSchema = gr.extend({
   summary: stringType().describe("ui:textarea")
 });
 const LibriCollectionSchema = recordType(stringType(), LibroSchema);
-const BookDetailSchema = mr.extend({
+const BookDetailSchema = gr.extend({
   item: LibroSchema.describe("ui:collection-ref"),
   backLabel: stringType().default("Torna ai libri").describe("ui:text")
 });
@@ -36611,7 +36611,7 @@ function BooksListView({ data }) {
     ] })
   ] }) });
 }
-const BooksListSchema = mr.extend({
+const BooksListSchema = gr.extend({
   eyebrow: stringType().optional().describe("ui:text"),
   title: stringType().describe("ui:text"),
   description: stringType().optional().describe("ui:textarea"),
@@ -36628,7 +36628,7 @@ function EmptyTenantView({ data }) {
     /* @__PURE__ */ jsxRuntimeExports.jsx("p", { className: "mt-3 text-sm text-muted-foreground", children: description })
   ] }) });
 }
-const EmptyTenantSchema = mr.extend({
+const EmptyTenantSchema = gr.extend({
   title: stringType().optional().describe("ui:text"),
   description: stringType().optional().describe("ui:textarea")
 });
@@ -36682,13 +36682,13 @@ function FooterView({ data, settings }) {
     }
   );
 }
-const FooterLinkSchema = pr.extend({
+const FooterLinkSchema = br.extend({
   id: stringType(),
   label: stringType().describe("ui:text"),
   href: stringType().describe("ui:text"),
   external: booleanType().optional()
 });
-const FooterSchema = mr.extend({
+const FooterSchema = gr.extend({
   brandText: stringType().describe("ui:text"),
   description: stringType().optional().describe("ui:textarea"),
   copyright: stringType().describe("ui:text"),
@@ -36971,7 +36971,7 @@ const __vite_import_meta_env__ = { "BASE_URL": "/", "DEV": false, "MODE": "produ
 const cloudPolicy = Ft(
   $t(__vite_import_meta_env__)
 );
-et$1("/");
+tt$1("/");
 const missingCloudUrl = !cloudPolicy.apiUrl;
 const hasCloudKey = Boolean(cloudPolicy.apiKey);
 function SetupGuide({ recipientEmail }) {
@@ -37089,7 +37089,7 @@ function FormDemoView({ data }) {
     )
   ] }) });
 }
-const FormDemoSchema = mr.merge(yr).extend({
+const FormDemoSchema = gr.merge(vr).extend({
   icon: stringType().optional().describe("ui:icon-picker"),
   title: stringType().optional().describe("ui:text"),
   description: stringType().optional().describe("ui:textarea"),
@@ -37455,7 +37455,7 @@ function getSortedSlugs() {
 }
 function resolvePage(slug2) {
   const normalized = normalizeSlug(slug2);
-  const pageMatch = At(pages, normalized);
+  const pageMatch = It(pages, normalized);
   if (pageMatch) {
     return {
       slug: normalized || pageMatch.registrySlug,
@@ -37473,7 +37473,7 @@ function resolvePage(slug2) {
   return { slug: fallbackSlug, registrySlug: fallbackSlug, page: pages[fallbackSlug], params: {} };
 }
 function buildThemeCssFromSot(theme) {
-  const mappings = Vt(theme);
+  const mappings = qt(theme);
   const entries = Object.entries(mappings);
   if (entries.length === 0) return "";
   const serialized = entries.map(([name2, value]) => `${name2}:${value}`).join(";");
@@ -37498,7 +37498,7 @@ function resolveTenantId() {
 function render(slug2) {
   const resolved = resolvePage(slug2);
   const location = resolved.slug === "home" ? "/" : `/${resolved.slug}`;
-  const collectionContext = lr.resolveCollectionContext(resolved.page, resolved.params, collections);
+  const collectionContext = dr.resolveCollectionContext(resolved.page, resolved.params, collections);
   const resolvedRuntime = Oe({
     pages: { [resolved.registrySlug]: resolved.page },
     siteConfig,

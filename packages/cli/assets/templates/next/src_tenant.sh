@@ -10,6 +10,8 @@ cat << 'END_OF_FILE_CONTENT' > "app/[[...slug]]/page.tsx"
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import {
+  buildPageContractHref,
+  buildPageManifestHref,
   resolveCollectionContext,
   resolveRuntimeConfig,
   type PageConfig,
@@ -17,6 +19,7 @@ import {
 import { loadVisitorPage } from '@olonjs/next/server';
 import { EmptyTenantView } from '@/components/empty-tenant';
 import { CollectionRegistry } from '@/lib/CollectionRegistry';
+import { buildVisitorWebPageJsonLd } from '@/lib/buildVisitorWebPageJsonLd';
 import { getFileCollections } from '@/lib/loaders/getFileCollections';
 import { getFilePages } from '@/lib/loaders/getFilePages';
 import { getFileSiteBundle } from '@/lib/loaders/getFileSiteConfig';
@@ -109,9 +112,23 @@ export default async function VisitorCatchAllPage({ params, searchParams }: Page
   const pageNum = Number(firstSearchValue(query.page) ?? '1') || 1;
   const shell = resolveVisitorShell(page, resolved.siteConfig ?? siteConfig);
   const sectionExtras = { authorId, page: pageNum, pathname };
+  const title = page.meta?.title ?? result.registrySlug;
+  const description = typeof page.meta?.description === 'string' ? page.meta.description : '';
+  const jsonLd = buildVisitorWebPageJsonLd({
+    title,
+    description,
+    slug: requestSlug,
+  });
 
   return (
     <>
+      <link rel="mcp-manifest" href={buildPageManifestHref(requestSlug)} />
+      <link rel="olon-contract" href={buildPageContractHref(requestSlug)} />
+      <script
+        type="application/ld+json"
+        // eslint-disable-next-line react/no-danger -- Schema.org JSON-LD payload (parity alpha bake)
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+      />
       {shell.header ? (
         <VisitorSection section={shell.header} extras={sectionExtras} />
       ) : null}
@@ -481,20 +498,21 @@ cat << 'END_OF_FILE_CONTENT' > "package.json"
   "type": "module",
   "scripts": {
     "dev": "next dev",
-    "prebuild": "node scripts/sync-pages-to-public.mjs",
+    "prebuild": "node scripts/sync-pages-to-public.mjs && node scripts/generate-llms-txt.mjs && node scripts/bake.mjs && node scripts/sitemap.mjs && node scripts/robots.mjs",
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
     "test": "vitest run",
     "typecheck": "tsc --noEmit",
+    "verify:webmcp": "node scripts/webmcp-feature-check.mjs",
     "dist": "bash ./src2Code.sh --template next app src scripts templates middleware.ts next.config.ts postcss.config.mjs tsconfig.json package.json next-env.d.ts vitest.config.ts",
     "dist:dna": "npm run dist"
   },
   "dependencies": {
-    "@olonjs/core": "^1.1.27",
-    "@olonjs/next": "^0.0.7",
-    "@olonjs/react": "^0.1.10",
-    "@olonjs/studio": "^0.1.10",
+    "@olonjs/core": "^1.1.28",
+    "@olonjs/next": "^0.0.8",
+    "@olonjs/react": "^0.1.11",
+    "@olonjs/studio": "^0.1.11",
     "clsx": "^2.1.1",
     "lucide-react": "^0.474.0",
     "next": "^15.5.0",
@@ -510,6 +528,7 @@ cat << 'END_OF_FILE_CONTENT' > "package.json"
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",
     "tailwindcss": "^4.0.0",
+    "tsx": "^4.20.5",
     "typescript": "^5.7.3",
     "vitest": "^3.0.0"
   }
@@ -529,6 +548,245 @@ export default config;
 
 END_OF_FILE_CONTENT
 mkdir -p "scripts"
+echo "Creating scripts/bake.mjs..."
+cat << 'END_OF_FILE_CONTENT' > "scripts/bake.mjs"
+/**
+ * Next bake entry — agentic WebMCP artifacts only (no Vite / no HTML SSG).
+ * Runs scripts/bake.ts via tsx so SECTION_SCHEMAS can be imported from the tenant.
+ */
+import { spawnSync } from 'node:child_process';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const rootDir = path.resolve(__dirname, '..');
+const bakeTs = path.join(__dirname, 'bake.ts');
+
+const result = spawnSync(
+  process.platform === 'win32' ? 'npx.cmd' : 'npx',
+  ['tsx', '--tsconfig', 'tsconfig.json', bakeTs],
+  {
+    cwd: rootDir,
+    stdio: 'inherit',
+    env: process.env,
+    shell: process.platform === 'win32',
+  },
+);
+
+process.exit(result.status ?? 1);
+
+END_OF_FILE_CONTENT
+echo "Creating scripts/bake.ts..."
+cat << 'END_OF_FILE_CONTENT' > "scripts/bake.ts"
+/**
+ * Next bake — agentic WebMCP artifacts only (no Vite / no HTML SSG).
+ * Invoked by scripts/bake.mjs via tsx.
+ */
+import fs from 'node:fs/promises';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+import {
+  resolvePageMatchFromRegistry,
+  resolvePublicPageDocument,
+  webmcp,
+} from '@olonjs/core';
+import { CollectionRegistry } from '../src/lib/CollectionRegistry';
+import { SECTION_SCHEMAS, SECTION_SUBMISSION_SCHEMAS } from '../src/lib/schemas';
+import { getFileCollections } from '../src/lib/loaders/getFileCollections';
+import { getFilePages } from '../src/lib/loaders/getFilePages';
+import { getFileSiteBundle } from '../src/lib/loaders/getFileSiteConfig';
+
+const {
+  buildPageContract,
+  buildPageManifest,
+  buildPageManifestHref,
+  buildSiteManifest,
+  buildLlmsTxt,
+} = webmcp;
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const root = path.resolve(__dirname, '..');
+const publicDir = path.join(root, 'public');
+const pagesDir = path.join(root, 'src', 'data', 'pages');
+const collectionsDir = path.join(root, 'src', 'data', 'collections');
+
+async function writePublic(relativePath: string, content: string): Promise<void> {
+  const target = path.join(publicDir, relativePath);
+  await fs.mkdir(path.dirname(target), { recursive: true });
+  await fs.writeFile(target, content, 'utf-8');
+}
+
+async function writePublicJson(relativePath: string, value: unknown): Promise<void> {
+  await writePublic(relativePath, `${JSON.stringify(value, null, 2)}\n`);
+}
+
+async function readJsonFile(filePath: string): Promise<unknown> {
+  return JSON.parse(await fs.readFile(filePath, 'utf-8'));
+}
+
+async function listJsonFilesRecursive(dir: string): Promise<string[]> {
+  const items = await fs.readdir(dir, { withFileTypes: true });
+  const files: string[] = [];
+  for (const item of items) {
+    const fullPath = path.join(dir, item.name);
+    if (item.isDirectory()) {
+      files.push(...(await listJsonFilesRecursive(fullPath)));
+      continue;
+    }
+    if (item.isFile() && item.name.toLowerCase().endsWith('.json')) files.push(fullPath);
+  }
+  return files;
+}
+
+function toCanonicalSlug(relativeJsonPath: string): string {
+  const slug = relativeJsonPath.replace(/\\/g, '/').replace(/\.json$/i, '').replace(/^\/+|\/+$/g, '');
+  if (!slug) throw new Error('[bake] Invalid page slug: empty path segment');
+  return slug;
+}
+
+async function expandCollectionTarget(slug: string, pageFilePath: string): Promise<string[]> {
+  let pageConfig: Record<string, unknown>;
+  try {
+    pageConfig = (await readJsonFile(pageFilePath)) as Record<string, unknown>;
+  } catch {
+    return [slug];
+  }
+
+  const binding = pageConfig?.collection as { source?: string; paramKey?: string } | undefined;
+  if (!binding || typeof binding.source !== 'string' || typeof binding.paramKey !== 'string') {
+    return [slug];
+  }
+
+  const token = `[${binding.paramKey}]`;
+  const authoredSlug =
+    typeof pageConfig.slug === 'string'
+      ? String(pageConfig.slug).replace(/\\/g, '/').replace(/^\/+|\/+$/g, '')
+      : '';
+  const routePattern =
+    authoredSlug.includes(token) ? authoredSlug : slug.includes(token) ? slug : '';
+  if (!routePattern) return [slug];
+
+  const collectionPath = path.resolve(collectionsDir, binding.source, `${binding.source}.json`);
+  let collection: Record<string, unknown>;
+  try {
+    collection = (await readJsonFile(collectionPath)) as Record<string, unknown>;
+  } catch {
+    return [slug];
+  }
+
+  if (!collection || typeof collection !== 'object' || Array.isArray(collection)) return [slug];
+  const itemIds = Object.keys(collection).sort((a, b) => a.localeCompare(b));
+  return itemIds.length > 0
+    ? itemIds.map((itemId) => routePattern.replace(token, itemId))
+    : [slug];
+}
+
+async function discoverSlugs(): Promise<string[]> {
+  let files: string[] = [];
+  try {
+    files = await listJsonFilesRecursive(pagesDir);
+  } catch {
+    files = [];
+  }
+
+  const rawSlugs = (
+    await Promise.all(
+      files.map(async (fullPath) => {
+        const slug = toCanonicalSlug(path.relative(pagesDir, fullPath));
+        return expandCollectionTarget(slug, fullPath);
+      }),
+    )
+  ).flat();
+
+  return Array.from(new Set(rawSlugs)).sort((a, b) => a.localeCompare(b));
+}
+
+async function main(): Promise<void> {
+  console.log('\n[bake] Next agentic artifacts (no Vite SSG)...');
+
+  const pages = getFilePages(root);
+  const collections = getFileCollections(root);
+  const { siteConfig, themeConfig, menuConfig } = getFileSiteBundle(root);
+  const collectionSchemas = CollectionRegistry as unknown as Record<string, unknown>;
+  const schemas = SECTION_SCHEMAS as unknown as Record<string, unknown>;
+  const submissionSchemas = SECTION_SUBMISSION_SCHEMAS as unknown as Record<string, unknown>;
+  const refDocuments = {
+    'menu.json': menuConfig,
+    'config/menu.json': menuConfig,
+    'src/data/config/menu.json': menuConfig,
+  };
+
+  const slugs = await discoverSlugs();
+  if (slugs.length === 0) {
+    throw new Error('[bake] No pages discovered under src/data/pages');
+  }
+  console.log(`[bake] Targets: ${slugs.join(', ')}`);
+
+  const pagesForManifest: Record<string, (typeof pages)[string]> = { ...pages };
+
+  for (const slug of slugs) {
+    const pageConfig = resolvePageMatchFromRegistry(pages, slug)?.page;
+    if (!pageConfig) continue;
+
+    const resolvedPageDocument = resolvePublicPageDocument({
+      slug,
+      pages,
+      siteConfig,
+      themeConfig,
+      menuConfig,
+      collections,
+      collectionSchemas: collectionSchemas as never,
+      refDocuments,
+    });
+    const publicPageConfig = resolvedPageDocument?.page ?? pageConfig;
+    pagesForManifest[slug] = publicPageConfig;
+
+    await writePublicJson(`pages/${slug}.json`, publicPageConfig);
+
+    const contract = buildPageContract({
+      slug,
+      pageConfig: publicPageConfig,
+      schemas: schemas as never,
+      submissionSchemas: submissionSchemas as never,
+      siteConfig,
+    });
+    await writePublicJson(`schemas/${slug}.schema.json`, contract);
+
+    const pageManifest = buildPageManifest({
+      slug,
+      pageConfig: publicPageConfig,
+      schemas: schemas as never,
+      siteConfig,
+    });
+    await writePublicJson(buildPageManifestHref(slug).replace(/^\//, ''), pageManifest);
+  }
+
+  await writePublicJson('config/site.json', siteConfig);
+
+  const mcpManifest = buildSiteManifest({
+    pages: pagesForManifest,
+    schemas: schemas as never,
+    siteConfig,
+  });
+  await writePublicJson('mcp-manifest.json', mcpManifest);
+
+  const llmsTxtContent = buildLlmsTxt({
+    pages: pagesForManifest,
+    schemas: schemas as never,
+    siteConfig,
+  });
+  await writePublic('llms.txt', `${llmsTxtContent}\n`);
+
+  console.log('[bake] Wrote public/mcp-manifest.json, mcp-manifests/, schemas/, pages/, llms.txt, config/site.json');
+  console.log('[bake] OK\n');
+}
+
+main().catch((error) => {
+  console.error(error instanceof Error ? error.stack ?? error.message : String(error));
+  process.exit(1);
+});
+
+END_OF_FILE_CONTENT
 echo "Creating scripts/generate-SystemsArchitect-next.test.mjs..."
 cat << 'END_OF_FILE_CONTENT' > "scripts/generate-SystemsArchitect-next.test.mjs"
 /**
@@ -581,12 +839,15 @@ describe('generate_SystemsArchitect_next.sh harness gates', () => {
     assert.match(src, /cd "\$\(cd "\$\(dirname "\$\{BASH_SOURCE\[0\]\}"\)\/\.\." && pwd\)"/);
   });
 
-  it('must clean DNA demo capsules before writing SystemsArchitect', () => {
+  it('must wipe tenant content surfaces without DNA denylist', () => {
     const src = readScript();
-    assert.match(src, /Cleaning demo capsules/);
-    assert.match(src, /rm -rf \\\s*\n\s*src\/components\/books-list/m);
+    assert.match(src, /Wiping tenant content surfaces/);
+    assert.match(src, /find src\/components -mindepth 1 -maxdepth 1 ! -name 'ui' ! -name 'admin'/);
+    assert.match(src, /rm -rf \\\s*\n\s*src\/collections/m);
+    assert.match(src, /rm -rf \\\s*\n[\s\S]*?src\/data\/pages/m);
     assert.match(src, /cat > src\/lib\/VisitorSection\.tsx/);
     assert.doesNotMatch(src, /from '@\/components\/books-list'/);
+    assert.doesNotMatch(src, /src\/components\/books-list/);
   });
 
   it('must install react-markdown deps used by post-detail', () => {
@@ -597,11 +858,10 @@ describe('generate_SystemsArchitect_next.sh harness gates', () => {
     assert.match(src, /from 'rehype-sanitize'/);
   });
 
-  it('must not generate empty-tenant registry wiring (cleanup rm path ok)', () => {
+  it('must not generate empty-tenant registry wiring', () => {
     const src = readScript();
     assert.doesNotMatch(src, /@\/components\/empty-tenant/);
     assert.doesNotMatch(src, /['"]empty-tenant['"]/);
-    assert.match(src, /src\/components\/empty-tenant/);
   });
 
   it('must force shadcn radix base non-interactively', () => {
@@ -664,14 +924,434 @@ describe('generate_inkwell_next.sh harness gates', () => {
     assert.match(src, /cd "\$\(cd "\$\(dirname "\$\{BASH_SOURCE\[0\]\}"\)\/\.\." && pwd\)"/);
   });
 
-  it('must clean DNA demo capsules before writing Inkwell', () => {
+  it('must wipe tenant content surfaces without DNA denylist', () => {
     const src = readScript();
-    assert.match(src, /Cleaning demo capsules/);
-    assert.match(src, /rm -rf \\\s*\n[\s\S]*?src\/components\/books-list/m);
+    assert.match(src, /Wiping tenant content surfaces/);
+    assert.match(src, /find src\/components -mindepth 1 -maxdepth 1 ! -name 'ui' ! -name 'admin'/);
+    assert.match(src, /rm -rf \\\s*\n\s*src\/collections/m);
+    assert.match(src, /rm -rf \\\s*\n[\s\S]*?src\/data\/pages/m);
     assert.match(src, /cat > src\/lib\/VisitorSection\.tsx/);
+    assert.match(src, /EmptyTenantView empty-branch/);
     assert.doesNotMatch(src, /from '@\/components\/books-list'/);
+    assert.doesNotMatch(src, /src\/components\/books-list/);
   });
 });
+
+END_OF_FILE_CONTENT
+echo "Creating scripts/generate-llms-txt.mjs..."
+cat << 'END_OF_FILE_CONTENT' > "scripts/generate-llms-txt.mjs"
+import fs from 'fs';
+import path from 'path';
+import { fileURLToPath } from 'url';
+import { webmcp } from '@olonjs/core';
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const rootDir = path.resolve(__dirname, '..');
+const { buildLlmsTxt } = webmcp;
+
+const pagesDir = path.join(rootDir, 'src', 'data', 'pages');
+const siteConfig = JSON.parse(fs.readFileSync(path.join(rootDir, 'src', 'data', 'config', 'site.json'), 'utf-8'));
+
+function listJsonFilesRecursive(dir) {
+  const items = fs.readdirSync(dir, { withFileTypes: true });
+  const files = [];
+  for (const item of items) {
+    const fullPath = path.join(dir, item.name);
+    if (item.isDirectory()) {
+      files.push(...listJsonFilesRecursive(fullPath));
+      continue;
+    }
+    if (item.isFile() && item.name.toLowerCase().endsWith('.json')) files.push(fullPath);
+  }
+  return files;
+}
+
+const pages = {};
+for (const fullPath of listJsonFilesRecursive(pagesDir)) {
+  const slug = path.relative(pagesDir, fullPath).replace(/\\/g, '/').replace(/\.json$/i, '');
+  pages[slug] = JSON.parse(fs.readFileSync(fullPath, 'utf-8'));
+}
+
+const llmsTxt = buildLlmsTxt({ pages, schemas: {}, siteConfig });
+
+const outPath = path.join(rootDir, 'public', 'llms.txt');
+fs.writeFileSync(outPath, llmsTxt, 'utf-8');
+console.log('[generate-llms-txt] Written -> public/llms.txt');
+
+END_OF_FILE_CONTENT
+echo "Creating scripts/prebuild-bake.test.mjs..."
+cat << 'END_OF_FILE_CONTENT' > "scripts/prebuild-bake.test.mjs"
+/**
+ * Gates for bake.mjs (Task 4 — plan 001). Agentic artifacts only; no Vite SSG.
+ * Run: node --test scripts/prebuild-bake.test.mjs
+ */
+import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import path from 'node:path';
+import { spawnSync } from 'node:child_process';
+import { describe, it } from 'node:test';
+import { fileURLToPath } from 'node:url';
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const ROOT = path.resolve(__dirname, '..');
+const SCRIPT = path.join(__dirname, 'bake.mjs');
+
+describe('next bake.mjs (agentic artifacts)', () => {
+  it('exists and does not import vite / write HTML SSG', () => {
+    assert.ok(fs.existsSync(SCRIPT), `missing ${SCRIPT}`);
+    const src = fs.readFileSync(SCRIPT, 'utf8');
+    assert.doesNotMatch(src, /from ['"]vite['"]/);
+    assert.doesNotMatch(src, /vite\.build|entry-ssg/);
+    // May spawn tsx helper — check companion if present
+    const impl = path.join(__dirname, 'bake.ts');
+    if (fs.existsSync(impl)) {
+      const implSrc = fs.readFileSync(impl, 'utf8');
+      assert.doesNotMatch(implSrc, /from ['"]vite['"]/);
+      assert.doesNotMatch(implSrc, /entry-ssg/);
+    }
+  });
+
+  it('writes reachable public agentic artifacts', () => {
+    const result = spawnSync(process.execPath, [SCRIPT], {
+      cwd: ROOT,
+      encoding: 'utf8',
+      env: { ...process.env },
+    });
+    assert.equal(result.status, 0, result.stderr || result.stdout);
+
+    assert.ok(fs.existsSync(path.join(ROOT, 'public', 'mcp-manifest.json')));
+    assert.ok(fs.existsSync(path.join(ROOT, 'public', 'llms.txt')));
+    assert.ok(fs.existsSync(path.join(ROOT, 'public', 'schemas', 'home.schema.json')));
+    assert.ok(fs.existsSync(path.join(ROOT, 'public', 'mcp-manifests', 'home.json')));
+    assert.ok(fs.existsSync(path.join(ROOT, 'public', 'config', 'site.json')));
+
+    const manifest = JSON.parse(fs.readFileSync(path.join(ROOT, 'public', 'mcp-manifest.json'), 'utf8'));
+    assert.equal(manifest.kind, 'olonjs-mcp-manifest-index');
+    assert.ok(Array.isArray(manifest.pages));
+  });
+});
+
+END_OF_FILE_CONTENT
+echo "Creating scripts/prebuild-generate-llms-txt.test.mjs..."
+cat << 'END_OF_FILE_CONTENT' > "scripts/prebuild-generate-llms-txt.test.mjs"
+/**
+ * Gates for generate-llms-txt.mjs (Task 2 — plan 001).
+ * Run: node --test scripts/prebuild-generate-llms-txt.test.mjs
+ */
+import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import path from 'node:path';
+import { spawnSync } from 'node:child_process';
+import { describe, it } from 'node:test';
+import { fileURLToPath } from 'node:url';
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const ROOT = path.resolve(__dirname, '..');
+const SCRIPT = path.join(__dirname, 'generate-llms-txt.mjs');
+
+describe('next prebuild generate-llms-txt', () => {
+  it('script exists and uses @olonjs/core webmcp', () => {
+    assert.ok(fs.existsSync(SCRIPT), `missing ${SCRIPT}`);
+    const src = fs.readFileSync(SCRIPT, 'utf8');
+    assert.match(src, /@olonjs\/core/);
+    assert.match(src, /buildLlmsTxt|webmcp/);
+    assert.match(src, /public\/llms\.txt|llms\.txt/);
+  });
+
+  it('writes public/llms.txt when run', () => {
+    const out = path.join(ROOT, 'public', 'llms.txt');
+    if (fs.existsSync(out)) fs.unlinkSync(out);
+
+    const result = spawnSync(process.execPath, [SCRIPT], { cwd: ROOT, encoding: 'utf8' });
+    assert.equal(result.status, 0, result.stderr || result.stdout);
+    assert.ok(fs.existsSync(out));
+    const body = fs.readFileSync(out, 'utf8');
+    assert.ok(body.trim().length > 0);
+  });
+});
+
+END_OF_FILE_CONTENT
+echo "Creating scripts/prebuild-robots-sitemap.test.mjs..."
+cat << 'END_OF_FILE_CONTENT' > "scripts/prebuild-robots-sitemap.test.mjs"
+/**
+ * Static + smoke gates for robots.mjs / sitemap.mjs (Task 1 — plan 001).
+ * Run: node --test scripts/prebuild-robots-sitemap.test.mjs
+ */
+import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import path from 'node:path';
+import { spawnSync } from 'node:child_process';
+import { describe, it } from 'node:test';
+import { fileURLToPath } from 'node:url';
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const ROOT = path.resolve(__dirname, '..');
+const ROBOTS = path.join(__dirname, 'robots.mjs');
+const SITEMAP = path.join(__dirname, 'sitemap.mjs');
+
+describe('next prebuild robots + sitemap', () => {
+  it('scripts exist', () => {
+    assert.ok(fs.existsSync(ROBOTS), `missing ${ROBOTS}`);
+    assert.ok(fs.existsSync(SITEMAP), `missing ${SITEMAP}`);
+  });
+
+  it('defaults to Next localhost:3000 (not Vite 5173)', () => {
+    const robots = fs.readFileSync(ROBOTS, 'utf8');
+    const sitemap = fs.readFileSync(SITEMAP, 'utf8');
+    assert.match(robots, /localhost:3000/);
+    assert.match(sitemap, /localhost:3000/);
+    assert.doesNotMatch(robots, /localhost:5173/);
+    assert.doesNotMatch(sitemap, /localhost:5173/);
+  });
+
+  it('writes public/robots.txt and public/sitemap.xml when run', () => {
+    const robotsOut = path.join(ROOT, 'public', 'robots.txt');
+    const sitemapOut = path.join(ROOT, 'public', 'sitemap.xml');
+    for (const p of [robotsOut, sitemapOut]) {
+      if (fs.existsSync(p)) fs.unlinkSync(p);
+    }
+
+    const r1 = spawnSync(process.execPath, [ROBOTS], { cwd: ROOT, encoding: 'utf8' });
+    assert.equal(r1.status, 0, r1.stderr || r1.stdout);
+    const r2 = spawnSync(process.execPath, [SITEMAP], { cwd: ROOT, encoding: 'utf8' });
+    assert.equal(r2.status, 0, r2.stderr || r2.stdout);
+
+    assert.ok(fs.existsSync(robotsOut));
+    assert.ok(fs.existsSync(sitemapOut));
+    const robotsTxt = fs.readFileSync(robotsOut, 'utf8');
+    const sitemapXml = fs.readFileSync(sitemapOut, 'utf8');
+    assert.match(robotsTxt, /Sitemap: http:\/\/localhost:3000\/sitemap\.xml/);
+    assert.match(sitemapXml, /<urlset/);
+    assert.match(sitemapXml, /\/home\.json|PAGE: HOME|loc>http:\/\/localhost:3000\/</);
+  });
+});
+
+END_OF_FILE_CONTENT
+echo "Creating scripts/prebuild-webmcp-feature-check.test.mjs..."
+cat << 'END_OF_FILE_CONTENT' > "scripts/prebuild-webmcp-feature-check.test.mjs"
+/**
+ * Gates for webmcp-feature-check.mjs (Task 3 — plan 001).
+ * Run: node --test scripts/prebuild-webmcp-feature-check.test.mjs
+ */
+import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import path from 'node:path';
+import { describe, it } from 'node:test';
+import { fileURLToPath } from 'node:url';
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const ROOT = path.resolve(__dirname, '..');
+const SCRIPT = path.join(__dirname, 'webmcp-feature-check.mjs');
+const PKG = path.join(ROOT, 'package.json');
+
+describe('next verify:webmcp script', () => {
+  it('exists and uses document.modelContextTesting only', () => {
+    assert.ok(fs.existsSync(SCRIPT), `missing ${SCRIPT}`);
+    const src = fs.readFileSync(SCRIPT, 'utf8');
+    assert.match(src, /document\.modelContextTesting/);
+    assert.doesNotMatch(src, /navigator\.modelContextTesting/);
+    assert.doesNotMatch(src, /navigator\.modelContext(?!Testing)/);
+  });
+
+  it('is wired as verify:webmcp and not in prebuild', () => {
+    const pkg = JSON.parse(fs.readFileSync(PKG, 'utf8'));
+    assert.equal(pkg.scripts?.['verify:webmcp'], 'node scripts/webmcp-feature-check.mjs');
+    assert.ok(pkg.scripts?.prebuild);
+    assert.doesNotMatch(pkg.scripts.prebuild, /webmcp-feature-check/);
+  });
+});
+
+END_OF_FILE_CONTENT
+echo "Creating scripts/prebuild-wire.test.mjs..."
+cat << 'END_OF_FILE_CONTENT' > "scripts/prebuild-wire.test.mjs"
+/**
+ * Gates for package.json prebuild wiring (Task 5 — plan 001).
+ * Run: node --test scripts/prebuild-wire.test.mjs
+ */
+import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import path from 'node:path';
+import { describe, it } from 'node:test';
+import { fileURLToPath } from 'node:url';
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const PKG = path.resolve(__dirname, '../package.json');
+
+describe('next prebuild wiring', () => {
+  it('runs sync → llms → bake → sitemap → robots (alpha order)', () => {
+    const pkg = JSON.parse(fs.readFileSync(PKG, 'utf8'));
+    const prebuild = pkg.scripts?.prebuild ?? '';
+    assert.match(prebuild, /sync-pages-to-public\.mjs/);
+    assert.match(prebuild, /generate-llms-txt\.mjs/);
+    assert.match(prebuild, /bake\.mjs/);
+    assert.match(prebuild, /sitemap\.mjs/);
+    assert.match(prebuild, /robots\.mjs/);
+    assert.doesNotMatch(prebuild, /webmcp-feature-check/);
+
+    const order = ['sync-pages-to-public', 'generate-llms-txt', 'bake', 'sitemap', 'robots'].map((name) =>
+      prebuild.indexOf(name),
+    );
+    for (let i = 1; i < order.length; i += 1) {
+      assert.ok(order[i] > order[i - 1], `expected ${i} after previous in: ${prebuild}`);
+    }
+  });
+
+  it('dist DNA includes scripts/', () => {
+    const pkg = JSON.parse(fs.readFileSync(PKG, 'utf8'));
+    assert.match(pkg.scripts?.dist ?? '', /\bscripts\b/);
+  });
+});
+
+END_OF_FILE_CONTENT
+echo "Creating scripts/robots.mjs..."
+cat << 'END_OF_FILE_CONTENT' > "scripts/robots.mjs"
+import fs from 'fs';
+import path from 'path';
+import { fileURLToPath } from 'url';
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const rootDir = path.resolve(__dirname, '..');
+
+const baseUrl = process.env.VERCEL_PROJECT_PRODUCTION_URL
+  ? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}`
+  : 'http://localhost:3000';
+
+const robotsTxt = `User-agent: *
+Allow: /
+Disallow: /api/
+
+User-agent: GPTBot
+User-agent: ChatGPT-User
+User-agent: ClaudeBot
+User-agent: Claude-Web
+User-agent: PerplexityBot
+User-agent: OAI-SearchBot
+Allow: /
+Allow: /*.json
+Allow: /schemas/
+Allow: /llms.txt
+Allow: /mcp-manifest.json
+Disallow: /api/
+
+Sitemap: ${baseUrl}/sitemap.xml
+`;
+
+const outPath = path.join(rootDir, 'public', 'robots.txt');
+fs.mkdirSync(path.dirname(outPath), { recursive: true });
+fs.writeFileSync(outPath, robotsTxt, 'utf-8');
+console.log('[robots] Written -> public/robots.txt');
+
+END_OF_FILE_CONTENT
+echo "Creating scripts/sitemap.mjs..."
+cat << 'END_OF_FILE_CONTENT' > "scripts/sitemap.mjs"
+import fs from 'fs';
+import path from 'path';
+import { fileURLToPath } from 'url';
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const rootDir = path.resolve(__dirname, '..');
+
+const baseUrl = process.env.VERCEL_PROJECT_PRODUCTION_URL
+  ? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}`
+  : 'http://localhost:3000';
+
+function listJsonFilesRecursive(dir) {
+  const items = fs.readdirSync(dir, { withFileTypes: true });
+  const files = [];
+  for (const item of items) {
+    const fullPath = path.join(dir, item.name);
+    if (item.isDirectory()) {
+      files.push(...listJsonFilesRecursive(fullPath));
+      continue;
+    }
+    if (item.isFile() && item.name.toLowerCase().endsWith('.json')) files.push(fullPath);
+  }
+  return files;
+}
+
+function toW3CDate(date) {
+  return date.toISOString().replace(/\.\d{3}Z$/, 'Z');
+}
+
+function urlEntry({ loc, lastmod, changefreq, priority, comment }) {
+  const lines = [];
+  if (comment) lines.push(`  <!-- ${comment} -->`);
+  lines.push(`  <url>`);
+  lines.push(`    <loc>${loc}</loc>`);
+  lines.push(`    <lastmod>${lastmod}</lastmod>`);
+  lines.push(`    <changefreq>${changefreq}</changefreq>`);
+  lines.push(`    <priority>${priority}</priority>`);
+  lines.push(`  </url>`);
+  return lines.join('\n');
+}
+
+function sectionComment(label) {
+  const bar = '='.repeat(42);
+  return [
+    `  <!-- ${bar} -->`,
+    `  <!-- ${label.padEnd(42)} -->`,
+    `  <!-- ${bar} -->`,
+  ].join('\n');
+}
+
+const pagesDir = path.join(rootDir, 'src', 'data', 'pages');
+const buildTime = toW3CDate(new Date());
+
+const pageFiles = listJsonFilesRecursive(pagesDir);
+const pages = pageFiles.map((fullPath) => {
+  const slug = path
+    .relative(pagesDir, fullPath)
+    .replace(/\\/g, '/')
+    .replace(/\.json$/i, '');
+  const lastmod = toW3CDate(fs.statSync(fullPath).mtime);
+  return { slug, lastmod };
+});
+
+const entries = [];
+
+entries.push(sectionComment('GLOBAL AGENT DISCOVERY NODES'));
+entries.push(
+  urlEntry({ loc: `${baseUrl}/llms.txt`, lastmod: buildTime, changefreq: 'weekly', priority: '1.0' }),
+);
+entries.push(
+  urlEntry({ loc: `${baseUrl}/mcp-manifest.json`, lastmod: buildTime, changefreq: 'weekly', priority: '1.0' }),
+);
+
+for (const { slug, lastmod } of pages) {
+  const humanPath = slug === 'home' ? '/' : `/${slug}`;
+  const label = `PAGE: ${slug.toUpperCase()}`;
+
+  entries.push(sectionComment(label));
+  entries.push(
+    urlEntry({ loc: `${baseUrl}${humanPath}`, lastmod, changefreq: 'daily', priority: '0.9', comment: 'Human UI' }),
+  );
+  entries.push(
+    urlEntry({ loc: `${baseUrl}/${slug}.json`, lastmod, changefreq: 'daily', priority: '0.9', comment: 'Machine Payload' }),
+  );
+  entries.push(
+    urlEntry({
+      loc: `${baseUrl}/schemas/${slug}.schema.json`,
+      lastmod: buildTime,
+      changefreq: 'weekly',
+      priority: '0.8',
+      comment: 'Machine Contract (Schema)',
+    }),
+  );
+}
+
+const xml = [
+  `<?xml version="1.0" encoding="UTF-8"?>`,
+  `<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">`,
+  ``,
+  entries.join('\n'),
+  ``,
+  `</urlset>`,
+].join('\n');
+
+const outPath = path.join(rootDir, 'public', 'sitemap.xml');
+fs.mkdirSync(path.dirname(outPath), { recursive: true });
+fs.writeFileSync(outPath, xml, 'utf-8');
+console.log('[sitemap] Written -> public/sitemap.xml');
 
 END_OF_FILE_CONTENT
 echo "Creating scripts/sync-pages-to-public.mjs..."
@@ -722,6 +1402,308 @@ if (fs.existsSync(sourceSiteConfigPath)) {
 }
 
 console.log('[sync-pages-to-public] Synced pages, collections, and site config to public/');
+
+END_OF_FILE_CONTENT
+echo "Creating scripts/webmcp-feature-check.mjs..."
+cat << 'END_OF_FILE_CONTENT' > "scripts/webmcp-feature-check.mjs"
+import fs from 'fs/promises';
+import path from 'path';
+import { fileURLToPath } from 'url';
+import { createRequire } from 'module';
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const rootDir = path.resolve(__dirname, '..');
+const baseUrl = process.env.WEBMCP_BASE_URL ?? 'http://127.0.0.1:3000';
+
+function pageFilePathFromSlug(slug) {
+  return path.resolve(rootDir, 'src', 'data', 'pages', `${slug}.json`);
+}
+
+function adminUrlFromSlug(slug) {
+  return `${baseUrl}/admin${slug === 'home' ? '' : `/${slug}`}`;
+}
+
+function isStringSchema(schema) {
+  if (!schema || typeof schema !== 'object') return false;
+  if (schema.type === 'string') return true;
+  if (Array.isArray(schema.anyOf)) {
+    return schema.anyOf.some((entry) => entry && typeof entry === 'object' && entry.type === 'string');
+  }
+  return false;
+}
+
+function findTopLevelStringField(sectionSchema) {
+  const properties = sectionSchema?.properties;
+  if (!properties || typeof properties !== 'object') return null;
+  const preferred = ['title', 'sectionTitle', 'label', 'headline', 'name'];
+  for (const key of preferred) {
+    if (isStringSchema(properties[key])) return key;
+  }
+  for (const [key, value] of Object.entries(properties)) {
+    if (isStringSchema(value)) return key;
+  }
+  return null;
+}
+
+async function loadPlaywright() {
+  const require = createRequire(import.meta.url);
+  try {
+    return require('playwright');
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    throw new Error(
+      `Playwright is required for WebMCP verification. Install it before running this script. Original error: ${message}`
+    );
+  }
+}
+
+async function readPageJson(slug) {
+  const pageFilePath = pageFilePathFromSlug(slug);
+  const raw = await fs.readFile(pageFilePath, 'utf8');
+  return { raw, json: JSON.parse(raw), pageFilePath };
+}
+
+async function waitFor(predicate, timeoutMs, label) {
+  const startedAt = Date.now();
+  for (;;) {
+    const result = await predicate();
+    if (result) return result;
+    if (Date.now() - startedAt > timeoutMs) {
+      throw new Error(`Timed out while waiting for ${label}.`);
+    }
+    await new Promise((resolve) => setTimeout(resolve, 150));
+  }
+}
+
+async function waitForFileFieldValue(slug, sectionId, fieldKey, expectedValue) {
+  await waitFor(async () => {
+    const { json } = await readPageJson(slug);
+    const section = Array.isArray(json.sections)
+      ? json.sections.find((item) => item?.id === sectionId)
+      : null;
+    return section?.data?.[fieldKey] === expectedValue;
+  }, 8_000, `file field "${fieldKey}" = "${expectedValue}"`);
+}
+
+async function ensureResponseOk(response, label) {
+  if (!response.ok) {
+    const text = await response.text();
+    throw new Error(`${label} failed with ${response.status}: ${text}`);
+  }
+  return response;
+}
+
+async function fetchJson(relativePath, label) {
+  const response = await ensureResponseOk(await fetch(`${baseUrl}${relativePath}`), label);
+  return response.json();
+}
+
+async function selectTarget() {
+  const siteIndex = await fetchJson('/mcp-manifest.json', 'Manifest index request');
+  const requestedSlug = typeof process.env.WEBMCP_TARGET_SLUG === 'string' && process.env.WEBMCP_TARGET_SLUG.trim()
+    ? process.env.WEBMCP_TARGET_SLUG.trim()
+    : null;
+
+  const candidatePages = requestedSlug
+    ? (siteIndex.pages ?? []).filter((page) => page?.slug === requestedSlug)
+    : (siteIndex.pages ?? []);
+
+  for (const pageEntry of candidatePages) {
+    if (!pageEntry?.slug || !pageEntry?.manifestHref || !pageEntry?.contractHref) continue;
+    const pageManifest = await fetchJson(pageEntry.manifestHref, `Page manifest request for ${pageEntry.slug}`);
+    const pageContract = await fetchJson(pageEntry.contractHref, `Page contract request for ${pageEntry.slug}`);
+    const localInstances = Array.isArray(pageContract.sectionInstances)
+      ? pageContract.sectionInstances.filter((section) => section?.scope === 'local')
+      : [];
+    const tools = Array.isArray(pageManifest.tools) ? pageManifest.tools : [];
+
+    for (const tool of tools) {
+      const sectionType = tool?.sectionType;
+      if (typeof tool?.name !== 'string' || typeof sectionType !== 'string') continue;
+      const targetInstance = localInstances.find((section) => section?.type === sectionType);
+      if (!targetInstance?.id) continue;
+      const targetFieldKey = findTopLevelStringField(pageContract.sectionSchemas?.[sectionType]);
+      if (!targetFieldKey) continue;
+      const pageState = await readPageJson(pageEntry.slug);
+      const section = Array.isArray(pageState.json.sections)
+        ? pageState.json.sections.find((item) => item?.id === targetInstance.id)
+        : null;
+      const originalValue = section?.data?.[targetFieldKey];
+      if (typeof originalValue !== 'string') continue;
+
+      return {
+        slug: pageEntry.slug,
+        manifestHref: pageEntry.manifestHref,
+        contractHref: pageEntry.contractHref,
+        toolName: tool.name,
+        sectionId: targetInstance.id,
+        fieldKey: targetFieldKey,
+        originalValue,
+        originalState: pageState,
+      };
+    }
+  }
+
+  throw new Error(
+    requestedSlug
+      ? `No valid WebMCP verification target found for page "${requestedSlug}".`
+      : 'No valid WebMCP verification target found in manifest index.'
+  );
+}
+
+async function main() {
+  const { chromium } = await loadPlaywright();
+  const target = await selectTarget();
+  const nextValue = `${target.originalValue} WebMCP ${Date.now()}`;
+  const browser = await chromium.launch({ headless: true });
+  const page = await browser.newPage();
+  const consoleEvents = [];
+  let mutationApplied = false;
+
+  page.on('console', (message) => {
+    if (message.type() === 'error' || message.type() === 'warning') {
+      consoleEvents.push(`[console:${message.type()}] ${message.text()}`);
+    }
+  });
+  page.on('pageerror', (error) => {
+    consoleEvents.push(`[pageerror] ${error.message}`);
+  });
+
+  const restoreOriginal = async () => {
+    try {
+      await page.evaluate(
+        async ({ toolName, slug, sectionId, fieldKey, value }) => {
+          const runtime = document.modelContextTesting;
+          if (!runtime?.executeTool) return;
+          await runtime.executeTool(
+            toolName,
+            JSON.stringify({
+              slug,
+              sectionId,
+              fieldKey,
+              value,
+            })
+          );
+        },
+        {
+          toolName: target.toolName,
+          slug: target.slug,
+          sectionId: target.sectionId,
+          fieldKey: target.fieldKey,
+          value: target.originalValue,
+        }
+      );
+      await waitForFileFieldValue(target.slug, target.sectionId, target.fieldKey, target.originalValue);
+    } catch {
+      await fs.writeFile(target.originalState.pageFilePath, target.originalState.raw, 'utf8');
+    }
+  };
+
+  try {
+    const pageManifest = await fetchJson(target.manifestHref, `Manifest request for ${target.slug}`);
+    if (!Array.isArray(pageManifest.tools) || !pageManifest.tools.some((tool) => tool?.name === target.toolName)) {
+      throw new Error(`Manifest does not expose ${target.toolName}.`);
+    }
+
+    const pageContract = await fetchJson(target.contractHref, `Page contract request for ${target.slug}`);
+    if (!Array.isArray(pageContract.tools) || !pageContract.tools.some((tool) => tool?.name === target.toolName)) {
+      throw new Error(`Page contract does not expose ${target.toolName}.`);
+    }
+
+    await page.goto(adminUrlFromSlug(target.slug), { waitUntil: 'networkidle' });
+
+    try {
+      await page.waitForFunction(
+        ({ manifestHref, contractHref }) => {
+          const manifestLink = document.head.querySelector('link[rel="mcp-manifest"]');
+          const contractLink = document.head.querySelector('link[rel="olon-contract"]');
+          return manifestLink?.getAttribute('href') === manifestHref
+            && contractLink?.getAttribute('href') === contractHref;
+        },
+        { manifestHref: target.manifestHref, contractHref: target.contractHref },
+        { timeout: 10_000 }
+      );
+    } catch (error) {
+      const diagnostics = await page.evaluate(() => ({
+        head: document.head.innerHTML,
+        bodyText: document.body.innerText,
+      }));
+      throw new Error(
+        [
+          error instanceof Error ? error.message : String(error),
+          `head=${diagnostics.head}`,
+          `body=${diagnostics.bodyText}`,
+          ...consoleEvents,
+        ].join('\n')
+      );
+    }
+
+    const toolNames = await page.evaluate(() => {
+      const runtime = document.modelContextTesting;
+      return runtime?.listTools?.().map((tool) => tool.name) ?? [];
+    });
+    if (!toolNames.includes(target.toolName)) {
+      throw new Error(`Runtime did not register ${target.toolName}. Found: ${toolNames.join(', ')}`);
+    }
+
+    const rawResult = await page.evaluate(
+      async ({ toolName, slug, sectionId, fieldKey, value }) => {
+        const runtime = document.modelContextTesting;
+        if (!runtime?.executeTool) {
+          throw new Error('document.modelContextTesting.executeTool is unavailable.');
+        }
+        return runtime.executeTool(
+          toolName,
+          JSON.stringify({
+            slug,
+            sectionId,
+            fieldKey,
+            value,
+          })
+        );
+      },
+      {
+        toolName: target.toolName,
+        slug: target.slug,
+        sectionId: target.sectionId,
+        fieldKey: target.fieldKey,
+        value: nextValue,
+      }
+    );
+
+    const parsedResult = JSON.parse(rawResult);
+    if (parsedResult?.isError) {
+      throw new Error(`WebMCP tool returned an error: ${rawResult}`);
+    }
+
+    mutationApplied = true;
+    await waitForFileFieldValue(target.slug, target.sectionId, target.fieldKey, nextValue);
+    await page.frameLocator('iframe').getByText(nextValue, { exact: true }).waitFor({ state: 'attached' });
+
+    console.log(
+      JSON.stringify({
+        ok: true,
+        slug: target.slug,
+        manifestHref: target.manifestHref,
+        contractHref: target.contractHref,
+        toolName: target.toolName,
+        sectionId: target.sectionId,
+        fieldKey: target.fieldKey,
+        toolNames,
+      })
+    );
+  } finally {
+    if (mutationApplied) {
+      await restoreOriginal();
+    }
+    await browser.close();
+  }
+}
+
+main().catch((error) => {
+  console.error(error instanceof Error ? error.stack ?? error.message : String(error));
+  process.exit(1);
+});
 
 END_OF_FILE_CONTENT
 mkdir -p "src"
@@ -3422,6 +4404,74 @@ export function useCloudSave({ apiUrl, apiKey }: UseCloudSaveOptions) {
 }
 
 END_OF_FILE_CONTENT
+echo "Creating src/lib/buildVisitorWebPageJsonLd.test.ts..."
+cat << 'END_OF_FILE_CONTENT' > "src/lib/buildVisitorWebPageJsonLd.test.ts"
+import { describe, expect, it } from 'vitest';
+import { buildVisitorWebPageJsonLd } from './buildVisitorWebPageJsonLd';
+
+describe('buildVisitorWebPageJsonLd', () => {
+  it('builds Schema.org WebPage for home at /', () => {
+    expect(
+      buildVisitorWebPageJsonLd({
+        title: 'Home',
+        description: 'Welcome',
+        slug: 'home',
+      }),
+    ).toEqual({
+      '@context': 'https://schema.org',
+      '@type': 'WebPage',
+      name: 'Home',
+      description: 'Welcome',
+      url: '/',
+    });
+  });
+
+  it('builds Schema.org WebPage for nested slug paths', () => {
+    expect(
+      buildVisitorWebPageJsonLd({
+        title: 'Dune',
+        description: 'Book',
+        slug: 'libri/dune',
+      }),
+    ).toEqual({
+      '@context': 'https://schema.org',
+      '@type': 'WebPage',
+      name: 'Dune',
+      description: 'Book',
+      url: '/libri/dune',
+    });
+  });
+});
+
+END_OF_FILE_CONTENT
+echo "Creating src/lib/buildVisitorWebPageJsonLd.ts..."
+cat << 'END_OF_FILE_CONTENT' > "src/lib/buildVisitorWebPageJsonLd.ts"
+/**
+ * Schema.org WebPage JSON-LD for Next visitor RSC (parity with tenant-alpha bake HTML injection).
+ */
+export type VisitorWebPageJsonLd = {
+  '@context': 'https://schema.org';
+  '@type': 'WebPage';
+  name: string;
+  description: string;
+  url: string;
+};
+
+export function buildVisitorWebPageJsonLd(input: {
+  title: string;
+  description?: string;
+  slug: string;
+}): VisitorWebPageJsonLd {
+  return {
+    '@context': 'https://schema.org',
+    '@type': 'WebPage',
+    name: input.title,
+    description: input.description ?? '',
+    url: input.slug === 'home' ? '/' : `/${input.slug}`,
+  };
+}
+
+END_OF_FILE_CONTENT
 mkdir -p "src/lib/css"
 echo "Creating src/lib/css/serializeThemeRootCss.test.ts..."
 cat << 'END_OF_FILE_CONTENT' > "src/lib/css/serializeThemeRootCss.test.ts"
@@ -4465,38 +5515,26 @@ else
 fi
 
 # -----------------------------------------------------------------------------
-# CLEAN DNA DEMO — remove marketplace seed capsules before SystemsArchitect write
-# (same contract as Vite SA + Next public sync paths — leftover imports break build)
+# WIPE tenant content — no DNA name denylist (orphans break the compiler).
+# Preserve: src/components/ui (shadcn), src/components/admin (studio).
+# Wipe includes overlap dirs (e.g. header) — generators rewrite them fresh.
 # -----------------------------------------------------------------------------
-echo "-- Cleaning demo capsules / collections / pages..."
+echo "-- Wiping tenant content surfaces (components/collections/pages/config)..."
+if [[ -d src/components ]]; then
+  find src/components -mindepth 1 -maxdepth 1 ! -name 'ui' ! -name 'admin' -exec rm -rf {} +
+fi
 rm -rf \
-  src/components/books-list \
-  src/components/authors-list \
-  src/components/book-detail \
-  src/components/form-demo \
-  src/components/empty-tenant \
-  src/collections/autori \
-  src/collections/libri \
-  src/data/collections/autori \
-  src/data/collections/libri \
-  src/data/pages/authors \
-  src/data/pages/libri \
-  src/data/pages/work \
-  src/data/pages/blog \
+  src/collections \
+  src/data/collections \
+  src/data/pages \
   public/pages \
   public/collections
-rm -f \
-  src/data/pages/home.json \
-  src/data/pages/authors.json \
-  src/data/pages/libri.json \
-  src/data/pages/form.json \
-  src/data/pages/about.json \
-  src/data/pages/work.json \
-  src/data/pages/blog.json \
-  src/data/pages/contact.json \
-  public/config/site.json
+rm -f public/config/site.json
+if [[ -d src/data/config ]]; then
+  find src/data/config -mindepth 1 -maxdepth 1 -exec rm -rf {} +
+fi
 
-# Drop books-list special-case so deleted capsules cannot break the visitor RSC path.
+# Drop DNA special-cases so wiped capsules cannot break the visitor RSC path.
 echo "-- Resetting VisitorSection to registry-only..."
 mkdir -p src/lib
 cat > src/lib/VisitorSection.tsx << 'EOF'
@@ -7157,31 +8195,26 @@ else
 fi
 
 # -----------------------------------------------------------------------------
-# CLEAN DNA DEMO — remove marketplace seed capsules before Inkwell write
-# (same contract as generate_SystemsArchitect.sh — leftover imports break build)
+# WIPE tenant content — no DNA name denylist (orphans break the compiler).
+# Preserve: src/components/ui (shadcn), src/components/admin (studio).
+# Wipe includes overlap dirs (e.g. header) — generators rewrite them fresh.
 # -----------------------------------------------------------------------------
-echo "-- Cleaning demo capsules / collections / pages..."
+echo "-- Wiping tenant content surfaces (components/collections/pages/config)..."
+if [[ -d src/components ]]; then
+  find src/components -mindepth 1 -maxdepth 1 ! -name 'ui' ! -name 'admin' -exec rm -rf {} +
+fi
 rm -rf \
-  src/components/authors-list \
-  src/components/books-list \
-  src/components/book-detail \
-  src/components/form-demo \
-  src/collections/autori \
-  src/collections/libri \
-  src/data/collections/autori \
-  src/data/collections/libri \
-  src/data/pages/authors \
-  src/data/pages/libri \
+  src/collections \
+  src/data/collections \
+  src/data/pages \
   public/pages \
   public/collections
-rm -f \
-  src/data/pages/home.json \
-  src/data/pages/authors.json \
-  src/data/pages/libri.json \
-  src/data/pages/form.json \
-  public/config/site.json
+rm -f public/config/site.json
+if [[ -d src/data/config ]]; then
+  find src/data/config -mindepth 1 -maxdepth 1 -exec rm -rf {} +
+fi
 
-# Drop books-list special-case so deleted capsules cannot break the visitor RSC path.
+# Drop DNA special-cases so wiped capsules cannot break the visitor RSC path.
 echo "-- Resetting VisitorSection to registry-only..."
 mkdir -p src/lib
 cat > src/lib/VisitorSection.tsx << 'EOF'
@@ -7216,6 +8249,31 @@ export function VisitorSection({
   return <View data={section.data} settings={section.settings} />;
 }
 EOF
+
+# DNA catch-all imports EmptyTenantView — drop it after wipe of that capsule.
+if [[ -f 'app/[[...slug]]/page.tsx' ]]; then
+  echo "-- Patching app/[[...slug]]/page.tsx empty fallback..."
+  python3 - <<'PY'
+from pathlib import Path
+p = Path("app/[[...slug]]/page.tsx")
+src = p.read_text()
+capsule = "empty" + "-tenant"
+src = src.replace(f"import {{ EmptyTenantView }} from '@/components/{capsule}';\n", "")
+old = "  if (result.kind === 'empty') {\n    return <EmptyTenantView />;\n  }"
+new = """  if (result.kind === 'empty') {
+    return (
+      <main className="mx-auto max-w-3xl px-8 py-24">
+        <h1 className="text-2xl font-bold">Your tenant is empty.</h1>
+        <p className="mt-2 text-muted-foreground">Create your first page.</p>
+      </main>
+    );
+  }"""
+if old not in src:
+    raise SystemExit("EmptyTenantView empty-branch not found in page.tsx")
+p.write_text(src.replace(old, new))
+print("   page.tsx empty fallback inlined")
+PY
+fi
 
 # -----------------------------------------------------------------------------
 # DIRECTORIES
