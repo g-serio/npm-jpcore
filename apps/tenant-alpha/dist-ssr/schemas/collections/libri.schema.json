@@ -1,0 +1,75 @@
+{
+  "version": "1.0.0",
+  "kind": "olonjs-collection-contract",
+  "source": "libri",
+  "dataHref": "/collections/libri/libri.json",
+  "contractHref": "/schemas/collections/libri.schema.json",
+  "recordKeyMustMatchItemId": true,
+  "itemSchema": {
+    "type": "object",
+    "properties": {
+      "id": {
+        "type": "string"
+      },
+      "title": {
+        "type": "string",
+        "description": "ui:text"
+      },
+      "author": {
+        "anyOf": [
+          {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string"
+              },
+              "name": {
+                "type": "string",
+                "description": "ui:text"
+              }
+            },
+            "additionalProperties": false,
+            "required": [
+              "id",
+              "name"
+            ]
+          },
+          {
+            "type": "object",
+            "properties": {
+              "$ref": {
+                "type": "string"
+              }
+            },
+            "additionalProperties": false,
+            "required": [
+              "$ref"
+            ]
+          }
+        ],
+        "description": "ui:collection-ref:autori"
+      },
+      "year": {
+        "type": "number",
+        "description": "ui:number"
+      },
+      "genre": {
+        "type": "string",
+        "description": "ui:text"
+      },
+      "summary": {
+        "type": "string",
+        "description": "ui:textarea"
+      }
+    },
+    "additionalProperties": false,
+    "required": [
+      "id",
+      "title",
+      "author",
+      "year",
+      "genre",
+      "summary"
+    ]
+  }
+}

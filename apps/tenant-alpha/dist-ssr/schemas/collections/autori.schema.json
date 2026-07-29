@@ -1,0 +1,25 @@
+{
+  "version": "1.0.0",
+  "kind": "olonjs-collection-contract",
+  "source": "autori",
+  "dataHref": "/collections/autori/autori.json",
+  "contractHref": "/schemas/collections/autori.schema.json",
+  "recordKeyMustMatchItemId": true,
+  "itemSchema": {
+    "type": "object",
+    "properties": {
+      "id": {
+        "type": "string"
+      },
+      "name": {
+        "type": "string",
+        "description": "ui:text"
+      }
+    },
+    "additionalProperties": false,
+    "required": [
+      "id",
+      "name"
+    ]
+  }
+}
