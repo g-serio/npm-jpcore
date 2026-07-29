@@ -162,6 +162,28 @@ npm run test:boundary -w @olonjs/core
 
 The check is part of `npm run test:all` and is intended to be wired into CI before publish.
 
+## Bake-time contracts
+
+Tenant `scripts/bake.mjs` emits machine-readable contracts alongside HTML during the SSG prebuild. All contract builders live in `@olonjs/core` (`packages/core/src/contract/webmcp-contracts.ts`); the tenant bake script orchestrates emission only.
+
+### Page contracts
+
+Per-page JSON Schema + MCP manifests. Written to `dist-ssr/schemas/` (provisioning) and `public/` + `dist/` (MCP manifests). See `buildPageContract`, `buildPageManifest`.
+
+### Collection contracts
+
+Per-collection item JSON Schema. For each key in the tenant `CollectionRegistry`:
+
+| Artifact | Output paths | Published URL |
+|----------|-------------|---------------|
+| Item contract | `public/`, `dist/`, `dist-ssr/schemas/collections/{source}.schema.json` | `/schemas/collections/{source}.schema.json` |
+
+The contract describes a **single item** (the record value type), not the outer keyed object. The `recordKeyMustMatchItemId: true` field signals that every top-level key in the collection data must equal `item.id`. Bake enforces this invariant via `assertCollectionRecordKeys` and fails if violated.
+
+### Site manifest (`mcp-manifest.json`)
+
+`buildSiteManifest` emits a discovery index with `pages[]` and optional `collections[]`. Consumers use this to find all available contracts without path inference.
+
 ## Constraints and caveats
 
 - On Windows UNC paths (`\\wsl.localhost\...`), npm/cmd invocation may fail; prefer WSL shell for release operations.

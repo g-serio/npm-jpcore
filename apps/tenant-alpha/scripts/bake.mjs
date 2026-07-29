@@ -14,6 +14,9 @@ import fs from 'fs/promises';
 import { resolvePageMatchFromRegistry, resolvePublicPageDocument, webmcp } from '@olonjs/core';
 
 const {
+  assertCollectionRecordKeys,
+  buildCollectionContract,
+  buildCollectionContractHref,
   buildPageContract,
   buildPageManifest,
   buildPageManifestHref,
@@ -232,10 +235,30 @@ for (const { slug } of targets) {
 // Export the site config for the agentic web
 await writeJsonTargets('config/site.json', webMcpBuildState.siteConfig);
 
+// Emit collection contracts and validate keyed-object invariant
+const collectionSchemas = webMcpBuildState.collectionSchemas ?? {};
+for (const [source, schema] of Object.entries(collectionSchemas)) {
+  const collectionPath = path.resolve(collectionsDir, source, `${source}.json`);
+  try {
+    const collectionData = await readJsonFile(collectionPath);
+    assertCollectionRecordKeys(source, collectionData);
+    console.log(`[bake] Collection "${source}" keyed-object invariant OK`);
+  } catch (err) {
+    throw new Error(`[bake] Collection key invariant failed: ${err.message}`);
+  }
+
+  const contract = buildCollectionContract({ source, schema });
+  const contractRelPath = buildCollectionContractHref(source).replace(/^\//, '');
+  await writeJsonTargets(contractRelPath, contract);
+  await writeSsrJson(contractRelPath, contract);
+  console.log(`[bake] Collection contract emitted: ${contractRelPath}`);
+}
+
 const mcpManifest = buildSiteManifest({
   pages: webMcpBuildState.pages,
   schemas: webMcpBuildState.schemas,
   siteConfig: webMcpBuildState.siteConfig,
+  collectionSchemas,
 });
 await writeJsonTargets('mcp-manifest.json', mcpManifest);
 

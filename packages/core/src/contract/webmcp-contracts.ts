@@ -85,6 +85,26 @@ export interface OlonJsSiteManifestIndex {
     contractHref: string;
     sectionTypes: string[];
   }>;
+  collections?: Array<{
+    source: string;
+    dataHref: string;
+    contractHref: string;
+  }>;
+}
+
+export interface OlonJsCollectionContract {
+  version: '1.0.0';
+  kind: 'olonjs-collection-contract';
+  source: string;
+  dataHref: string;
+  contractHref: string;
+  recordKeyMustMatchItemId: true;
+  itemSchema: Record<string, unknown>;
+}
+
+export interface BuildCollectionContractInput {
+  source: string;
+  schema: z.ZodTypeAny;
 }
 
 export interface BuildPageContractInput {
@@ -100,6 +120,7 @@ export interface BuildSiteManifestInput {
   schemas: JsonPagesConfig['schemas'];
   submissionSchemas?: JsonPagesConfig['submissionSchemas'];
   siteConfig: SiteConfig;
+  collectionSchemas?: Record<string, z.ZodTypeAny>;
 }
 
 function cloneJson<T>(value: T): T {
@@ -506,9 +527,10 @@ export function buildSiteManifest({
   schemas,
   submissionSchemas,
   siteConfig,
+  collectionSchemas,
 }: BuildSiteManifestInput): OlonJsSiteManifestIndex {
   const pageEntries = Object.entries(pages ?? {}).sort(([a], [b]) => a.localeCompare(b));
-  return {
+  const manifest: OlonJsSiteManifestIndex = {
     version: '1.0.0',
     kind: 'olonjs-mcp-manifest-index',
     generatedAt: new Date().toISOString(),
@@ -524,6 +546,62 @@ export function buildSiteManifest({
       };
     }),
   };
+
+  if (collectionSchemas && Object.keys(collectionSchemas).length > 0) {
+    manifest.collections = Object.keys(collectionSchemas)
+      .sort()
+      .map((source) => ({
+        source,
+        dataHref: `/collections/${source}/${source}.json`,
+        contractHref: buildCollectionContractHref(source),
+      }));
+  }
+
+  return manifest;
+}
+
+export function buildCollectionContractHref(source: string): string {
+  return `/schemas/collections/${source}.schema.json`;
+}
+
+export function buildCollectionContract({ source, schema }: BuildCollectionContractInput): OlonJsCollectionContract {
+  const meta = unwrapSchema(schema);
+  const current = meta.schema;
+  const typeName = getTypeName(current);
+
+  let valueSchema: z.ZodTypeAny;
+  if (typeName === z.ZodFirstPartyTypeKind.ZodRecord) {
+    valueSchema = (current as z.ZodRecord<z.ZodString, z.ZodTypeAny>)._def.valueType;
+  } else {
+    valueSchema = schema;
+  }
+
+  return {
+    version: '1.0.0',
+    kind: 'olonjs-collection-contract',
+    source,
+    dataHref: `/collections/${source}/${source}.json`,
+    contractHref: buildCollectionContractHref(source),
+    recordKeyMustMatchItemId: true,
+    itemSchema: zodToJsonSchema(valueSchema),
+  };
+}
+
+export function assertCollectionRecordKeys(
+  source: string,
+  collection: Record<string, unknown>
+): void {
+  for (const [key, item] of Object.entries(collection)) {
+    if (item == null || typeof item !== 'object') {
+      throw new Error(`[${source}] invalid item at key "${key}": expected an object`);
+    }
+    const id = (item as Record<string, unknown>).id;
+    if (id !== key) {
+      throw new Error(
+        `[${source}] record key "${key}" must equal item.id but got "${String(id ?? 'undefined')}"`
+      );
+    }
+  }
 }
 
 export function buildLlmsTxt(input: BuildSiteManifestInput): string {

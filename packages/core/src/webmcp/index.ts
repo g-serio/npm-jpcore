@@ -18,6 +18,9 @@ export {
   type WebMcpMutationArgs,
 } from './runtime';
 export {
+  assertCollectionRecordKeys,
+  buildCollectionContract,
+  buildCollectionContractHref,
   buildLlmsTxt,
   buildPageContract,
   buildPageContractHref,
@@ -26,8 +29,10 @@ export {
   buildSiteManifest,
 } from '../contract/webmcp-contracts';
 export type {
+  BuildCollectionContractInput,
   BuildPageContractInput,
   BuildSiteManifestInput,
+  OlonJsCollectionContract,
   OlonJsPageContract,
   OlonJsPageManifest,
   OlonJsSiteManifestIndex,
