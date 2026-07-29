@@ -1,7 +1,7 @@
 {
   "version": "1.0.0",
   "kind": "olonjs-mcp-manifest-index",
-  "generatedAt": "2026-07-29T09:01:49.671Z",
+  "generatedAt": "2026-07-29T09:29:51.920Z",
   "pages": [
     {
       "slug": "authors",
@@ -68,6 +68,18 @@
         "footer",
         "book-detail"
       ]
+    }
+  ],
+  "collections": [
+    {
+      "source": "autori",
+      "dataHref": "/collections/autori/autori.json",
+      "contractHref": "/schemas/collections/autori.schema.json"
+    },
+    {
+      "source": "libri",
+      "dataHref": "/collections/libri/libri.json",
+      "contractHref": "/schemas/collections/libri.schema.json"
     }
   ]
 }

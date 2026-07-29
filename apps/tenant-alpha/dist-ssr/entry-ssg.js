@@ -31710,7 +31710,7 @@ function ee$1(e) {
 function H(e) {
   return x(e) && typeof e.$ref == "string" && e.$ref.trim().length > 0;
 }
-function Ce(e) {
+function Pe$1(e) {
   return e.replace(/~1/g, "/").replace(/~0/g, "~");
 }
 function qe(e, t) {
@@ -31719,7 +31719,7 @@ function qe(e, t) {
   if (!o || o === "/") return e;
   let r2 = e;
   for (const n of o.replace(/^\//, "").split("/")) {
-    const s = Ce(n);
+    const s = Pe$1(n);
     if (Array.isArray(r2)) {
       const i = Number(s);
       if (!Number.isInteger(i) || i < 0 || i >= r2.length) return;
@@ -31764,7 +31764,7 @@ function V(e, t, o) {
     n && e.set(n, o);
   }
 }
-function Pe$1(e, t) {
+function Ie(e, t) {
   const o = {};
   for (const [r2, n] of Object.entries(e ?? {})) {
     const s = t == null ? void 0 : t[r2];
@@ -31909,10 +31909,10 @@ function Lt(e) {
   if (!/menu\.json$/i.test(o)) return null;
   const n = r2.replace(/^\//, "");
   if (!n) return null;
-  const s = n.split("/").map(Ce).filter(Boolean);
+  const s = n.split("/").map(Pe$1).filter(Boolean);
   return s.length > 0 ? s : null;
 }
-function Ie(e) {
+function Ae$1(e) {
   return x(e) ? Object.entries(e).map(([t, o]) => {
     const r2 = Lt(o);
     return r2 ? { fieldKey: t, path: r2 } : null;
@@ -31944,8 +31944,8 @@ function fe(e, t) {
   }
   return t;
 }
-function Ae$1(e, t, o) {
-  const r2 = Ie(e);
+function Oe(e, t, o) {
+  const r2 = Ae$1(e);
   if (r2.length === 0)
     return { normalizedData: t, menuDraft: o };
   const n = x(e) ? e : {}, s = { ...t };
@@ -31967,7 +31967,7 @@ function Kt(e, t) {
     } : null;
   const [r2, n = ""] = o.split("#"), i = D(r2).match(/(?:^|\/)collections\/([^/]+)\/\1\.json$/);
   if (!(i != null && i[1])) return null;
-  const l = n.replace(/^\//, ""), a = l ? Ce(l.split("/")[0]) : void 0;
+  const l = n.replace(/^\//, ""), a = l ? Pe$1(l.split("/")[0]) : void 0;
   return {
     source: i[1],
     ...a ? { itemId: a } : {}
@@ -32004,13 +32004,13 @@ function Ft$1(e, t, o, r2, n) {
   }
   return {
     normalizedData: l,
-    collectionsDraft: Pe$1(a, n)
+    collectionsDraft: Ie(a, n)
   };
 }
 function Ve(e, t, o) {
   if (!e || !t || !x(t.data))
     return { section: t, menuDraft: o };
-  const { normalizedData: r2, menuDraft: n } = Ae$1(
+  const { normalizedData: r2, menuDraft: n } = Oe(
     e.data,
     t.data,
     o
@@ -32047,7 +32047,7 @@ function lt$1(e) {
   const t = e.menu;
   return Array.isArray(t) && t.every(Wt) ? t : null;
 }
-function Oe(e, t) {
+function $e(e, t) {
   return lt$1(e) ?? (Array.isArray(t) ? t : []);
 }
 function ct$1(e, t) {
@@ -32056,7 +32056,7 @@ function ct$1(e, t) {
   if (e.type === "header") return Array.isArray(t) ? t : [];
 }
 function Ee$1(e) {
-  const t = Pe$1(e.collections, e.collectionSchemas), o = _t$1(e.collectionContext, t), r2 = Rt$1({
+  const t = Ie(e.collections, e.collectionSchemas), o = _t$1(e.collectionContext, t), r2 = Rt$1({
     ...e,
     collections: t
   });
@@ -32278,15 +32278,15 @@ function Jt(e, t) {
     ...o.map((n) => ({ ...n, scope: "local" }))
   ];
 }
-function $e({
+function ze({
   slug: e,
   pageConfig: t,
   schemas: o,
   submissionSchemas: r2,
   siteConfig: n
 }) {
-  var $, C;
-  const s = typeof (($ = t.meta) == null ? void 0 : $.title) == "string" ? t.meta.title : e, i = typeof ((C = t.meta) == null ? void 0 : C.description) == "string" ? t.meta.description : "", l = Jt(t, n), a = Array.from(new Set(l.map((y) => String(y.type)).filter(Boolean))), c = Object.fromEntries(
+  var E, C;
+  const s = typeof ((E = t.meta) == null ? void 0 : E.title) == "string" ? t.meta.title : e, i = typeof ((C = t.meta) == null ? void 0 : C.description) == "string" ? t.meta.description : "", l = Jt(t, n), a = Array.from(new Set(l.map((y) => String(y.type)).filter(Boolean))), c = Object.fromEntries(
     a.filter((y) => (o == null ? void 0 : o[y]) != null).map((y) => {
       const I = o[y];
       return [y, B(I)];
@@ -32312,7 +32312,7 @@ function $e({
       description: "Persist all pending draft changes using the active save mode (local file, hot save, or save2repo). Call once after all update-section calls are complete.",
       inputSchema: { type: "object", additionalProperties: false, properties: {} }
     }
-  ] : [], E = {
+  ] : [], $ = {
     version: "1.0.0",
     kind: "olonjs-page-contract",
     slug: e,
@@ -32325,10 +32325,10 @@ function $e({
     sectionSchemas: c,
     tools: w
   };
-  return Object.keys(p).length > 0 && (E.sectionSubmissionSchemas = p), E;
+  return Object.keys(p).length > 0 && ($.sectionSubmissionSchemas = p), $;
 }
-function ze(e) {
-  const t = $e(e);
+function Me(e) {
+  const t = ze(e);
   return {
     version: "1.0.0",
     kind: "olonjs-page-mcp-manifest",
@@ -32367,31 +32367,36 @@ function ze(e) {
     }))
   };
 }
-function Me({
+function _e({
   pages: e,
   schemas: t,
   submissionSchemas: o,
-  siteConfig: r2
+  siteConfig: r2,
+  collectionSchemas: n
 }) {
-  const n = Object.entries(e ?? {}).sort(([s], [i]) => s.localeCompare(i));
-  return {
+  const s = Object.entries(e ?? {}).sort(([l], [a]) => l.localeCompare(a)), i = {
     version: "1.0.0",
     kind: "olonjs-mcp-manifest-index",
     generatedAt: (/* @__PURE__ */ new Date()).toISOString(),
-    pages: n.map(([s, i]) => {
-      const l = ze({ slug: s, pageConfig: i, schemas: t, submissionSchemas: o, siteConfig: r2 });
+    pages: s.map(([l, a]) => {
+      const c = Me({ slug: l, pageConfig: a, schemas: t, submissionSchemas: o, siteConfig: r2 });
       return {
-        slug: s,
-        title: l.title,
-        description: l.description,
-        manifestHref: he(s),
-        contractHref: be$1(s),
-        sectionTypes: l.sectionTypes
+        slug: l,
+        title: c.title,
+        description: c.description,
+        manifestHref: he(l),
+        contractHref: be$1(l),
+        sectionTypes: c.sectionTypes
       };
     })
   };
+  return n && Object.keys(n).length > 0 && (i.collections = Object.keys(n).sort().map((l) => ({
+    source: l,
+    dataHref: `/collections/${l}/${l}.json`,
+    contractHref: ye$1(l)
+  }))), i;
 }
-function _e(e) {
+function ye$1(e) {
   return `/schemas/collections/${e}.schema.json`;
 }
 function dt$1({ source: e, schema: t }) {
@@ -32402,7 +32407,7 @@ function dt$1({ source: e, schema: t }) {
     kind: "olonjs-collection-contract",
     source: e,
     dataHref: `/collections/${e}/${e}.json`,
-    contractHref: _e(e),
+    contractHref: ye$1(e),
     recordKeyMustMatchItemId: true,
     itemSchema: B(s)
   };
@@ -32420,7 +32425,7 @@ function ut$1(e, t) {
 }
 function ft$1(e) {
   var n;
-  const t = ((n = e.siteConfig.identity) == null ? void 0 : n.title) || "OlonJS Site", o = Me(e);
+  const t = ((n = e.siteConfig.identity) == null ? void 0 : n.title) || "OlonJS Site", o = _e(e);
   let r2 = `# ${t}
 
 `;
@@ -32537,28 +32542,28 @@ const oo = {
   STUDIO_EVENTS: oo,
   appendDraftSection: Xt,
   applyCollectionRefBindingsToDraft: Ft$1,
-  applyMenuRefBindingsToDraft: Ae$1,
+  applyMenuRefBindingsToDraft: Oe,
   applySiteMenuRefBindingsToDraft: at$1,
   assertCollectionRecordKeys: ut$1,
   buildCollectionContract: dt$1,
-  buildCollectionContractHref: _e,
+  buildCollectionContractHref: ye$1,
   buildLlmsTxt: ft$1,
-  buildPageContract: $e,
+  buildPageContract: ze,
   buildPageContractHref: be$1,
-  buildPageManifest: ze,
+  buildPageManifest: Me,
   buildPageManifestHref: he,
   buildSelectionPath: to,
-  buildSiteManifest: Me,
+  buildSiteManifest: _e,
   buildThemeVariableMap: Yt,
   getCollectionRefBindings: it$1,
-  getMenuRefBindings: Ie,
+  getMenuRefBindings: Ae$1,
   reorderPageSections: Qt,
   resolveCollectionContext: nt,
-  resolveHeaderMenuItems: Oe,
+  resolveHeaderMenuItems: $e,
   resolveRuntimeConfig: Ee$1,
   resolveSectionMenuItems: ct$1,
   shouldRenderSiteGlobalHeader: rt$1,
-  validateCollectionDocuments: Pe$1
+  validateCollectionDocuments: Ie
 }, Symbol.toStringTag, { value: "Module" }));
 function bt$1(e) {
   var t, o, r2 = "";
@@ -32704,7 +32709,7 @@ const go = (e, t) => {
       s in o ? o[s] = i : n(s, i);
     }
   };
-}, Te$1 = "!", Ye = ":", Io = [], Qe = (e, t, o, r2, n) => ({
+}, Ce = "!", Ye = ":", Io = [], Qe = (e, t, o, r2, n) => ({
   modifiers: e,
   hasImportantModifier: t,
   baseClassName: o,
@@ -32734,16 +32739,16 @@ const go = (e, t) => {
       y === "[" ? i++ : y === "]" ? i-- : y === "(" ? l++ : y === ")" && l--;
     }
     const g = s.length === 0 ? n : n.slice(a);
-    let w = g, E = false;
-    g.endsWith(Te$1) ? (w = g.slice(0, -1), E = true) : (
+    let w = g, $ = false;
+    g.endsWith(Ce) ? (w = g.slice(0, -1), $ = true) : (
       /**
        * In Tailwind CSS v3 the important modifier was at the start of the base class name. This is still supported for legacy reasons.
        * @see https://github.com/dcastil/tailwind-merge/issues/513#issuecomment-2614029864
        */
-      g.startsWith(Te$1) && (w = g.slice(1), E = true)
+      g.startsWith(Ce) && (w = g.slice(1), $ = true)
     );
-    const $ = c && c > a ? c - a : void 0;
-    return Qe(s, E, w, $);
+    const E = c && c > a ? c - a : void 0;
+    return Qe(s, $, w, E);
   };
   if (t) {
     const n = t + Ye, s = r2;
@@ -32770,44 +32775,44 @@ const go = (e, t) => {
     }
     return n.length > 0 && (n.sort(), r2.push(...n)), r2;
   };
-}, Eo = (e) => ({
+}, $o = (e) => ({
   cache: Po(e.cacheSize),
   parseClassName: Ao(e),
   sortModifiers: Oo(e),
   ...yo(e)
-}), $o = /\s+/, zo = (e, t) => {
+}), Eo = /\s+/, zo = (e, t) => {
   const {
     parseClassName: o,
     getClassGroupId: r2,
     getConflictingClassGroupIds: n,
     sortModifiers: s
-  } = t, i = [], l = e.trim().split($o);
+  } = t, i = [], l = e.trim().split(Eo);
   let a = "";
   for (let c = l.length - 1; c >= 0; c -= 1) {
     const p = l[c], {
       isExternal: g,
       modifiers: w,
-      hasImportantModifier: E,
-      baseClassName: $,
+      hasImportantModifier: $,
+      baseClassName: E,
       maybePostfixModifierPosition: C
     } = o(p);
     if (g) {
       a = p + (a.length > 0 ? " " + a : a);
       continue;
     }
-    let y = !!C, I = r2(y ? $.substring(0, C) : $);
+    let y = !!C, I = r2(y ? E.substring(0, C) : E);
     if (!I) {
       if (!y) {
         a = p + (a.length > 0 ? " " + a : a);
         continue;
       }
-      if (I = r2($), !I) {
+      if (I = r2(E), !I) {
         a = p + (a.length > 0 ? " " + a : a);
         continue;
       }
       y = false;
     }
-    const oe = w.length === 0 ? "" : w.length === 1 ? w[0] : s(w).join(":"), Y = E ? oe + Te$1 : oe, Z2 = Y + I;
+    const oe = w.length === 0 ? "" : w.length === 1 ? w[0] : s(w).join(":"), Y = $ ? oe + Ce : oe, Z2 = Y + I;
     if (i.indexOf(Z2) > -1)
       continue;
     i.push(Z2);
@@ -32835,7 +32840,7 @@ const go = (e, t) => {
   let o, r2, n, s;
   const i = (a) => {
     const c = t.reduce((p, g) => g(p), e());
-    return o = Eo(c), r2 = o.cache.get, n = o.cache.set, s = l, l(a);
+    return o = $o(c), r2 = o.cache.get, n = o.cache.set, s = l, l(a);
   }, l = (a) => {
     const c = r2(a);
     if (c)
@@ -32847,7 +32852,7 @@ const go = (e, t) => {
 }, Ro = [], v = (e) => {
   const t = (o) => o[e] || Ro;
   return t.isThemeGetter = true, t;
-}, kt$1 = /^\[(?:(\w[\w-]*):)?(.+)\]$/i, xt = /^\((?:(\w[\w-]*):)?(.+)\)$/i, No = /^\d+(?:\.\d+)?\/\d+(?:\.\d+)?$/, Wo = /^(\d+(\.\d+)?)?(xs|sm|md|lg|xl)$/, Lo = /\d+(%|px|r?em|[sdl]?v([hwib]|min|max)|pt|pc|in|cm|mm|cap|ch|ex|r?lh|cq(w|h|i|b|min|max))|\b(calc|min|max|clamp)\(.+\)|^0$/, Ko = /^(rgba?|hsla?|hwb|(ok)?(lab|lch)|color-mix)\(.+\)$/, Fo = /^(inset_)?-?((\d+)?\.?(\d+)[a-z]+|0)_-?((\d+)?\.?(\d+)[a-z]+|0)/, Bo = /^(url|image|image-set|cross-fade|element|(repeating-)?(linear|radial|conic)-gradient)\(.+\)$/, M = (e) => No.test(e), b = (e) => !!e && !Number.isNaN(Number(e)), _ = (e) => !!e && Number.isInteger(Number(e)), Se = (e) => e.endsWith("%") && b(e.slice(0, -1)), z = (e) => Wo.test(e), St = () => true, Do = (e) => (
+}, kt$1 = /^\[(?:(\w[\w-]*):)?(.+)\]$/i, xt = /^\((?:(\w[\w-]*):)?(.+)\)$/i, No = /^\d+(?:\.\d+)?\/\d+(?:\.\d+)?$/, Wo = /^(\d+(\.\d+)?)?(xs|sm|md|lg|xl)$/, Lo = /\d+(%|px|r?em|[sdl]?v([hwib]|min|max)|pt|pc|in|cm|mm|cap|ch|ex|r?lh|cq(w|h|i|b|min|max))|\b(calc|min|max|clamp)\(.+\)|^0$/, Ko = /^(rgba?|hsla?|hwb|(ok)?(lab|lch)|color-mix)\(.+\)$/, Fo = /^(inset_)?-?((\d+)?\.?(\d+)[a-z]+|0)_-?((\d+)?\.?(\d+)[a-z]+|0)/, Bo = /^(url|image|image-set|cross-fade|element|(repeating-)?(linear|radial|conic)-gradient)\(.+\)$/, M = (e) => No.test(e), b = (e) => !!e && !Number.isNaN(Number(e)), _ = (e) => !!e && Number.isInteger(Number(e)), je = (e) => e.endsWith("%") && b(e.slice(0, -1)), z = (e) => Wo.test(e), St = () => true, Do = (e) => (
   // `colorFunctionRegex` check is necessary because color functions can have percentages in them which which would be incorrectly classified as lengths.
   // For example, `hsl(0 0% 0%)` would be classified as a length without this check.
   // I could also use lookbehind assertion in `lengthUnitRegex` but that isn't supported widely enough.
@@ -32859,7 +32864,7 @@ const go = (e, t) => {
   const r2 = xt.exec(e);
   return r2 ? r2[1] ? t(r2[1]) : o : false;
 }, jt = (e) => e === "position" || e === "percentage", Tt = (e) => e === "image" || e === "url", Ct = (e) => e === "length" || e === "size" || e === "bg-size", Pt = (e) => e === "length", tr = (e) => e === "number", It = (e) => e === "family-name", At = (e) => e === "number" || e === "weight", Ot = (e) => e === "shadow", or = () => {
-  const e = v("color"), t = v("font"), o = v("text"), r2 = v("font-weight"), n = v("tracking"), s = v("leading"), i = v("breakpoint"), l = v("container"), a = v("spacing"), c = v("radius"), p = v("shadow"), g = v("inset-shadow"), w = v("text-shadow"), E = v("drop-shadow"), $ = v("blur"), C = v("perspective"), y = v("aspect"), I = v("ease"), oe = v("animate"), Y = () => ["auto", "avoid", "all", "avoid-page", "page", "left", "right", "column"], Z2 = () => [
+  const e = v("color"), t = v("font"), o = v("text"), r2 = v("font-weight"), n = v("tracking"), s = v("leading"), i = v("breakpoint"), l = v("container"), a = v("spacing"), c = v("radius"), p = v("shadow"), g = v("inset-shadow"), w = v("text-shadow"), $ = v("drop-shadow"), E = v("blur"), C = v("perspective"), y = v("aspect"), I = v("ease"), oe = v("animate"), Y = () => ["auto", "avoid", "all", "avoid-page", "page", "left", "right", "column"], Z2 = () => [
     "center",
     "top",
     "bottom",
@@ -32879,13 +32884,13 @@ const go = (e, t) => {
     "left-bottom"
   ], G2 = () => [...Z2(), u, d], W = () => ["auto", "hidden", "clip", "visible", "scroll"], Q = () => ["auto", "contain", "none"], f = () => [u, d, a], P = () => [M, "full", "auto", ...f()], Le = () => [_, "none", "subgrid", u, d], Ke = () => ["auto", {
     span: ["full", _, u, d]
-  }, _, u, d], re = () => [_, "auto", u, d], Fe = () => ["auto", "min", "max", "fr", u, d], ye2 = () => ["start", "end", "center", "between", "around", "evenly", "stretch", "baseline", "center-safe", "end-safe"], q2 = () => ["start", "end", "center", "stretch", "center-safe", "end-safe"], A = () => ["auto", ...f()], L = () => [M, "auto", "full", "dvw", "dvh", "lvw", "lvh", "svw", "svh", "min", "max", "fit", ...f()], we = () => [M, "screen", "full", "dvw", "lvw", "svw", "min", "max", "fit", ...f()], ve = () => [M, "screen", "full", "lh", "dvh", "lvh", "svh", "min", "max", "fit", ...f()], m = () => [e, u, d], Be = () => [...Z2(), tt$1, et$1, {
+  }, _, u, d], re = () => [_, "auto", u, d], Fe = () => ["auto", "min", "max", "fr", u, d], we = () => ["start", "end", "center", "between", "around", "evenly", "stretch", "baseline", "center-safe", "end-safe"], q2 = () => ["start", "end", "center", "stretch", "center-safe", "end-safe"], A = () => ["auto", ...f()], L = () => [M, "auto", "full", "dvw", "dvh", "lvw", "lvh", "svw", "svh", "min", "max", "fit", ...f()], ve = () => [M, "screen", "full", "dvw", "lvw", "svw", "min", "max", "fit", ...f()], ke = () => [M, "screen", "full", "lh", "dvh", "lvh", "svh", "min", "max", "fit", ...f()], m = () => [e, u, d], Be = () => [...Z2(), tt$1, et$1, {
     position: [u, d]
   }], De = () => ["no-repeat", {
     repeat: ["", "x", "y", "space", "round"]
   }], Ue = () => ["auto", "cover", "contain", Qo, qo, {
     size: [u, d]
-  }], ke = () => [Se, X$1, K], S = () => [
+  }], xe = () => [je, X$1, K], S = () => [
     // Deprecated since Tailwind CSS v4.0.0
     "",
     "none",
@@ -32893,14 +32898,14 @@ const go = (e, t) => {
     c,
     u,
     d
-  ], j = () => ["", b, X$1, K], ne = () => ["solid", "dashed", "dotted", "double"], Ze = () => ["normal", "multiply", "screen", "overlay", "darken", "lighten", "color-dodge", "color-burn", "hard-light", "soft-light", "difference", "exclusion", "hue", "saturation", "color", "luminosity"], k = () => [b, Se, tt$1, et$1], Ge = () => [
+  ], j = () => ["", b, X$1, K], ne = () => ["solid", "dashed", "dotted", "double"], Ze = () => ["normal", "multiply", "screen", "overlay", "darken", "lighten", "color-dodge", "color-burn", "hard-light", "soft-light", "difference", "exclusion", "hue", "saturation", "color", "luminosity"], k = () => [b, je, tt$1, et$1], Ge = () => [
     // Deprecated since Tailwind CSS v4.0.0
     "",
     "none",
-    $,
+    E,
     u,
     d
-  ], se = () => ["none", b, u, d], ie = () => ["none", b, u, d], xe = () => [b, u, d], ae = () => [M, "full", ...f()];
+  ], se = () => ["none", b, u, d], ie = () => ["none", b, u, d], Se = () => [b, u, d], ae = () => [M, "full", ...f()];
   return {
     cacheSize: 500,
     theme: {
@@ -33329,7 +33334,7 @@ const go = (e, t) => {
        * @see https://tailwindcss.com/docs/justify-content
        */
       "justify-content": [{
-        justify: [...ye2(), "normal"]
+        justify: [...we(), "normal"]
       }],
       /**
        * Justify Items
@@ -33350,7 +33355,7 @@ const go = (e, t) => {
        * @see https://tailwindcss.com/docs/align-content
        */
       "align-content": [{
-        content: ["normal", ...ye2()]
+        content: ["normal", ...we()]
       }],
       /**
        * Align Items
@@ -33375,7 +33380,7 @@ const go = (e, t) => {
        * @see https://tailwindcss.com/docs/place-content
        */
       "place-content": [{
-        "place-content": ye2()
+        "place-content": we()
       }],
       /**
        * Place Items
@@ -33585,42 +33590,42 @@ const go = (e, t) => {
        * @see https://tailwindcss.com/docs/width
        */
       "inline-size": [{
-        inline: ["auto", ...we()]
+        inline: ["auto", ...ve()]
       }],
       /**
        * Min-Inline Size
        * @see https://tailwindcss.com/docs/min-width
        */
       "min-inline-size": [{
-        "min-inline": ["auto", ...we()]
+        "min-inline": ["auto", ...ve()]
       }],
       /**
        * Max-Inline Size
        * @see https://tailwindcss.com/docs/max-width
        */
       "max-inline-size": [{
-        "max-inline": ["none", ...we()]
+        "max-inline": ["none", ...ve()]
       }],
       /**
        * Block Size
        * @see https://tailwindcss.com/docs/height
        */
       "block-size": [{
-        block: ["auto", ...ve()]
+        block: ["auto", ...ke()]
       }],
       /**
        * Min-Block Size
        * @see https://tailwindcss.com/docs/min-height
        */
       "min-block-size": [{
-        "min-block": ["auto", ...ve()]
+        "min-block": ["auto", ...ke()]
       }],
       /**
        * Max-Block Size
        * @see https://tailwindcss.com/docs/max-height
        */
       "max-block-size": [{
-        "max-block": ["none", ...ve()]
+        "max-block": ["none", ...ke()]
       }],
       /**
        * Width
@@ -33713,7 +33718,7 @@ const go = (e, t) => {
        * @see https://tailwindcss.com/docs/font-stretch
        */
       "font-stretch": [{
-        "font-stretch": ["ultra-condensed", "extra-condensed", "condensed", "semi-condensed", "normal", "semi-expanded", "expanded", "extra-expanded", "ultra-expanded", Se, d]
+        "font-stretch": ["ultra-condensed", "extra-condensed", "condensed", "semi-condensed", "normal", "semi-expanded", "expanded", "extra-expanded", "ultra-expanded", je, d]
       }],
       /**
        * Font Family
@@ -33996,21 +34001,21 @@ const go = (e, t) => {
        * @see https://tailwindcss.com/docs/gradient-color-stops
        */
       "gradient-from-pos": [{
-        from: ke()
+        from: xe()
       }],
       /**
        * Gradient Color Stops Via Position
        * @see https://tailwindcss.com/docs/gradient-color-stops
        */
       "gradient-via-pos": [{
-        via: ke()
+        via: xe()
       }],
       /**
        * Gradient Color Stops To Position
        * @see https://tailwindcss.com/docs/gradient-color-stops
        */
       "gradient-to-pos": [{
-        to: ke()
+        to: xe()
       }],
       /**
        * Gradient Color Stops From
@@ -34736,7 +34741,7 @@ const go = (e, t) => {
           // Deprecated since Tailwind CSS v4.0.0
           "",
           "none",
-          E,
+          $,
           de,
           ce
         ]
@@ -35039,21 +35044,21 @@ const go = (e, t) => {
        * @see https://tailwindcss.com/docs/skew
        */
       skew: [{
-        skew: xe()
+        skew: Se()
       }],
       /**
        * Skew X
        * @see https://tailwindcss.com/docs/skew
        */
       "skew-x": [{
-        "skew-x": xe()
+        "skew-x": Se()
       }],
       /**
        * Skew Y
        * @see https://tailwindcss.com/docs/skew
        */
       "skew-y": [{
-        "skew-y": xe()
+        "skew-y": Se()
       }],
       /**
        * Transform
@@ -35541,7 +35546,7 @@ function ur(e, t) {
   }
   return n;
 }
-function $t$1(e, t) {
+function Et$1(e, t) {
   const o = te$1(t) || "home", r2 = e[o];
   if (r2)
     return {
@@ -37485,7 +37490,7 @@ function getSortedSlugs() {
 }
 function resolvePage(slug2) {
   const normalized = normalizeSlug(slug2);
-  const pageMatch = $t$1(pages, normalized);
+  const pageMatch = Et$1(pages, normalized);
   if (pageMatch) {
     return {
       slug: normalized || pageMatch.registrySlug,

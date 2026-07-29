@@ -1,7 +1,7 @@
 {
   "version": "1.0.0",
   "kind": "olonjs-page-mcp-manifest",
-  "generatedAt": "2026-07-29T09:03:10.239Z",
+  "generatedAt": "2026-07-29T09:30:48.114Z",
   "slug": "libri/il-barone-rampante",
   "title": "Dettaglio libro",
   "description": "Pagina dinamica dettaglio libro alimentata dalla collection libri.",

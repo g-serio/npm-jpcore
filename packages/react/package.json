@@ -1,6 +1,6 @@
 {
   "name": "@olonjs/react",
-  "version": "0.1.12",
+  "version": "0.1.13",
   "private": false,
   "type": "module",
   "main": "./dist/olonjs-react.umd.cjs",
@@ -42,7 +42,7 @@
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "react-router-dom": "^6.29.0",
-    "@olonjs/studio": "^0.1.12"
+    "@olonjs/studio": "^0.1.13"
   },
   "peerDependenciesMeta": {
     "@olonjs/studio": {
@@ -50,7 +50,7 @@
     }
   },
   "dependencies": {
-    "@olonjs/core": "^1.1.29",
+    "@olonjs/core": "^1.1.30",
     "lucide-react": "^0.474.0"
   },
   "devDependencies": {

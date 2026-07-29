@@ -1,7 +1,7 @@
 {
   "version": "1.0.0",
   "kind": "olonjs-page-mcp-manifest",
-  "generatedAt": "2026-07-29T09:03:10.266Z",
+  "generatedAt": "2026-07-29T09:30:48.139Z",
   "slug": "libri/orgoglio-e-pregiudizio",
   "title": "Dettaglio libro",
   "description": "Pagina dinamica dettaglio libro alimentata dalla collection libri.",
