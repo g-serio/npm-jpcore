@@ -17,6 +17,9 @@ import { getFilePages } from '../src/lib/loaders/getFilePages';
 import { getFileSiteBundle } from '../src/lib/loaders/getFileSiteConfig';
 
 const {
+  assertCollectionRecordKeys,
+  buildCollectionContract,
+  buildCollectionContractHref,
   buildPageContract,
   buildPageManifest,
   buildPageManifestHref,
@@ -183,10 +186,28 @@ async function main(): Promise<void> {
 
   await writePublicJson('config/site.json', siteConfig);
 
+  // Emit collection contracts and validate keyed-object invariant
+  for (const [source, schema] of Object.entries(collectionSchemas)) {
+    const collectionPath = path.resolve(collectionsDir, source, `${source}.json`);
+    try {
+      const collectionData = (await readJsonFile(collectionPath)) as Record<string, unknown>;
+      assertCollectionRecordKeys(source, collectionData);
+      console.log(`[bake] Collection "${source}" keyed-object invariant OK`);
+    } catch (err) {
+      throw new Error(`[bake] Collection key invariant failed: ${(err as Error).message}`);
+    }
+
+    const contract = buildCollectionContract({ source, schema: schema as never });
+    const contractRelPath = buildCollectionContractHref(source).replace(/^\//, '');
+    await writePublicJson(contractRelPath, contract);
+    console.log(`[bake] Collection contract emitted: ${contractRelPath}`);
+  }
+
   const mcpManifest = buildSiteManifest({
     pages: pagesForManifest,
     schemas: schemas as never,
     siteConfig,
+    collectionSchemas: collectionSchemas as never,
   });
   await writePublicJson('mcp-manifest.json', mcpManifest);
 
